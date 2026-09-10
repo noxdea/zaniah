@@ -1,0 +1,108 @@
+module Zaniah
+  module GPU
+    type format = :r8 | :rgba8
+    type shader = :quad | :mono_sprite | :poly_sprite
+    interface _Device
+      def width: () -> Numeric
+      def height: () -> Numeric
+      def pixels: () -> String
+      def resize: (Numeric width, Numeric height) -> void
+      def create_texture: (Integer width, Integer height, ?format: format, ?data: String?) -> Texture
+      def create_buffer: (Integer size, ?usage: Symbol, ?mutable: bool) -> Buffer
+      def create_pipeline: (shader: shader, ?blend: Symbol) -> Pipeline
+      def begin_frame: (?clear: color) -> FrameEncoder
+      def render: (Scene scene, ?clear: color) -> void
+      def write_png: (String path) -> Integer
+      def release: () -> void
+    end
+    def self.create: (?Platform::Headless::Window? window, ?backend: :software | :metal | :opengl, ?width: Numeric?, ?height: Numeric?) -> _Device
+
+    class Buffer
+      attr_reader size: Integer
+      attr_reader usage: Symbol
+      attr_reader data: String
+      def initialize: (Integer size, ?usage: Symbol, ?mutable: bool) -> void
+      def write: (String bytes, ?offset: Integer) -> self
+      def release: () -> String
+    end
+    class Texture
+      attr_reader width: Integer
+      attr_reader height: Integer
+      attr_reader format: format
+      attr_reader data: String
+      attr_reader revision: Integer
+      def initialize: (Integer width, Integer height, ?format: format, ?data: String?) -> void
+      def upload: (Integer x, Integer y, Integer width, Integer height, String bytes) -> self
+      def release: () -> Integer
+    end
+    class Pipeline < Data
+      attr_reader shader: shader
+      attr_reader blend: Symbol
+      def self.new: (shader shader, Symbol blend) -> Pipeline
+                  | (shader: shader, blend: Symbol) -> Pipeline
+    end
+    class FrameEncoder
+      def initialize: (_Device device, color clear) -> void
+      def set_pipeline: (Pipeline pipeline) -> Pipeline
+      def set_uniforms: (**Numeric | Array[Numeric] values) -> Hash[Symbol, Numeric | Array[Numeric]]
+      def set_texture: (Integer slot, Texture texture) -> Texture
+      def set_scissor: (Bounds? bounds) -> Bounds?
+      def draw_instanced: (vertex_count: Integer, instance_buffer: Buffer, instance_count: Integer) -> void
+      def present: () -> void
+    end
+    class Software
+      attr_reader width: Integer
+      attr_reader height: Integer
+      attr_reader pixels: String
+      def initialize: (Numeric width, Numeric height) -> void
+      def resize: (Numeric width, Numeric height) -> void
+      def create_texture: (Integer width, Integer height, ?format: format, ?data: String?) -> Texture
+      def create_buffer: (Integer size, ?usage: Symbol, ?mutable: bool) -> Buffer
+      def create_pipeline: (shader: shader, ?blend: Symbol) -> Pipeline
+      def begin_frame: (?clear: color) -> FrameEncoder
+      def render: (Scene scene, ?clear: color) -> String
+      def write_png: (String path) -> Integer
+      def release: () -> String
+    end
+    class Metal
+      attr_reader width: Numeric
+      attr_reader height: Numeric
+      attr_reader draw_calls: Integer
+      def initialize: (Platform::Mac::Window window) -> void
+      def resize: (Numeric width, Numeric height) -> void
+      def create_texture: (Integer width, Integer height, ?format: format, ?data: String?) -> Texture
+      def create_buffer: (Integer size, ?usage: Symbol, ?mutable: bool) -> Buffer
+      def create_pipeline: (shader: shader, ?blend: Symbol) -> Pipeline
+      def begin_frame: (?clear: color) -> FrameEncoder
+      def render: (Scene scene, ?clear: color) -> void
+      def pixels: () -> String
+      def write_png: (String path) -> Integer
+      def release: () -> void
+    end
+    class OpenGL
+      attr_reader width: Numeric
+      attr_reader height: Numeric
+      attr_reader draw_calls: Integer
+      def resize: (Numeric width, Numeric height) -> void
+      def create_texture: (Integer width, Integer height, ?format: format, ?data: String?) -> Texture
+      def create_buffer: (Integer size, ?usage: Symbol, ?mutable: bool) -> Buffer
+      def create_pipeline: (shader: shader, ?blend: Symbol) -> Pipeline
+      def begin_frame: (?clear: color) -> FrameEncoder
+      def render: (Scene scene, ?clear: color, ?capture: bool) -> void
+      def pixels: () -> String
+      def write_png: (String path) -> Integer
+      def release: () -> void
+    end
+    # Optional offscreen triangle probe, not a full window-renderer interface.
+    class Vulkan
+      attr_reader width: Integer
+      attr_reader height: Integer
+      attr_reader pixels: String
+      attr_reader device_name: String
+      def initialize: (?width: Integer, ?height: Integer) -> void
+      def render_triangle: (vertex_spirv: String, fragment_spirv: String) -> void
+      def write_png: (String path) -> Integer
+      def release: () -> void
+    end
+  end
+end

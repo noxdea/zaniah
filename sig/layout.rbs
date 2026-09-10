@@ -1,0 +1,53 @@
+module Zaniah
+  module Layout
+    type style_value = dimension | Edges | Array[dimension] | Symbol | bool | nil
+    type properties = Hash[Symbol, style_value]
+    type measurement = [Numeric, Numeric] | [Numeric, Numeric, Numeric]
+    type measure = ^(Numeric width, Numeric height) -> measurement
+
+    class AvailableSpace < Data
+      attr_reader kind: :definite | :min_content | :max_content
+      attr_reader value: Numeric?
+      def self.new: (:definite | :min_content | :max_content kind, Numeric? value) -> AvailableSpace
+                  | (kind: :definite | :min_content | :max_content, value: Numeric?) -> AvailableSpace
+      def self.definite: (Numeric value) -> AvailableSpace
+      def self.min_content: () -> AvailableSpace
+      def self.max_content: () -> AvailableSpace
+    end
+    class Style
+      DEFAULTS: properties
+      def initialize: (**style_value properties) -> void
+      def []: (Symbol name) -> style_value
+      def merge: (**style_value properties) -> Style
+      def to_h: () -> properties
+    end
+    class Node
+      attr_reader style: Style
+      attr_reader children: Array[Node]
+      attr_reader generation: Integer
+      attr_accessor bounds: Bounds
+      attr_accessor parent: Node?
+      attr_accessor measure: measure?
+      attr_accessor baseline: Numeric
+      def initialize: (?style: Style | properties, ?children: Array[Node], ?measure: measure?) -> void
+      def add: (Node child) -> Node
+      def style=: (Style | properties style) -> void
+      def touch: () -> void
+    end
+    class Engine
+      def initialize: (?rem: Numeric) -> void
+      def compute: (Node root, width: Numeric, height: Numeric, ?x: Numeric, ?y: Numeric) -> Bounds
+      def measure: (Node node, width: Numeric, height: Numeric) -> [Numeric, Numeric]
+    end
+    class Tree
+      attr_reader nodes: Array[Node]
+      def initialize: () -> void
+      def new_node: (?style: Style | properties, ?children: Array[Node], ?measure: measure?) -> Integer
+      def add_child: (Integer parent, Integer child) -> Node
+      def set_style: (Integer id, **style_value style) -> Style
+      def compute: (Integer id, width: Numeric, height: Numeric) -> Bounds
+      def bounds: (Integer id) -> Bounds
+    end
+  end
+  class LayoutTree = Layout::Tree
+end

@@ -1,0 +1,114 @@
+module Zaniah
+  module Input
+    type modifiers = Array[String]
+    type button = :left | :middle | :right | Integer
+    type context = Hash[String | Symbol, String | Symbol | Numeric | bool | nil]
+    type action = String | Symbol | Hash[String, untyped] | Array[untyped]
+    type event = KeyDown | KeyUp | TextInput | Composition | mouse_event | FileDrop
+    type mouse_event = MouseDown | MouseUp | MouseMove | ScrollWheel
+
+    class KeyDown < Data
+      attr_reader keystroke: String
+      attr_reader is_held: bool
+      def self.new: (String keystroke, bool is_held) -> KeyDown
+                  | (keystroke: String, is_held: bool) -> KeyDown
+    end
+    class KeyUp < Data
+      attr_reader keystroke: String
+      def self.new: (String keystroke) -> KeyUp
+                  | (keystroke: String) -> KeyUp
+    end
+    class TextInput < Data
+      attr_reader text: String
+      def self.new: (String text) -> TextInput
+                  | (text: String) -> TextInput
+    end
+    class MouseDown < Data
+      attr_reader position: Point
+      attr_reader button: button
+      attr_reader modifiers: modifiers
+      attr_reader click_count: Integer
+      def self.new: (Point position, button button, modifiers modifiers, Integer click_count) -> MouseDown
+                  | (position: Point, button: button, modifiers: modifiers, click_count: Integer) -> MouseDown
+    end
+    class MouseUp < Data
+      attr_reader position: Point
+      attr_reader button: button
+      attr_reader modifiers: modifiers
+      def self.new: (Point position, button button, modifiers modifiers) -> MouseUp
+                  | (position: Point, button: button, modifiers: modifiers) -> MouseUp
+    end
+    class MouseMove < Data
+      attr_reader position: Point
+      attr_reader modifiers: modifiers
+      def self.new: (Point position, modifiers modifiers) -> MouseMove
+                  | (position: Point, modifiers: modifiers) -> MouseMove
+    end
+    class ScrollWheel < Data
+      attr_reader position: Point
+      attr_reader delta: Point
+      attr_reader phase: Symbol
+      attr_reader modifiers: modifiers
+      def self.new: (Point position, Point delta, Symbol phase, modifiers modifiers) -> ScrollWheel
+                  | (position: Point, delta: Point, phase: Symbol, modifiers: modifiers) -> ScrollWheel
+    end
+    class Composition < Data
+      attr_reader text: String
+      attr_reader selection: [Integer, Integer]
+      def self.new: (String text, [Integer, Integer] selection) -> Composition
+                  | (text: String, selection: [Integer, Integer]) -> Composition
+    end
+    class FileDrop < Data
+      attr_reader paths: Array[String]
+      attr_reader position: Point
+      def self.new: (Array[String] paths, Point position) -> FileDrop
+                  | (paths: Array[String], position: Point) -> FileDrop
+    end
+    module Keystroke
+      def self.normalize: (String value) -> String
+    end
+    class ContextPredicate
+      def initialize: (String? source) -> void
+      def call: (context values) -> bool
+    end
+    class Keymap
+      class Binding < Data
+        attr_reader keys: Array[String]
+        attr_reader predicate: ContextPredicate
+        attr_reader action: action
+        def self.new: (Array[String] keys, ContextPredicate predicate, action action) -> Binding
+                    | (keys: Array[String], predicate: ContextPredicate, action: action) -> Binding
+      end
+      def initialize: (?timeout: Numeric) -> void
+      def bind: (String keys, action action, ?context: String) -> self
+      def load_json: (String text) -> self
+      def dispatch: (String key, ?context: context, ?now: Numeric) -> (action | :pending | nil)
+      def bindings: () -> Array[Binding]
+    end
+    class FocusHandle
+      attr_reader parent: FocusHandle?
+      attr_reader children: Array[FocusHandle]
+      attr_reader context: context
+      attr_accessor on_action: (^(action) -> bool)?
+      attr_accessor on_focus: (^(bool) -> void)?
+      def initialize: (?parent: FocusHandle?, ?context: context) -> void
+      def ancestors: () -> Array[FocusHandle]
+    end
+    class Dispatcher
+      attr_reader focused: FocusHandle?
+      def initialize: (?keymap: Keymap) -> void
+      def focus: (FocusHandle? handle) -> void
+      def key: (String key) -> (action | :pending | nil)
+      def clear_hits: () -> void
+      def hit: (Bounds bounds, ?clip: Bounds?) { (mouse_event | FileDrop) -> (bool | :capture | nil) } -> void
+      def clip: [T] (Bounds bounds) { () -> T } -> T
+      def mouse: (mouse_event | FileDrop event) -> bool
+    end
+    class ActionRegistry
+      def initialize: () -> void
+      def register: (String | Symbol name, ?description: String | Symbol) { (*untyped) -> untyped } -> void
+      def call: (String | Symbol name, *untyped args) -> untyped
+      def entries: () -> Hash[String, String | Symbol]
+    end
+  end
+end

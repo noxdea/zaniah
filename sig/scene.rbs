@@ -1,0 +1,52 @@
+module Zaniah
+  interface _Rectangle
+    def x: () -> Numeric
+    def y: () -> Numeric
+    def width: () -> Numeric
+    def height: () -> Numeric
+  end
+
+  class Scene
+    QUAD_STRIDE: Integer
+    SPRITE_INSTANCE_BYTES: Integer
+    type primitive = :quad | :sprite | :sprite_batch | :triangle
+    class SpriteBatch < Data
+      attr_reader bytes: String
+      attr_reader texture: GPU::Texture
+      def self.new: (String bytes, GPU::Texture texture) -> SpriteBatch
+                  | (bytes: String, texture: GPU::Texture) -> SpriteBatch
+    end
+    attr_reader quads: Array[Numeric]
+    attr_reader sprites: Array[Numeric]
+    attr_reader sprite_batches: Array[SpriteBatch]
+    attr_reader paths: Array[Numeric]
+    attr_reader textures: Array[GPU::Texture]
+    attr_reader commands: Array[primitive | Numeric | Bounds | nil]
+    def initialize: () -> void
+    def clear: () -> self
+    def quad: (Numeric x, Numeric y, Numeric width, Numeric height, color: color, ?radius: radius, ?border_width: Numeric, ?border_color: color) -> self
+    def push_quad: (Numeric x, Numeric y, Numeric width, Numeric height, color bg, radius radius, Numeric border_width, color border_color, ?Numeric order) -> self
+    def sprite: (Numeric x, Numeric y, Numeric width, Numeric height, texture: GPU::Texture, ?color: color, ?source: _Rectangle?) -> self
+    def sprite_batch: (String bytes, texture: GPU::Texture) -> self
+                    | (SpriteBatch batch) -> self
+    def sprite_data: () -> Array[Numeric]
+    def expand_sprite_batch: (Integer index) -> [Integer, Integer]
+    def triangle: ([Numeric, Numeric, Numeric, Numeric, Numeric, Numeric] points, color: color) -> self
+    def shadow: (Numeric x, Numeric y, Numeric width, Numeric height, ?color: color, ?blur: Numeric, ?radius: Numeric) -> self
+    def underline: (Numeric x, Numeric y, Numeric width, color: color, ?thickness: Numeric, ?wave: bool) -> self
+    def clip: [T] (Bounds bounds) { () -> T } -> T
+    def current_clip: () -> Bounds?
+    def layer: [T] (Numeric order) { () -> T } -> T
+    def each_command: () { (primitive, Integer, Bounds?) -> void } -> void
+                    | () -> Enumerator[[primitive, Integer, Bounds?], void]
+  end
+  class QuadPacker
+    attr_reader bytes: String
+    def initialize: () -> void
+    def pack: (Scene scene) -> String
+  end
+  class SceneRenderer
+    def initialize: (GPU::_Device device) -> void
+    def render: (Scene scene, ?clear: color) -> void
+  end
+end

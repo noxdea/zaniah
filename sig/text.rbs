@@ -1,0 +1,137 @@
+module Zaniah
+  module TextSystem
+    type spans = Array[[Integer, Integer, color]]
+    # Structural font contracts keep signatures independent of a separately
+    # installed Alhena gem.
+    interface _Font
+      def units_per_em: () -> Integer
+      def ascent: () -> Integer
+      def descent: () -> Integer
+      def family: () -> String?
+      def glyph_id: (String | Integer character, ?variation_selector: String | Integer | nil) -> Integer
+      def advance: (Integer glyph, ?size: Numeric, ?vertical: bool) -> Float
+      def tables: () -> Hash[String, [Integer, Integer]]
+    end
+    interface _Bitmap
+      def width: () -> Integer
+      def height: () -> Integer
+      def left: () -> Integer
+      def top: () -> Integer
+    end
+    interface _Rasterizer
+      def rasterize: (_Font font, Integer glyph, size: Numeric, ?subpixel_x: Numeric) -> _Bitmap
+    end
+    interface _FontDB
+      def find: (?family: String?, ?weight: Integer, ?width: Integer, ?style: :normal | :italic | :oblique) -> _Font
+      def fallback: (Integer codepoint, _Font primary) -> _Font
+    end
+    interface _Shaper
+      def shape: (Array[Glyph] glyphs, size: Numeric, text: String) -> Array[Glyph]
+    end
+    interface _Segmenter
+      def grapheme_clusters: (String text) -> Array[String]
+    end
+    interface _System
+      def scale_factor=: (Numeric scale) -> Numeric
+      def layout_line: (String text, ?font: _Font?, ?size: Numeric) -> LineLayout
+      def paint_line: (Scene scene, LineLayout line, x: Numeric, y: Numeric, ?color: color, ?spans: spans?) -> void
+      def end_frame: () -> void
+      def close: () -> void
+    end
+    class FontDB
+      class Face < Data
+        attr_reader path: String
+        attr_reader index: Integer
+        attr_reader family: String
+        attr_reader families: Array[String]
+        attr_reader weight: Integer
+        attr_reader width: Integer
+        attr_reader style: :normal | :italic | :oblique
+        attr_reader fixed_pitch: bool
+        attr_reader tables: Hash[String, [Integer, Integer]]
+        def self.new: (String path, Integer index, String family, Array[String] families, Integer weight, Integer width, :normal | :italic | :oblique style, bool fixed_pitch, Hash[String, [Integer, Integer]] tables) -> Face
+                    | (path: String, index: Integer, family: String, families: Array[String], weight: Integer, width: Integer, style: :normal | :italic | :oblique, fixed_pitch: bool, tables: Hash[String, [Integer, Integer]]) -> Face
+      end
+      attr_reader paths: Array[String]
+      def initialize: (?paths: Array[String]?) -> void
+      def open: (String path, ?index: Integer) -> _Font
+      def find: (?family: String?, ?weight: Integer, ?width: Integer, ?style: :normal | :italic | :oblique) -> _Font
+      def faces: () -> Array[Face]
+      def refresh: () -> self
+      def fallback: (Integer codepoint, _Font primary) -> _Font
+    end
+    class Atlas
+      class Entry < Data
+        attr_reader texture: GPU::Texture
+        attr_reader x: Integer
+        attr_reader y: Integer
+        attr_reader width: Integer
+        attr_reader height: Integer
+        attr_reader left: Integer
+        attr_reader top: Integer
+        def self.new: (GPU::Texture texture, Integer x, Integer y, Integer width, Integer height, Integer left, Integer top) -> Entry
+                    | (texture: GPU::Texture, x: Integer, y: Integer, width: Integer, height: Integer, left: Integer, top: Integer) -> Entry
+      end
+      attr_reader generation: Integer
+      attr_reader texture: GPU::Texture
+      def initialize: (?width: Integer, ?height: Integer, ?format: GPU::format) -> void
+      def fetch: (Object key) { () -> _Bitmap } -> Entry
+      def lookup: (Object key) -> Entry?
+      def load_cache: (String path, key: String, ?preserve: bool) -> bool
+      def save_cache: (String path, key: String) -> bool
+      def end_frame: () -> void
+    end
+    class Glyph < Data
+      attr_reader font: _Font
+      attr_reader id: Integer
+      attr_reader start: Integer
+      attr_reader finish: Integer
+      attr_reader x: Numeric
+      attr_reader advance: Numeric
+      def self.new: (_Font font, Integer id, Integer start, Integer finish, Numeric x, Numeric advance) -> Glyph
+                  | (font: _Font, id: Integer, start: Integer, finish: Integer, x: Numeric, advance: Numeric) -> Glyph
+    end
+    class LineLayout < Data
+      attr_reader text: String
+      attr_reader glyphs: Array[Glyph]
+      attr_reader width: Numeric
+      attr_reader ascent: Numeric
+      attr_reader descent: Numeric
+      attr_reader size: Numeric
+      attr_reader carets: Array[[Integer, Numeric]]
+      def self.new: (String text, Array[Glyph] glyphs, Numeric width, Numeric ascent, Numeric descent, Numeric size, Array[[Integer, Numeric]] carets) -> LineLayout
+                  | (text: String, glyphs: Array[Glyph], width: Numeric, ascent: Numeric, descent: Numeric, size: Numeric, carets: Array[[Integer, Numeric]]) -> LineLayout
+      def index_for_x: (Numeric x) -> Integer
+      def x_for_index: (Integer index) -> Numeric
+    end
+    class Typesetter
+      class CopyError < Error
+      end
+      attr_reader font_db: _FontDB
+      attr_reader font: _Font
+      attr_reader shaper: _Shaper
+      attr_reader segmenter: _Segmenter
+      def initialize: (?font: _Font?, ?font_db: :native | _FontDB, ?capacity: Integer, ?shaper: :native | _Shaper, ?segmenter: :native | _Segmenter) -> void
+      def layout_line: (String text, ?font: _Font?, ?size: Numeric) -> LineLayout
+      def fork: (?capacity: Integer) -> Typesetter
+      def close: () -> void
+    end
+    class Renderer < Typesetter
+      MAX_PAINT_BYTES: Integer
+      attr_reader font_db: _FontDB
+      attr_reader shaper: _Shaper
+      attr_reader segmenter: _Segmenter
+      attr_reader atlas: Atlas
+      attr_reader color_atlas: Atlas
+      attr_reader font: _Font
+      attr_reader cache_dir: String?
+      attr_accessor scale_factor: Numeric
+      def initialize: (?font: _Font?, ?font_db: :native | _FontDB, ?capacity: Integer, ?font_raster: :native | :alhena | :core_text | :coretext | :freetype | _Rasterizer, ?shaper: :native | _Shaper, ?segmenter: :native | _Segmenter, ?cache_dir: String?) -> void
+      def layout_line: (String text, ?font: _Font?, ?size: Numeric) -> LineLayout
+      def paint_line: (Scene scene, LineLayout line, x: Numeric, y: Numeric, ?color: color, ?spans: spans?) -> void
+      def end_frame: () -> void
+      def prewarm: (?String text, ?size: Numeric) -> self
+      def close: () -> void
+    end
+  end
+end

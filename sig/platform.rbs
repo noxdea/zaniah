@@ -1,0 +1,94 @@
+module Zaniah
+  module Platform
+    type backend = :headless | :tui | :mac | :linux | :windows
+    type cursor = :arrow | :text | :pointer | :crosshair | :resize_horizontal | :resize_vertical
+    type text_run = [Numeric, Numeric, String, color]
+    type native_window = Mac::Window | Linux::Window | Linux::WaylandWindow | Windows::Window
+    class Display < Data
+      attr_reader id: Integer
+      attr_reader name: String
+      attr_reader bounds: Bounds
+      attr_reader scale_factor: Numeric
+      attr_reader primary: bool
+      def self.new: (Integer id, String name, Bounds bounds, Numeric scale_factor, bool primary) -> Display
+                  | (id: Integer, name: String, bounds: Bounds, scale_factor: Numeric, primary: bool) -> Display
+    end
+    def self.displays: (?backend: backend | :auto, ?display_server: :auto | :x11 | :wayland) -> Array[Display]
+
+    def self.open_window: (?backend: :headless, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> Headless::Window
+                        | (backend: :tui, ?input: IO, ?output: IO, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> TUI::Window
+                        | (backend: :mac, ?gpu: :metal | :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> Mac::Window
+                        | (backend: :linux, ?display_server: :auto | :x11 | :wayland, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> (Linux::Window | Linux::WaylandWindow)
+                        | (backend: :windows, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> Windows::Window
+
+    interface _Watcher
+      def poll: (?timeout: Numeric) -> Array[FileEvent]
+      def close: () -> void
+    end
+    class FileEvent < Data
+      attr_reader kind: :created | :modified | :deleted | :renamed | :overflow
+      attr_reader path: String?
+      attr_reader old_path: String?
+      def self.new: (:created | :modified | :deleted | :renamed | :overflow kind, String? path, String? old_path) -> FileEvent
+                  | (kind: :created | :modified | :deleted | :renamed | :overflow, path: String?, old_path: String?) -> FileEvent
+    end
+    def self.watch: (String | Array[String] paths, ?latency: Numeric) -> _Watcher
+
+    module Headless
+      class Window
+        attr_reader content_size: Size
+        attr_reader scene: Scene
+        attr_reader device: GPU::_Device
+        attr_reader dispatcher: Input::Dispatcher
+        attr_reader scale_factor: Numeric
+        attr_reader text_runs: Array[text_run]
+        attr_accessor text_system: TextSystem::_System?
+        attr_accessor ime_state: Bounds?
+        attr_accessor title: String
+        def initialize: (?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def on_input: () { (Input::event) -> void } -> void
+        def on_resize: () { (Size) -> void } -> void
+        def on_close: () { () -> (bool | nil) } -> void
+        def on_moved: () { ([Numeric, Numeric]) -> void } -> void
+        def on_tick: () { () -> void } -> void
+        def draw: () { (Window) -> (Element | Scene | nil) } -> void
+        def request_frame: () -> bool
+        def dirty?: () -> bool
+        def closed?: () -> bool
+        def displays: () -> Array[Display]
+        def resize: (Numeric width, Numeric height) -> void
+        def input: (Input::event event) -> void
+        def offer_tooltip: (String text, position: Point, ?delay: Numeric) -> void
+        def context_menu: (menu items, ?position: Point) -> void
+        def close: () -> bool?
+        def tick: () -> void
+        def render: (Element element, ?clear: color, ?present: bool) -> void
+        def element_state: [T] (Object key) { () -> T } -> T
+        def write_png: (String path) -> Integer
+      end
+    end
+    module TUI
+      class InputDecoder
+        attr_reader buffer: String
+        def initialize: () { (Input::event) -> untyped } -> void
+        def feed: (String bytes) -> self
+        def flush_escape: () -> bool
+      end
+      class Window < Headless::Window
+        def initialize: (?input: IO, ?output: IO, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def run: () -> void
+        def feed_input: (String bytes) -> void
+      end
+      class TextRenderer
+        attr_reader runs: Array[[Numeric, Numeric, String?, color, Bounds?]]
+        attr_accessor scale_factor: Numeric?
+        def initialize: () -> void
+        def start_frame: () -> void
+        def end_frame: () -> void
+        def close: () -> void
+        def layout_line: (String text, ?font: TextSystem::_Font?, ?size: Numeric) -> TextSystem::LineLayout
+        def paint_line: (Scene scene, TextSystem::LineLayout line, x: Numeric, y: Numeric, ?color: color, ?spans: TextSystem::spans?) -> void
+      end
+    end
+  end
+end

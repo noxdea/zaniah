@@ -1,0 +1,129 @@
+module Zaniah
+  class FrameContext
+    attr_reader window: Platform::Headless::Window
+    attr_reader scene: Scene
+    attr_reader dispatcher: Input::Dispatcher
+    attr_reader text_system: TextSystem::_System?
+    def initialize: (Platform::Headless::Window window) -> void
+    def state: [T] (Object key) { () -> T } -> T
+  end
+
+  class Element
+    include LengthUnits
+    attr_reader layout_node: Layout::Node?
+    # Child constructors forward their render blocks through super(); ignored here.
+    def initialize: () ?{ (*untyped) -> void } -> void
+    def child: (Element? element) -> self
+    def children: () -> Array[Element]
+                | (Array[Element?] elements) -> self
+    def style: (**Layout::style_value properties) -> self
+    def key: (Object value) -> self
+    def with_state: [T] () { () -> T } -> self
+    def bg: (color color) -> self
+    def border_color: (color color) -> self
+    def rounded: (radius radius) -> self
+    def tooltip: (String text) -> self
+    def context_menu: (menu items) -> self
+    def flex: () -> self
+    def flex_row: () -> self
+    def flex_col: () -> self
+    def items_center: () -> self
+    def justify_center: () -> self
+    def w_full: () -> self
+    def h_full: () -> self
+    def flex_1: () -> self
+    def overflow_hidden: () -> self
+    def w: (dimension value) -> self
+    def h: (dimension value) -> self
+    def min_w: (dimension value) -> self
+    def min_h: (dimension value) -> self
+    def max_w: (dimension value) -> self
+    def max_h: (dimension value) -> self
+    def p: (Layout::style_value value) -> self
+    def m: (Layout::style_value value) -> self
+    def gap: (dimension value) -> self
+    def border: (Layout::style_value value) -> self
+    def border_b: (dimension value) -> self
+    def on_click: () { (Input::MouseDown, FrameContext) -> void } -> self
+    def on_hover: () { (Input::MouseMove, FrameContext) -> void } -> self
+    def on_drag: () { (Input::MouseMove, FrameContext) -> void } -> self
+    def on_scroll_wheel: () { (Input::ScrollWheel, FrameContext) -> void } -> self
+    def on_mouse_down: () { (Input::MouseDown, FrameContext) -> void } -> self
+    def on_mouse_up: () { (Input::MouseUp, FrameContext) -> void } -> self
+    def request_layout: (FrameContext context) -> Layout::Node
+    def prepaint: (Bounds bounds, Object? state, FrameContext context) -> void
+    def paint: (Bounds bounds, Object? state, Object? prepaint, FrameContext context) -> void
+  end
+  class Div < Element
+  end
+  class Text < Element
+    def initialize: (String text, ?size: Numeric, ?color: color, ?font: TextSystem::_Font?) -> void
+    def measured: () { (Numeric width, Numeric height) -> Layout::measurement } -> self
+  end
+  class Image < Element
+    def initialize: (String path) -> void
+  end
+  class Canvas < Element
+    def initialize: () { (Bounds, FrameContext) -> void } -> void
+  end
+  class Overlay < Div
+  end
+  class Anchored < Div
+    def initialize: (anchor: Point, ?offset: Point) -> void
+  end
+  class UniformList < Element
+    attr_accessor scroll_y: Numeric
+    attr_reader visible_range: Range[Integer]?
+    def initialize: (count: Integer, row_height: Numeric) { (Integer) -> Element } -> void
+  end
+
+  class SVG < Element
+    interface _Outline
+      def commands: () -> Array[Symbol]
+      def coordinates: () -> Array[Float]
+      def empty?: () -> bool
+      def bounds: () -> [Numeric, Numeric, Numeric, Numeric]
+    end
+    class Path
+      def self.parse: (String source) -> _Outline
+      def initialize: (String source) -> void
+      def parse: () -> _Outline
+    end
+    attr_reader width: Numeric
+    attr_reader height: Numeric
+    attr_reader view_box: Array[Numeric]
+    def self.parse: (String source, ?color: String) -> SVG
+    def self.open: (String path, ?color: String) -> SVG
+    def initialize: (String source, ?color: String) -> void
+    def texture: (?width: Integer, ?height: Integer, ?color: String) -> GPU::Texture
+  end
+
+  class List < Element
+    attr_reader scroll_y: Float
+    attr_reader visible_range: Range[Integer]
+    attr_reader heights: HeightIndex
+    def initialize: (count: Integer, ?estimated_height: Numeric, ?overscan: Integer) { (Integer) -> Element } -> void
+    def scroll_y=: (Numeric value) -> Numeric
+    def total_height: () -> Float
+    def update_height: (Integer index, Numeric height) -> self
+    def scroll_to: (Integer index, ?align: :start | :center | :end | :nearest) -> self
+    class HeightIndex
+      attr_reader count: Integer
+      def initialize: (Integer count, Numeric estimate) -> void
+      def []: (Integer index) -> Float
+      def update: (Integer index, Numeric height) -> Float
+      def prefix: (Integer index) -> Float
+      def total: () -> Float
+      def index_at: (Numeric y) -> Integer
+    end
+  end
+
+  class View
+    include LengthUnits
+    def div: () -> Div
+    def text: (String value, ?size: Numeric, ?color: color, ?font: TextSystem::_Font?) -> Text
+    def render: (FrameContext | EntityContext[untyped] context) -> Element
+    def svg: (String source, ?color: String) -> SVG
+    def list: (count: Integer, ?estimated_height: Numeric, ?overscan: Integer) { (Integer) -> Element } -> List
+  end
+end

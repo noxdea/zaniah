@@ -1,0 +1,120 @@
+module Zaniah
+  VERSION: String
+  type color = Color | String | [Numeric, Numeric, Numeric] | [Numeric, Numeric, Numeric, Numeric]
+  type dimension = Numeric | Length | :auto
+  type radius = Numeric | [Numeric, Numeric, Numeric, Numeric]
+  type menu = Array[[String, (^( ) -> void)?]]
+
+  class Error < StandardError
+  end
+
+  class Configuration < Struct[Symbol | TextSystem::_Rasterizer | TextSystem::_FontDB | TextSystem::_Shaper | TextSystem::_Segmenter]
+    attr_accessor font_raster: Symbol | TextSystem::_Rasterizer
+    attr_accessor shaper: Symbol | TextSystem::_Shaper
+    attr_accessor font_db: Symbol | TextSystem::_FontDB
+    attr_accessor segmenter: Symbol | TextSystem::_Segmenter
+    def self.new: (?font_raster: Symbol | TextSystem::_Rasterizer, ?shaper: Symbol | TextSystem::_Shaper, ?font_db: Symbol | TextSystem::_FontDB, ?segmenter: Symbol | TextSystem::_Segmenter) -> Configuration
+  end
+  def self.configuration: () -> Configuration
+  def self.configure: [T] () { (Configuration) -> T } -> T
+
+  class Point < Data
+    attr_reader x: Numeric
+    attr_reader y: Numeric
+    def self.new: (Numeric x, Numeric y) -> Point
+                | (x: Numeric, y: Numeric) -> Point
+    def +: (Point other) -> Point
+    def -: (Point other) -> Point
+  end
+  class Size < Data
+    attr_reader width: Numeric
+    attr_reader height: Numeric
+    def self.new: (Numeric width, Numeric height) -> Size
+                | (width: Numeric, height: Numeric) -> Size
+  end
+  class Edges < Data
+    attr_reader top: Numeric
+    attr_reader right: Numeric
+    attr_reader bottom: Numeric
+    attr_reader left: Numeric
+    def self.new: (Numeric top, Numeric right, Numeric bottom, Numeric left) -> Edges
+                | (top: Numeric, right: Numeric, bottom: Numeric, left: Numeric) -> Edges
+    def self.all: (Numeric value) -> Edges
+  end
+  class Corners < Data
+    attr_reader top_left: Numeric
+    attr_reader top_right: Numeric
+    attr_reader bottom_right: Numeric
+    attr_reader bottom_left: Numeric
+    def self.new: (Numeric top_left, Numeric top_right, Numeric bottom_right, Numeric bottom_left) -> Corners
+                | (top_left: Numeric, top_right: Numeric, bottom_right: Numeric, bottom_left: Numeric) -> Corners
+    def self.all: (Numeric value) -> Corners
+  end
+  class Bounds < Data
+    attr_reader x: Numeric
+    attr_reader y: Numeric
+    attr_reader width: Numeric
+    attr_reader height: Numeric
+    def self.new: (Numeric x, Numeric y, Numeric width, Numeric height) -> Bounds
+                | (x: Numeric, y: Numeric, width: Numeric, height: Numeric) -> Bounds
+    def right: () -> Numeric
+    def bottom: () -> Numeric
+    def contains?: (Point point) -> bool
+    def intersect: (Bounds other) -> Bounds
+    def inset: (Numeric | Edges edges) -> Bounds
+  end
+  class Length < Data
+    attr_reader value: Numeric
+    attr_reader unit: :px | :rem | :percent
+    def self.new: (Numeric value, :px | :rem | :percent unit) -> Length
+                | (value: Numeric, unit: :px | :rem | :percent) -> Length
+    def resolve: (Numeric available, ?rem: Numeric) -> Numeric
+  end
+  class DevicePixels < Data
+    attr_reader value: Numeric
+    def self.new: (Numeric value) -> DevicePixels
+                | (value: Numeric) -> DevicePixels
+    def logical: (Numeric scale) -> Numeric
+  end
+  module LengthUnits
+    def px: (Numeric value) -> Length
+    def rems: (Numeric value) -> Length
+    def percent: (Numeric value) -> Length
+  end
+  extend LengthUnits
+
+  class Color < Data
+    attr_reader r: Numeric
+    attr_reader g: Numeric
+    attr_reader b: Numeric
+    attr_reader a: Numeric
+    def self.new: (Numeric r, Numeric g, Numeric b, Numeric a) -> Color
+                | (r: Numeric, g: Numeric, b: Numeric, a: Numeric) -> Color
+    def self.parse: (color value) -> Color
+    def opacity: (Numeric value) -> Color
+    def premultiplied: () -> [Numeric, Numeric, Numeric, Numeric]
+    def to_a: () -> [Numeric, Numeric, Numeric, Numeric]
+    def mix: (color other, Numeric amount) -> Color
+    def to_hsla: () -> HSLA
+  end
+  class HSLA < Data
+    attr_reader h: Numeric
+    attr_reader s: Numeric
+    attr_reader l: Numeric
+    attr_reader a: Numeric
+    def self.new: (Numeric h, Numeric s, Numeric l, Numeric a) -> HSLA
+                | (h: Numeric, s: Numeric, l: Numeric, a: Numeric) -> HSLA
+    def to_rgba: () -> Color
+  end
+
+  module Unicode
+    def self.grapheme_clusters: (String text) -> Array[String]
+    def self.width: (String text, ?ambiguous: 1 | 2) -> Integer
+  end
+  module PNG
+    SIGNATURE: String
+    def self.encode: (Integer width, Integer height, String rgba) -> String
+    def self.decode: (String bytes, ?max_pixels: Integer) -> [Integer, Integer, String]
+    def self.write: (String path, Integer width, Integer height, String rgba) -> Integer
+  end
+end

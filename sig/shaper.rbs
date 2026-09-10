@@ -1,0 +1,8 @@
+module Zaniah
+  module TextSystem
+    class Shaper
+      def initialize: () -> void
+      def shape: (Array[Glyph] glyphs, size: Numeric, ?text: String?, ?script: String?, ?language: String?) -> Array[Glyph]
+    end
+  end
+end

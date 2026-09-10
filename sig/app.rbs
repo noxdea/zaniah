@@ -1,0 +1,80 @@
+module Zaniah
+  class Subscription
+    def initialize: () { () -> void } -> void
+    def detach: () -> void
+    def attached?: () -> bool
+  end
+
+  class Entity[T] < Data
+    attr_reader id: Integer
+    attr_reader generation: Integer
+    def self.new: [U] (Integer id, Integer generation) -> Entity[U]
+                | [U] (id: Integer, generation: Integer) -> Entity[U]
+    def read: (App app) -> T
+    def update: [U] (App app) { (T, EntityContext[T]) -> U } -> U
+    def release: (App app) -> void
+  end
+  class EntityContext[T]
+    attr_reader app: App
+    attr_reader entity: Entity[T]
+    def initialize: (App app, Entity[T] entity) -> void
+    def notify: () -> void
+    def emit: [E] (E event) -> void
+    def observe: [U] (Entity[U] target) { (T, U, EntityContext[T]) -> void } -> Subscription
+    def subscribe: [U, E] (Entity[U] target) { (T, U, E, EntityContext[T]) -> void } -> Subscription
+    def spawn: [U] () { (EntityContext[T]) -> U } -> Task[U]
+    def background: [U] () { () -> U } -> U
+    def update: () { (App) -> void } -> void
+    def theme: () -> untyped
+  end
+  class App
+    attr_reader windows: Array[Platform::Headless::Window]
+    attr_reader executor: TaskExecutor
+    def initialize: () -> void
+    def new_entity: [T] () { (EntityContext[T]) -> T } -> Entity[T]
+    def read: [T] (Entity[T] entity) -> T
+    def update: [T, U] (Entity[T] entity) { (T, EntityContext[T]) -> U } -> U
+    def release: [T] (Entity[T] entity) -> void
+    def alive?: [T] (Entity[T] entity) -> bool
+    def entity_count: () -> Integer
+    # Global values are application-owned heterogeneous state.
+    def global: (Symbol | String key) -> untyped
+              | [T] (Symbol | String key, T value) -> T
+    def listen: [T] (:notify | :emit kind, Entity[T] target, ?owner: Entity[untyped]?) { (*untyped) -> void } -> Subscription
+    def enqueue: (:notify | :emit kind, Entity[untyped] entity, ?untyped event) -> void
+    def flush_effects: () -> void
+    def open_window: (?backend: Platform::backend, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?input: IO, ?output: IO, ?gpu: :metal | :opengl | :gl, ?display_server: :auto | :x11 | :wayland) ?{ (Platform::Headless::Window) -> (Element | Scene | nil) } -> Platform::Headless::Window
+    def run: () -> void
+  end
+
+  # Task is the framework's cancellable future, shared by both executor queues.
+  class Task[T]
+    class Cancelled < Error
+    end
+    class Timeout < Error
+    end
+    def initialize: () -> void
+    def resolve: (?T? value, ?error: Exception?) -> void
+    def await: (?timeout: Numeric?) -> T
+    def cancel: () -> void
+    def done?: () -> bool
+    def on_complete: () { () -> void } -> Subscription
+  end
+  class TaskExecutor
+    def self.current: () -> TaskExecutor?
+    def initialize: (?workers: Integer) -> void
+    def background: [T] () { () -> T } -> Task[T]
+    def spawn: [T] () { () -> T } -> Task[T]
+    def await: [T] (Task[T] task, ?timeout: Numeric?) -> T
+    def post: () { () -> void } -> void
+    def drain: () -> void
+    def wait: (Numeric seconds) -> void
+    def shutdown: () -> void
+  end
+  class ProcessPool[Input, Output]
+    def initialize: (?workers: Integer, handler: String, ?requires: Array[String], ?load_paths: Array[String], ?max_pending: Integer, ?max_bytes: Integer) -> void
+                  | (?workers: Integer, ?max_pending: Integer, ?max_bytes: Integer) { (Input) -> Output } -> void
+    def submit: (Input data) -> Task[Output]
+    def shutdown: (?timeout: Numeric) -> void
+  end
+end

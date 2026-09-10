@@ -1,0 +1,37 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14, windows-2022]
+        ruby: ['3.1', '3.2', '3.3', '3.4', '4.0']
+    runs-on: ${{ matrix.os }}
+    env:
+      BUNDLE_PATH: .bundle/gems
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+      - run: bundle install
+      - run: bundle exec rake test
+      - run: gem build --strict zaniah.gemspec
+  types:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+      - run: bundle install
+      - run: gem install rbs --version '~> 4.2' --no-document
+      - run: rbs -I sig validate
+      - run: ruby test/type/check.rb

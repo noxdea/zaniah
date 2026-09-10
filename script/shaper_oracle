@@ -1,0 +1,40 @@
+# frozen_string_literal: true
+
+# Development-only differential check; HarfBuzz is not a runtime dependency.
+require "zaniah"
+require "alhena"
+require "open3"
+require "json"
+
+paths = ARGV.empty? ? [File.expand_path("../assets/fonts/Abel-Regular.ttf", __dir__)] : ARGV
+random = Random.new(72)
+samples = ["office AVATAR ffi fl", "a != b && c >= d", "-> --> => ==> <=> <| |> <|||", "=== !== := :: ::: ... .. .-", "www || >>= <<- += ** /= #{'#{name}'}"]
+samples += Array.new(100) { Array.new(60) { "abcxyz012:!=<>-+*/.&|"[random.rand(20)] }.join }
+checks = 0
+paths.each do |path|
+  font, shaper = Alhena::Font.open(path), Zaniah::TextSystem::Shaper.new
+  samples.each do |text|
+    glyphs, offset = [], 0
+    text.each_char do |char|
+      id = font.glyph_id(char.ord)
+      glyphs << Zaniah::TextSystem::Glyph.new(font, id, offset, offset + char.bytesize, 0, font.advance(id, size: font.units_per_em))
+      offset += char.bytesize
+    end
+    result = shaper.shape(glyphs, size: font.units_per_em, text: text)
+    output, status = Open3.capture2("hb-shape", "--shapers=ot", "--direction=ltr", "--script=latn", "--font-size=#{font.units_per_em}", "--no-glyph-names", "--output-format=json", "--utf8-clusters", "--features=liga=1,calt=1,kern=1,ccmp=0,locl=0,rlig=0,mark=0,mkmk=0", "--", path, text)
+    raise "hb-shape failed" unless status.success?
+    expected = JSON.parse(output)
+    ids = result.map(&:id)
+    raise "glyph mismatch #{File.basename(path)} #{text.inspect}\n#{ids.inspect}\n#{expected.map { |g| g.fetch('g') }.inspect}" unless ids == expected.map { |g| g.fetch("g") }
+    oracle_x = 0.0
+    result.zip(expected).each do |actual, oracle|
+      # HarfBuzz distributes legacy kern deltas across both glyph advances;
+      # our horizontal API assigns them to the first. Visual positions agree.
+      raise "placement mismatch #{File.basename(path)} #{text.inspect}" if (actual.x - oracle_x - oracle.fetch("dx")).abs > 2
+      oracle_x += oracle.fetch("ax")
+    end
+    raise "total advance mismatch" if (result.sum(&:advance) - oracle_x).abs > 2
+    checks += 1
+  end
+end
+puts "#{checks} HarfBuzz differential samples passed across #{paths.length} fonts"

@@ -1,0 +1,88 @@
+module Zaniah
+  module Platform
+    module Mac
+      class Window < Headless::Window
+        attr_reader handle: Integer
+        attr_reader view: Integer
+        attr_reader layer: Integer?
+        def initialize: (?gpu: :metal | :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def create_device: (:metal | :opengl | :gl backend) -> GPU::_Device
+        def tick: (?poll_events: bool) -> void
+        def run: () -> void
+        def clipboard: () -> String
+        def clipboard=: (String text) -> void
+        def clipboard_paths: () -> Array[String]
+        def appearance: () -> (:light | :dark)
+        def on_appearance: () { (:light | :dark) -> void } -> void
+        def tooltip=: (String text) -> void
+        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool) -> Array[String]
+        def cursor_style=: (cursor style) -> void
+        def open_url: (String url) -> void
+        def toggle_fullscreen: () -> void
+      end
+    end
+    module Linux
+      class Window < Headless::Window
+        attr_reader handle: Integer
+        def self.new: (?display_server: :auto | :x11 | :wayland, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> (Window | WaylandWindow)
+        def initialize: (?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def create_device: (:opengl | :gl backend) -> GPU::OpenGL
+        def run: () -> void
+        def clipboard: () -> String?
+        def clipboard=: (String text) -> void
+        def clipboard_paths: () -> Array[String]
+        def appearance: () -> (:light | :dark)
+        def on_appearance: () { (:light | :dark) -> void } -> void
+        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool) -> Array[String]
+        def cursor_style=: (cursor style) -> void
+        def open_url: (String url) -> bool
+        def toggle_fullscreen: () -> void
+      end
+      class WaylandWindow < Headless::Window
+        def initialize: (?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def create_device: (:opengl | :gl backend) -> GPU::OpenGL
+        def run: () -> void
+        def clipboard: () -> String?
+        def clipboard=: (String text) -> void
+        def clipboard_paths: () -> Array[String]
+        def appearance: () -> (:light | :dark)
+        def on_appearance: () { (:light | :dark) -> void } -> void
+        def on_delete_surrounding: () { (Integer before, Integer after) -> void } -> void
+        def surrounding_text: (String text, cursor: Integer, ?anchor: Integer) -> void
+        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool) -> Array[String]
+        def cursor_style=: (cursor style) -> void
+        def open_url: (String url) -> bool
+        def toggle_fullscreen: () -> void
+      end
+    end
+    module Windows
+      class Window < Headless::Window
+        # Opaque native pointer; only integer conversion is portable.
+        attr_reader handle: _ToI
+        def initialize: (?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def create_device: (:opengl | :gl backend) -> GPU::OpenGL
+        def run: () -> void
+        def clipboard: () -> String?
+        def clipboard=: (String text) -> void
+        def clipboard_paths: () -> Array[String]
+        def appearance: () -> (:light | :dark)
+        def on_appearance: () { (:light | :dark) -> void } -> void
+        def context_menu: (menu items, ?position: Point?) -> void
+        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool) -> Array[String]
+        def cursor_style=: (cursor style) -> void
+        def open_url: (String url) -> void
+        def toggle_fullscreen: () -> void
+      end
+      class Terminal
+        attr_reader pid: Integer
+        def initialize: (?command: String | Array[String] | nil, ?columns: Integer, ?rows: Integer, ?cwd: String?, ?env: Hash[String | Symbol, String | Numeric]) -> void
+        def self.quote_argument: (String value) -> String
+        def read_available: (?limit: Integer) -> String?
+        def write: (String bytes) -> Integer
+        def resize: (Integer columns, Integer rows) -> void
+        def alive?: () -> bool
+        def close: () -> void
+      end
+    end
+  end
+end
