@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@source "./index.html";
+
+@font-face {
+  font-family: "Abel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/Abel-Regular.ttf") format("truetype");
+}
+
+@theme {
+  --font-display: "Abel", sans-serif;
+  --color-zaniah: #319e8c;
+}
+
+:root {
+  color-scheme: dark;
+}

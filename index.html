@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth bg-slate-950">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Zaniah is a pure Ruby UI toolkit for native GPU windows, headless rendering, and terminal interfaces.">
+    <meta name="theme-color" content="#020617">
+    <meta property="og:title" content="Zaniah — Ruby UI toolkit">
+    <meta property="og:description" content="Build native, headless, and terminal interfaces in pure Ruby.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://noxdea.github.io/zaniah/">
+    <link rel="canonical" href="https://noxdea.github.io/zaniah/">
+    <link rel="stylesheet" href="./site.css">
+    <title>Zaniah — Ruby UI toolkit</title>
+  </head>
+  <body class="min-h-dvh overflow-x-hidden bg-slate-950 text-slate-100 antialiased selection:bg-zaniah selection:text-slate-950">
+    <a class="absolute left-4 top-4 -translate-y-24 rounded-md bg-zaniah px-4 py-2 font-medium text-slate-950 focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-white" href="#main">Skip to content</a>
+
+    <header class="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-8">
+      <a class="font-display flex items-center gap-3 text-2xl focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zaniah" href="./" aria-label="Zaniah home">
+        <span class="size-3 rounded-sm bg-zaniah" aria-hidden="true"></span>
+        Zaniah
+      </a>
+      <nav aria-label="Primary navigation">
+        <ul class="hidden items-center gap-8 text-sm text-slate-300 sm:flex">
+          <li><a class="hover:text-white focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zaniah" href="#features">Features</a></li>
+          <li><a class="hover:text-white focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zaniah" href="#quick-start">Quick start</a></li>
+          <li><a class="hover:text-white focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zaniah" href="https://github.com/noxdea/zaniah">GitHub</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="border-y border-slate-800">
+        <div class="mx-auto grid max-w-7xl gap-14 px-6 py-20 lg:grid-cols-12 lg:items-center lg:px-8 lg:py-28">
+          <div class="min-w-0 lg:col-span-5">
+            <p class="mb-5 text-base text-zaniah">A pure Ruby UI toolkit</p>
+            <h1 class="font-display max-w-3xl text-balance text-6xl leading-none text-white sm:text-7xl lg:text-8xl">Ruby draws the whole window.</h1>
+            <p class="mt-7 max-w-xl text-pretty text-lg leading-8 text-slate-300">Build desktop and terminal interfaces through native GPU APIs, a deterministic headless renderer, or ANSI output. No extension compilation. No rendering subprocess.</p>
+            <div class="mt-9 flex flex-wrap items-center gap-4">
+              <a class="rounded-md bg-zaniah px-5 py-3 font-semibold text-slate-950 shadow-sm hover:bg-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" href="#quick-start">Start with Zaniah</a>
+              <a class="rounded-md border border-slate-700 px-5 py-3 font-semibold text-white hover:border-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zaniah" href="https://github.com/noxdea/zaniah">View on GitHub</a>
+            </div>
+          </div>
+
+          <div class="min-w-0 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl lg:col-span-7">
+            <div class="flex items-center justify-between border-b border-slate-700 px-5 py-3 text-sm text-slate-400">
+              <span>Zaniah::Window</span>
+              <span class="tabular-nums">480 × 240</span>
+            </div>
+            <div class="grid md:grid-cols-2">
+              <pre class="min-w-0 overflow-x-auto border-b border-slate-700 p-6 text-sm leading-7 text-slate-300 md:border-b-0 md:border-r"><code><span class="text-zaniah">window</span>.draw do
+  Zaniah::Div.new
+    .flex_col
+    .p(24)
+    .gap(12)
+    .child(title)
+    .child(body)
+end</code></pre>
+              <div class="flex min-h-64 items-center bg-slate-800 p-8">
+                <div class="w-full rounded-lg border border-slate-600 bg-slate-950 p-6 shadow-lg">
+                  <div class="mb-7 flex items-center justify-between text-xs text-slate-500">
+                    <span>headless.png</span>
+                    <span class="size-2 rounded-full bg-zaniah" aria-hidden="true"></span>
+                  </div>
+                  <p class="font-display text-balance text-4xl text-white">Hello, Ruby.</p>
+                  <p class="mt-3 text-pretty leading-6 text-slate-400">The interface is Ruby, all the way down.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="surfaces-heading" class="border-b border-slate-800">
+        <h2 id="surfaces-heading" class="sr-only">Supported surfaces</h2>
+        <ul class="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-slate-800 border-x border-slate-800 sm:grid-cols-5 sm:divide-y-0">
+          <li class="px-5 py-5"><span class="block font-medium text-white">macOS</span><span class="text-sm text-slate-500">Metal or OpenGL</span></li>
+          <li class="px-5 py-5"><span class="block font-medium text-white">Linux</span><span class="text-sm text-slate-500">Wayland or X11</span></li>
+          <li class="px-5 py-5"><span class="block font-medium text-white">Windows</span><span class="text-sm text-slate-500">Win32 and WGL</span></li>
+          <li class="px-5 py-5"><span class="block font-medium text-white">Headless</span><span class="text-sm text-slate-500">Deterministic PNG</span></li>
+          <li class="col-span-2 px-5 py-5 sm:col-span-1"><span class="block font-medium text-white">Terminal</span><span class="text-sm text-slate-500">ANSI text grid</span></li>
+        </ul>
+      </section>
+
+      <section id="features" class="mx-auto grid max-w-7xl gap-14 px-6 py-20 lg:grid-cols-12 lg:px-8 lg:py-28">
+        <div class="lg:col-span-4">
+          <h2 class="font-display text-balance text-5xl leading-tight text-white sm:text-6xl">One toolkit. Every surface it needs.</h2>
+          <p class="mt-6 max-w-md text-pretty text-lg leading-8 text-slate-400">Zaniah keeps layout, state, text, input, and rendering in one Ruby process while adapting to the surface beneath it.</p>
+        </div>
+        <dl class="grid gap-x-10 sm:grid-cols-2 lg:col-span-7 lg:col-start-6">
+          <div class="border-t border-slate-700 py-6">
+            <dt class="font-semibold text-zaniah">Native by default</dt>
+            <dd class="mt-2 text-pretty leading-7 text-slate-400">Open real platform windows and render through Metal, OpenGL, EGL, or WGL using Ruby’s Fiddle.</dd>
+          </div>
+          <div class="border-t border-slate-700 py-6">
+            <dt class="font-semibold text-zaniah">Test what you draw</dt>
+            <dd class="mt-2 text-pretty leading-7 text-slate-400">The pure Ruby headless backend produces deterministic frames and PNG output without a display server.</dd>
+          </div>
+          <div class="border-t border-slate-700 py-6">
+            <dt class="font-semibold text-zaniah">Layout at scale</dt>
+            <dd class="mt-2 text-pretty leading-7 text-slate-400">Compose flex, constraint, absolute, wrapping, and baseline-aware layouts with virtual lists for large data sets.</dd>
+          </div>
+          <div class="border-t border-slate-700 py-6">
+            <dt class="font-semibold text-zaniah">Real application input</dt>
+            <dd class="mt-2 text-pretty leading-7 text-slate-400">Handle keyboard, pointer, IME, clipboard, file-drop, display, and filesystem events through one API.</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section id="quick-start" class="border-y border-slate-800 bg-slate-900">
+        <div class="mx-auto grid max-w-7xl gap-12 px-6 py-20 lg:grid-cols-12 lg:px-8 lg:py-24">
+          <div class="min-w-0 lg:col-span-7">
+            <div class="mb-4 flex items-center justify-between text-sm text-slate-400">
+              <span>hello.rb</span>
+              <span class="tabular-nums">Ruby 3.1+</span>
+            </div>
+            <pre class="min-w-0 overflow-x-auto rounded-xl border border-slate-700 bg-slate-950 p-6 text-sm leading-7 text-slate-300 shadow-xl"><code><span class="text-zaniah">require</span> "zaniah"
+
+window = Zaniah::Platform.open_window(
+  backend: :headless,
+  width: 480,
+  height: 240
+)
+window.text_system = Zaniah::TextSystem::Renderer.new
+window.draw do
+  Zaniah::Div.new.flex_col.p(24).gap(12)
+    .child(Zaniah::Text.new("Hello, Ruby", size: 24))
+end
+window.tick
+window.write_png("hello.png")
+window.close</code></pre>
+          </div>
+          <div class="self-center lg:col-span-4 lg:col-start-9">
+            <h2 class="font-display text-balance text-5xl leading-tight text-white">Start with one gem.</h2>
+            <p class="mt-5 text-pretty text-lg leading-8 text-slate-400">Add Zaniah, choose a backend, and draw. Switch from headless output to a native window without rewriting the interface.</p>
+            <pre class="mt-7 overflow-x-auto rounded-md border border-slate-700 bg-slate-950 px-5 py-4 text-sm text-white"><code>gem "zaniah"</code></pre>
+            <div class="mt-7 flex flex-wrap gap-x-6 gap-y-3">
+              <a class="font-semibold text-zaniah hover:text-emerald-300 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zaniah" href="https://github.com/noxdea/zaniah#quick-start">Read the quick start</a>
+              <a class="font-semibold text-slate-200 hover:text-white focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zaniah" href="https://rubygems.org/gems/zaniah">View the gem</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-10 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+      <p>Zaniah is open source under the MIT License.</p>
+      <p class="tabular-nums">Version 0.1.0</p>
+    </footer>
+  </body>
+</html>
