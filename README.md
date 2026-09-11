@@ -1,4 +1,6 @@
-<h1 align="center">Zaniah</h1>
+<p align="center">
+  <img src="assets/logo.png" alt="Zaniah logo">
+</p>
 
 <p align="center">
   <strong>Ruby UI toolkit with native GPU windows, headless rendering, and a terminal backend</strong>
