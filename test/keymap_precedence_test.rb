@@ -55,4 +55,12 @@ class KeymapPrecedenceTest < Minitest::Test
     assert_nil map.dispatch("ctrl-k", now: 1)
     assert_equal :save, map.dispatch("ctrl-s", now: 1.1)
   end
+
+  def test_injected_clock_expires_a_pending_sequence
+    now = 0.0
+    map = Zaniah::Input::Keymap.new(timeout: 1, clock: -> { now }).bind("ctrl-k ctrl-s", :save)
+    assert_equal :pending, map.dispatch("ctrl-k")
+    now = 2.0
+    assert_nil map.dispatch("ctrl-s")
+  end
 end

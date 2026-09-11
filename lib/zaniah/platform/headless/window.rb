@@ -3,13 +3,21 @@
 module Zaniah
   module Platform
     module Headless
+      Popup = Data.define(:labels, :enabled, :selected_index, :bounds)
+
       class Window
+        DEFAULT_CLEAR = "#181b20"
+
         attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs
         attr_accessor :text_system, :ime_state, :title
 
-        def initialize(width: 800, height: 600, title: "Zaniah UI", scale_factor: 1)
+        def initialize(width: 800, height: 600, title: "Zaniah UI", scale_factor: 1,
+                       keymap: nil, clock: MONOTONIC_CLOCK)
           @content_size, @scale_factor, @title = Size.new(width, height), scale_factor, title
-          @scene, @device, @dispatcher = Scene.new, GPU::Software.new(width, height), Input::Dispatcher.new
+          @scene = Scene.new
+          @device = GPU::Software.new(width, height)
+          @dispatcher = Input::Dispatcher.new(keymap: keymap || Input::Keymap.new(clock: clock))
+          @clock = clock
           @state, @used_state, @text_runs = {}, {}, []
           @dirty, @closed = true, false
         end
@@ -19,11 +27,20 @@ module Zaniah
         def on_close(&block) = @on_close = block
         def on_moved(&block) = @on_moved = block
         def on_tick(&block) = @on_tick = block
+        def on_frame(&block) = @on_frame = block
         def draw(&block) = @draw = block
         def request_frame = @dirty = true
         def dirty? = @dirty
         def closed? = @closed
         def displays = [Display.new(0, "Headless", Bounds.new(0, 0, @content_size.width, @content_size.height), @scale_factor, true)]
+
+        def popup
+          return unless @menu
+
+          Popup.new(labels: @menu[:items].map { |label, _| label.dup.freeze }.freeze,
+                    enabled: @menu[:items].map { |_, callback| !callback.nil? }.freeze,
+                    selected_index: @menu[:index], bounds: popup_bounds(@menu))
+        end
 
         def resize(width, height)
           @content_size = Size.new(width, height)
@@ -49,7 +66,7 @@ module Zaniah
         def offer_tooltip(text, position:, delay: 0.5)
           @tooltip_offered = true
           return if @tooltip && @tooltip[:text] == text
-          @tooltip = {text: text.to_s, position: position, at: Process.clock_gettime(Process::CLOCK_MONOTONIC) + delay, shown: false}
+          @tooltip = {text: text.to_s, position: position, at: @clock.call + delay, shown: false}
         end
 
         def context_menu(items, position: Point.new(0, 0))
@@ -70,7 +87,7 @@ module Zaniah
 
         def tick
           @on_tick&.call
-          if @tooltip && !@tooltip[:shown] && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= @tooltip[:at]
+          if @tooltip && !@tooltip[:shown] && @clock.call >= @tooltip[:at]
             @tooltip[:shown] = true
             request_frame
           end
@@ -81,7 +98,7 @@ module Zaniah
           @device.render(result) if result.is_a?(Scene)
         end
 
-        def render(element, clear: "#181b20", present: true)
+        def render(element, clear: DEFAULT_CLEAR, present: true)
           @text_system.scale_factor = @scale_factor if @text_system.respond_to?(:scale_factor=)
           @scene.clear
           @text_runs.clear
@@ -95,6 +112,7 @@ module Zaniah
           element.paint(root.bounds, nil, nil, cx)
           paint_popups
           @state.delete_if { |key, _| !@used_state[key] }
+          @on_frame&.call(element, clear)
           @device.render(@scene, clear: clear) if present
           @text_system.end_frame if @text_system.respond_to?(:end_frame)
         end

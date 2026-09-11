@@ -15,11 +15,11 @@ module Zaniah
     end
     def self.displays: (?backend: backend | :auto, ?display_server: :auto | :x11 | :wayland) -> Array[Display]
 
-    def self.open_window: (?backend: :headless, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> Headless::Window
-                        | (backend: :tui, ?input: IO, ?output: IO, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> TUI::Window
-                        | (backend: :mac, ?gpu: :metal | :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> Mac::Window
-                        | (backend: :linux, ?display_server: :auto | :x11 | :wayland, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> (Linux::Window | Linux::WaylandWindow)
-                        | (backend: :windows, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> Windows::Window
+    def self.open_window: (?backend: :headless, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> Headless::Window
+                        | (backend: :tui, ?input: IO, ?output: IO, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> TUI::Window
+                        | (backend: :mac, ?gpu: :metal | :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> Mac::Window
+                        | (backend: :linux, ?display_server: :auto | :x11 | :wayland, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> (Linux::Window | Linux::WaylandWindow)
+                        | (backend: :windows, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> Windows::Window
 
     interface _Watcher
       def poll: (?timeout: Numeric) -> Array[FileEvent]
@@ -35,7 +35,16 @@ module Zaniah
     def self.watch: (String | Array[String] paths, ?latency: Numeric) -> _Watcher
 
     module Headless
+      class Popup < Data
+        attr_reader labels: Array[String]
+        attr_reader enabled: Array[bool]
+        attr_reader selected_index: Integer
+        attr_reader bounds: Bounds
+        def self.new: (Array[String] labels, Array[bool] enabled, Integer selected_index, Bounds bounds) -> Popup
+                    | (labels: Array[String], enabled: Array[bool], selected_index: Integer, bounds: Bounds) -> Popup
+      end
       class Window
+        DEFAULT_CLEAR: String
         attr_reader content_size: Size
         attr_reader scene: Scene
         attr_reader device: GPU::_Device
@@ -45,17 +54,19 @@ module Zaniah
         attr_accessor text_system: TextSystem::_System?
         attr_accessor ime_state: Bounds?
         attr_accessor title: String
-        def initialize: (?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def initialize: (?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> void
         def on_input: () { (Input::event) -> void } -> void
         def on_resize: () { (Size) -> void } -> void
         def on_close: () { () -> (bool | nil) } -> void
         def on_moved: () { ([Numeric, Numeric]) -> void } -> void
         def on_tick: () { () -> void } -> void
+        def on_frame: () { (Element, color) -> void } -> void
         def draw: () { (Window) -> (Element | Scene | nil) } -> void
         def request_frame: () -> bool
         def dirty?: () -> bool
         def closed?: () -> bool
         def displays: () -> Array[Display]
+        def popup: () -> Popup?
         def resize: (Numeric width, Numeric height) -> void
         def input: (Input::event event) -> void
         def offer_tooltip: (String text, position: Point, ?delay: Numeric) -> void
@@ -75,7 +86,7 @@ module Zaniah
         def flush_escape: () -> bool
       end
       class Window < Headless::Window
-        def initialize: (?input: IO, ?output: IO, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def initialize: (?input: IO, ?output: IO, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> void
         def run: () -> void
         def feed_input: (String bytes) -> void
       end

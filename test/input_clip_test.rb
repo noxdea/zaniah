@@ -29,13 +29,11 @@ class InputClipTest < Minitest::Test
   end
   def test_key_up_does_not_dispatch_an_action
     map = Zaniah::Input::Keymap.new.bind("ctrl-s", :save)
-    dispatcher = Zaniah::Input::Dispatcher.new(keymap: map)
+    window = Zaniah::Platform.open_window(width: 10, height: 10, keymap: map)
     focus = Zaniah::Input::FocusHandle.new
     count = 0
     focus.on_action = ->(_) { count += 1 }
-    dispatcher.focus(focus)
-    window = Zaniah::Platform.open_window(width: 10, height: 10)
-    window.instance_variable_set(:@dispatcher, dispatcher)
+    window.dispatcher.focus(focus)
     window.input(Zaniah::Input::KeyDown.new("ctrl-s", false))
     window.input(Zaniah::Input::KeyUp.new("ctrl-s"))
     assert_equal 1, count

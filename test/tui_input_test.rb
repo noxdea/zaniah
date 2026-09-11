@@ -69,6 +69,19 @@ class TUIInputTest < Minitest::Test
     window&.close
   end
 
+  def test_compact_text_rows_use_distinct_terminal_rows
+    output = StringIO.new
+    window = Zaniah::Platform::TUI::Window.new(input: StringIO.new, output: output, width: 160, height: 60)
+    window.draw do
+      Zaniah::Div.new.flex_col.children(%w[One Two Three].map { |text| Zaniah::Text.new(text, size: 10) })
+    end
+    window.tick
+    screen = output.string.gsub(/\e\[[0-9;?]*[A-Za-z]/, "")
+    assert_equal %w[One Two Three], screen.lines(chomp: true).first(3).map(&:rstrip)
+  ensure
+    window&.close
+  end
+
   def test_real_pty_raw_loop_mouse_modes_and_escape_timeout
     skip "Unix PTY is not available on Windows" if RUBY_PLATFORM.match?(/mingw|mswin/)
     require "pty"

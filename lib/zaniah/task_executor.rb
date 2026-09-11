@@ -7,9 +7,10 @@ module Zaniah
   class TaskExecutor
     def self.current = Thread.current[:zaniah_executor]
 
-    def initialize(workers: 2)
+    def initialize(workers: 2, clock: MONOTONIC_CLOCK)
       @jobs, @foreground = Queue.new, Queue.new
       @wake, @condition = Mutex.new, ConditionVariable.new
+      @clock = clock
       @timers = []
       @threads = Array.new(workers) do
         Thread.new do
@@ -63,7 +64,7 @@ module Zaniah
       cancellation = owner.on_complete { post { subscription.detach; @timers.delete(deadline) if deadline } }
       if timeout
         raise ArgumentError, "timeout must be nonnegative" unless timeout.is_a?(Numeric) && timeout >= 0
-        deadline = [Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout, -> { finish.call(Task::Timeout.new("task timed out")) }]
+        deadline = [@clock.call + timeout, -> { finish.call(Task::Timeout.new("task timed out")) }]
         @timers << deadline
       end
       Fiber.yield
@@ -81,7 +82,7 @@ module Zaniah
     end
 
     def drain
-      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      now = @clock.call
       due, @timers = @timers.partition { |deadline, _| deadline <= now }
       due.each { |_, callback| callback.call }
       loop { @foreground.pop(true).call }
@@ -91,7 +92,7 @@ module Zaniah
 
     def wait(seconds)
       deadline = @timers.map(&:first).min
-      seconds = [seconds, [deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max].min if deadline
+      seconds = [seconds, [deadline - @clock.call, 0].max].min if deadline
       @wake.synchronize { @condition.wait(@wake, seconds) if @foreground.empty? }
     end
 

@@ -1,6 +1,8 @@
 module Zaniah
   VERSION: String
+  MONOTONIC_CLOCK: clock
   type color = Color | String | [Numeric, Numeric, Numeric] | [Numeric, Numeric, Numeric, Numeric]
+  type clock = ^() -> Numeric
   type dimension = Numeric | Length | :auto
   type radius = Numeric | [Numeric, Numeric, Numeric, Numeric]
   type menu = Array[[String, (^( ) -> void)?]]

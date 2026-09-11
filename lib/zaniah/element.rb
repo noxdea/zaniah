@@ -28,6 +28,8 @@ module Zaniah
     end
 
     def key(value) = (@key = value; self)
+    def test_id(value = (getter = true)) = getter ? @test_id : (@test_id = value.to_s.freeze; self)
+    def handlers = @handlers.keys.freeze
     def with_state(&initial) = (@state_initializer = initial; self)
     def bg(color) = (@background = color; self)
     def border_color(color) = (@border_color = color; self)
@@ -62,7 +64,7 @@ module Zaniah
 
     def prepaint(bounds, _state, cx)
       unless @handlers.empty? && !@tooltip && !@context_menu
-        cx.dispatcher.hit(bounds) do |event|
+        cx.dispatcher.hit(bounds, owner: self) do |event|
           if event.is_a?(Input::MouseDown) && event.button == :right && @context_menu
             cx.window.context_menu(@context_menu, position: event.position)
             next true

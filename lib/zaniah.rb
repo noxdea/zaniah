@@ -6,6 +6,8 @@ require_relative "zaniah/error"
 require_relative "zaniah/configuration"
 
 module Zaniah
+  MONOTONIC_CLOCK = -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }
+
   def self.configuration
     @configuration ||= Configuration.new(font_raster: :native, shaper: :native,
                                         font_db: :native, segmenter: :native)

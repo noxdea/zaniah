@@ -7,6 +7,13 @@ module Zaniah
     type event = KeyDown | KeyUp | TextInput | Composition | mouse_event | FileDrop
     type mouse_event = MouseDown | MouseUp | MouseMove | ScrollWheel
 
+    class Hit < Data
+      attr_reader bounds: Bounds
+      attr_reader owner: Element?
+      def self.new: (Bounds bounds, Element? owner) -> Hit
+                  | (bounds: Bounds, owner: Element?) -> Hit
+    end
+
     class KeyDown < Data
       attr_reader keystroke: String
       attr_reader is_held: bool
@@ -79,7 +86,7 @@ module Zaniah
         def self.new: (Array[String] keys, ContextPredicate predicate, action action) -> Binding
                     | (keys: Array[String], predicate: ContextPredicate, action: action) -> Binding
       end
-      def initialize: (?timeout: Numeric) -> void
+      def initialize: (?timeout: Numeric, ?clock: clock) -> void
       def bind: (String keys, action action, ?context: String) -> self
       def load_json: (String text) -> self
       def dispatch: (String key, ?context: context, ?now: Numeric) -> (action | :pending | nil)
@@ -100,7 +107,8 @@ module Zaniah
       def focus: (FocusHandle? handle) -> void
       def key: (String key) -> (action | :pending | nil)
       def clear_hits: () -> void
-      def hit: (Bounds bounds, ?clip: Bounds?) { (mouse_event | FileDrop) -> (bool | :capture | nil) } -> void
+      def hits: () -> Array[Hit]
+      def hit: (Bounds bounds, ?clip: Bounds?, ?owner: Element?) { (mouse_event | FileDrop) -> (bool | :capture | nil) } -> void
       def clip: [T] (Bounds bounds) { () -> T } -> T
       def mouse: (mouse_event | FileDrop event) -> bool
     end

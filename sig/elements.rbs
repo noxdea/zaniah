@@ -18,6 +18,9 @@ module Zaniah
                 | (Array[Element?] elements) -> self
     def style: (**Layout::style_value properties) -> self
     def key: (Object value) -> self
+    def test_id: () -> String?
+               | (String value) -> self
+    def handlers: () -> Array[Symbol]
     def with_state: [T] () { () -> T } -> self
     def bg: (color color) -> self
     def border_color: (color color) -> self
@@ -57,6 +60,9 @@ module Zaniah
   class Div < Element
   end
   class Text < Element
+    attr_reader text: String
+    attr_reader font_size: Numeric
+    attr_reader text_color: color
     def initialize: (String text, ?size: Numeric, ?color: color, ?font: TextSystem::_Font?) -> void
     def measured: () { (Numeric width, Numeric height) -> Layout::measurement } -> self
   end

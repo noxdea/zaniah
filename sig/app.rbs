@@ -30,7 +30,7 @@ module Zaniah
   class App
     attr_reader windows: Array[Platform::Headless::Window]
     attr_reader executor: TaskExecutor
-    def initialize: () -> void
+    def initialize: (?clock: clock) -> void
     def new_entity: [T] () { (EntityContext[T]) -> T } -> Entity[T]
     def read: [T] (Entity[T] entity) -> T
     def update: [T, U] (Entity[T] entity) { (T, EntityContext[T]) -> U } -> U
@@ -43,7 +43,7 @@ module Zaniah
     def listen: [T] (:notify | :emit kind, Entity[T] target, ?owner: Entity[untyped]?) { (*untyped) -> void } -> Subscription
     def enqueue: (:notify | :emit kind, Entity[untyped] entity, ?untyped event) -> void
     def flush_effects: () -> void
-    def open_window: (?backend: Platform::backend, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?input: IO, ?output: IO, ?gpu: :metal | :opengl | :gl, ?display_server: :auto | :x11 | :wayland) ?{ (Platform::Headless::Window) -> (Element | Scene | nil) } -> Platform::Headless::Window
+    def open_window: (?backend: Platform::backend, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?input: IO, ?output: IO, ?gpu: :metal | :opengl | :gl, ?display_server: :auto | :x11 | :wayland, ?keymap: Input::Keymap?, ?clock: clock) ?{ (Platform::Headless::Window) -> (Element | Scene | nil) } -> Platform::Headless::Window
     def run: () -> void
   end
 
@@ -62,7 +62,7 @@ module Zaniah
   end
   class TaskExecutor
     def self.current: () -> TaskExecutor?
-    def initialize: (?workers: Integer) -> void
+    def initialize: (?workers: Integer, ?clock: clock) -> void
     def background: [T] () { () -> T } -> Task[T]
     def spawn: [T] () { () -> T } -> Task[T]
     def await: [T] (Task[T] task, ?timeout: Numeric?) -> T

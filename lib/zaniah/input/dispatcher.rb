@@ -2,6 +2,8 @@
 
 module Zaniah
   module Input
+    Hit = Data.define(:bounds, :owner)
+
     class Dispatcher
       attr_reader :focused
 
@@ -26,10 +28,11 @@ module Zaniah
       end
 
       def clear_hits = @hits.clear
+      def hits = @hits.map { |bounds, _, owner| Hit.new(bounds, owner) }.freeze
 
-      def hit(bounds, clip: nil, &handler)
+      def hit(bounds, clip: nil, owner: nil, &handler)
         bounds = bounds.intersect(@clip) if @clip
-        @hits << [clip ? bounds.intersect(clip) : bounds, handler]
+        @hits << [clip ? bounds.intersect(clip) : bounds, handler, owner]
       end
 
       def clip(bounds)
@@ -46,7 +49,7 @@ module Zaniah
           @capture = nil if event.is_a?(MouseUp)
           return true
         end
-        @hits.reverse_each do |bounds, handler|
+        @hits.reverse_each do |bounds, handler, _owner|
           next unless bounds.contains?(event.position)
           handled = handler.call(event)
           @capture = handler if handled == :capture && event.is_a?(MouseDown)

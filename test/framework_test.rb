@@ -137,6 +137,24 @@ class FrameworkTest < Minitest::Test
     assert window.closed?
   end
 
+  def test_element_hit_and_frame_inspection
+    window = T::Platform.open_window(width: 200, height: 100)
+    text = T::Text.new("Save", size: 16, color: "#abc")
+    root = T::Div.new.test_id("save").on_click {}.child(text)
+    frame = nil
+    window.on_frame { |element, clear| frame = [element, clear] }
+    window.render(root)
+
+    assert_equal "save", root.test_id
+    assert_equal [:click], root.handlers
+    assert root.handlers.frozen?
+    assert_equal ["Save", 16, "#abc"], [text.text, text.font_size, text.text_color]
+    assert_same root, window.dispatcher.hits.last.owner
+    assert_equal [root, T::Platform::Headless::Window::DEFAULT_CLEAR], frame
+  ensure
+    window&.close
+  end
+
   30.times do |i|
     define_method("test_context_expression_#{i}") do
       p = T::Input::ContextPredicate.new("Editor && (vim_mode == normal || count == #{i}) && !Menu")

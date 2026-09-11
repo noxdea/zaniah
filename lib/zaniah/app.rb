@@ -9,10 +9,11 @@ module Zaniah
   class App
     attr_reader :windows, :executor
 
-    def initialize
+    def initialize(clock: MONOTONIC_CLOCK)
       @slots, @generations, @free, @windows, @globals = [], [], [], [], {}
       @listeners, @effects, @updating, @flushing = {}, [], 0, false
-      @executor = TaskExecutor.new
+      @clock = clock
+      @executor = TaskExecutor.new(clock: clock)
     end
 
     def new_entity
@@ -103,6 +104,7 @@ module Zaniah
     end
 
     def open_window(**options, &render)
+      options[:clock] ||= @clock
       window = Platform.open_window(**options)
       @windows << window
       window.draw(&render) if render

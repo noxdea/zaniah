@@ -7,8 +7,8 @@ require_relative "context_predicate"
 module Zaniah
   module Input
     class Keymap
-      def initialize(timeout: 1.0)
-        @bindings, @pending, @last_time, @timeout = [], [], 0, timeout
+      def initialize(timeout: 1.0, clock: MONOTONIC_CLOCK)
+        @bindings, @pending, @last_time, @timeout, @clock = [], [], 0, timeout, clock
       end
 
       def bind(keys, action, context: "")
@@ -23,7 +23,7 @@ module Zaniah
         self
       end
 
-      def dispatch(key, context: {}, now: Process.clock_gettime(Process::CLOCK_MONOTONIC))
+      def dispatch(key, context: {}, now: @clock.call)
         @pending.clear if now - @last_time > @timeout
         @last_time = now
         key = Keystroke.normalize(key)

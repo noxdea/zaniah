@@ -38,4 +38,17 @@ class TaskExecutorAwaitTest < Minitest::Test
     @executor.drain
     refute ran
   end
+
+  def test_injected_clock_controls_timeouts
+    now = 0.0
+    executor = Zaniah::TaskExecutor.new(workers: 1, clock: -> { now })
+    pending = Zaniah::Task.new
+    task = executor.spawn { pending.await(timeout: 1) }
+    executor.drain
+    now = 1.0
+    executor.drain
+    assert_raises(Zaniah::Task::Timeout) { task.await }
+  ensure
+    executor&.shutdown
+  end
 end
