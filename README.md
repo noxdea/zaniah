@@ -1,29 +1,75 @@
-# Zaniah
+<h1 align="center">Zaniah</h1>
 
-A Ruby UI toolkit with native GPU windows, a headless renderer, and a terminal
-backend. CRuby 3.1+; YJIT recommended. Runtime dependencies are Alhena, REXML
-and unicode-display_width.
+<p align="center">
+  <strong>Ruby UI toolkit with native GPU windows, headless rendering, and a terminal backend</strong>
+</p>
 
-The name comes from the white ground laid before paint or gold leaf: this
-toolkit is the drawing surface beneath the editor.
+<p align="center">
+  <a href="https://rubygems.org/gems/zaniah"><img src="https://img.shields.io/gem/v/zaniah.svg?colorB=319e8c" alt="Gem Version"></a>
+  <a href="https://rubygems.org/gems/zaniah"><img src="https://img.shields.io/gem/dt/zaniah.svg" alt="Downloads"></a>
+  <a href="https://github.com/noxdea/zaniah/actions/workflows/main.yml"><img src="https://github.com/noxdea/zaniah/actions/workflows/main.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Ruby-%3E%3D%203.1-CC342D.svg" alt="Ruby 3.1+">
+  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
+</p>
 
-## Try it locally
+<p align="center">
+  <a href="#features">Features</a> ·
+  <a href="#installation">Installation</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#platforms">Platforms</a> ·
+  <a href="#documentation">Documentation</a>
+</p>
+
+---
+
+Zaniah is a pure Ruby UI toolkit for building desktop and terminal interfaces.
+It renders through native GPU APIs, a deterministic headless backend, or an ANSI
+terminal without extension compilation or a rendering subprocess.
+
+The name comes from the white ground laid before paint or gold leaf: Zaniah is
+the drawing surface beneath the editor.
+
+## Features
+
+- Flex, constraint, absolute, wrapping, and baseline-aware layouts
+- Rounded rectangles, images, static SVG, shadows, clipping, and glyph atlases
+- Retained element state, subscriptions, and non-blocking background tasks
+- Uniform and variable-height virtual lists
+- OpenType ligatures and horizontal positioning with configurable text providers
+- Native input, IME, clipboard, file-drop, display, and filesystem events
+- RBS declarations for the public API
+
+## Installation
+
+Add Zaniah to your Gemfile:
+
+```ruby
+gem "zaniah"
+```
+
+Then install:
 
 ```sh
 bundle install
-bundle exec rake test
-ruby --yjit examples/native_smoke.rb
-gem build zaniah.gemspec
-gem install --local zaniah-0.1.0.gem
 ```
 
-The gem name is not published or reserved. Install the locally built artifact
-rather than an unverified public gem.
+### Requirements
+
+- CRuby 3.1 or later
+- YJIT recommended
+
+## Quick Start
+
+Create `hello.rb`:
 
 ```ruby
 require "zaniah"
 
-window = Zaniah::Platform.open_window(backend: :headless, width: 480, height: 240)
+window = Zaniah::Platform.open_window(
+  backend: :headless,
+  width: 480,
+  height: 240
+)
 window.text_system = Zaniah::TextSystem::Renderer.new
 window.draw do
   Zaniah::Div.new.flex_col.p(24).gap(12).bg("#161b22")
@@ -35,36 +81,54 @@ window.write_png("hello.png")
 window.close
 ```
 
-Choose `backend: :mac`, `:linux`, `:windows`, or `:tui` and call
-`window.run` for an interactive window. Native rendering uses OS libraries via
-Ruby's Fiddle, without extension compilation or a rendering subprocess.
+Run it to write `hello.png`:
 
-## Toolkit and platforms
+```sh
+bundle exec ruby hello.rb
+```
 
-Flex layouts, constraints, absolute positioning, wrapping, baseline alignment,
-clipping, retained element state, and uniform/variable-height virtual lists are
-provided. Generational entities and subscriptions connect state to frames;
-foreground Fibers can await background tasks without blocking the UI.
-Scene primitives include rounded rectangles, images, static SVG, shadows and
-glyph atlases. OpenType ligatures and horizontal positioning use the Ruby shaper.
-Pure Ruby rasterization is the default; explicit CoreText/FreeType providers and
-a licensed Abel fallback font are included.
+For an interactive window, choose `backend: :mac`, `:linux`, `:windows`, or
+`:tui`, then call `window.run` instead of `window.tick`.
+
+## Platforms
+
+| Backend | Renderer | Notes |
+| --- | --- | --- |
+| `:mac` | Metal or OpenGL | Native macOS window |
+| `:linux` | Wayland/EGL or X11/GLX | Selected from the current display environment |
+| `:windows` | Win32/WGL | Requires 64-bit Ruby and Windows 10 APIs |
+| `:headless` | Pure Ruby software renderer | Deterministic rendering and PNG output |
+| `:tui` | ANSI terminal | Text-grid rendering and terminal input |
+
+Native backends use the operating system libraries through Ruby's Fiddle. See
+[Native backends](docs/native.md) for platform requirements and checks.
+
+## Documentation
+
+- [Native backends](docs/native.md) — windows, displays, file watching, and terminals
+- [Text system](docs/text.md) — font discovery, shaping, rasterization, and caching
+- [SVG and lists](docs/vector_and_list.md) — static vector icons and virtual lists
+- [CPU process workers](docs/process_pool.md) — portable background CPU work
+- [Architecture decisions](docs/adr) — design records and rationale
+- [RBS declarations](sig) — public API signatures
 
 ## Development
 
 ```sh
+bundle install
 bundle exec rake test
-ruby --yjit bench/instances.rb
-ruby --yjit bench/list.rb
+bundle exec rake bench
+gem build --strict zaniah.gemspec
 ```
 
-`BUDGET=1` enables benchmark assertions.
+Set `BUDGET=1` to enable benchmark assertions.
 
-See [native details](docs/native.md), [text configuration and shaping](docs/text.md),
-[SVG and lists](docs/vector_and_list.md), [portable CPU workers](docs/process_pool.md),
-and [decisions](docs/adr).
+## Contributing
+
+Bug reports and pull requests are welcome at
+[github.com/noxdea/zaniah](https://github.com/noxdea/zaniah).
 
 ## License
 
-MIT; see [LICENSE.txt](LICENSE.txt). Included font notices remain alongside the
-font files.
+Zaniah is released under the [MIT License](LICENSE.txt). Included font notices
+remain alongside the font files.
