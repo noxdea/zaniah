@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-09-11
 
 - Add read-only element, hit-region, popup, and frame inspection APIs.
 - Add injectable monotonic clocks and headless-window keymaps.
