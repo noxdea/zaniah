@@ -72,6 +72,8 @@ module Zaniah
             @dispatcher.mouse(event)
           elsif event.is_a?(Input::KeyDown)
             @dispatcher.key(event.keystroke)
+          else
+            @dispatcher.input(event)
           end
           @tooltip = nil if event.is_a?(Input::MouseMove) && !@tooltip_offered
           request_frame

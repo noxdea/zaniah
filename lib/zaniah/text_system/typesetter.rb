@@ -40,6 +40,10 @@ module Zaniah
         cache_layout(line, text, font, size)
       end
 
+      def layout_paragraph(text, **options)
+        Paragraph.new(text, **options, typesetter: self)
+      end
+
       # Copy only layout state, never a Renderer's atlases/rasterizer. Custom
       # providers explicitly deep-copy their state without mutating the source.
       def fork(capacity: @capacity)

@@ -51,6 +51,12 @@ module Zaniah
 
       def register_focus(handle) = @focus_tree.register(handle)
 
+      def input(event)
+        return false unless @focused
+        @focused.ancestors.each { |handle| return true if handle.on_input&.call(event) }
+        false
+      end
+
       def clear_hits
         @hits.clear
         @focus_tree.clear

@@ -101,6 +101,7 @@ module Zaniah
       attr_reader owner: untyped
       attr_accessor on_action: (^(action) -> bool)?
       attr_accessor on_focus: (^(bool) -> void)?
+      attr_accessor on_input: (^(event) -> bool)?
       attr_accessor tab_index: Integer?
       attr_accessor focusable: bool
       attr_accessor bounds: Bounds?
@@ -126,6 +127,7 @@ module Zaniah
       def focus_visible?: () -> bool
       def key: (String key) -> (action | :pending | nil)
       def register_focus: (FocusHandle handle) -> FocusTree
+      def input: (event event) -> bool
       def clear_hits: () -> void
       def hits: () -> Array[Hit]
       def hover_chain: (Point? position) -> Array[untyped]

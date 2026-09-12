@@ -51,6 +51,12 @@ module PublicAPISmoke
     line = window.text_system.layout_line("Ruby", size: 12)
     check(line.width.positive? && line.index_for_x(0) == 0, "font/shaper failed")
     check(line.x_for_index(4) == line.width, "byte caret failed")
+    paragraph = window.text_system.layout_paragraph("Ruby wraps", width: line.width, size: 12)
+    check(paragraph.lines.length > 1, "paragraph layout failed")
+    text_buffer = Zaniah::TextBuffer.new("Ruby")
+    text_buffer.insert(4, " UI").undo.redo
+    check(text_buffer.to_s == "Ruby UI", "text buffer history failed")
+    check(Zaniah::TextSelection.new(0, 4).range == (0...4), "text selection failed")
     Dir.mktmpdir("zaniah-api-atlas-") do |directory|
       cached = Zaniah::TextSystem::Renderer.new(font: font, font_db: font_db, cache_dir: directory)
       cached.prewarm("Ruby", size: 12)

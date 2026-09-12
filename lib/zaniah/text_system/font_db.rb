@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "alhena"
+require_relative "fallback"
 
 module Zaniah
   module TextSystem
@@ -94,12 +95,14 @@ module Zaniah
       def fallback(codepoint, primary)
         return primary unless primary.glyph_id(codepoint).zero?
         @fallback[[primary, codepoint]] ||= begin
-          found = faces.find do |face|
+          supports = lambda do |face|
             probe = @probes[[face.path, face.index]] ||= probe_font(face)
             !probe.glyph_id(codepoint).zero?
           rescue Error, Alhena::Error, SystemCallError, IOError
             false
           end
+          found = faces.find { |face| Fallback.rank(face, codepoint).zero? && supports.call(face) }
+          found ||= faces.find(&supports)
           found ? open(found.path, index: found.index) : primary
         end
       end

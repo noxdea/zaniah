@@ -1,6 +1,6 @@
 # ADR 007: Start with a String-backed text buffer
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-12
 - Decision deadline: before M5 implementation
 

@@ -88,3 +88,38 @@ ruby --yjit -Ilib script/shaper_oracle assets/fonts/Abel-Regular.ttf /path/to/fo
 ```
 
 The shaping oracle is optional and requires `hb-shape`; it is not used at runtime.
+
+## Paragraphs, selection, and editing
+
+Single-line layout remains the default. Enable wrapping explicitly on a `Text`
+element or construct a paragraph for layout-only work:
+
+```ruby
+text = Zaniah::Text.new("長い文章…", wrap: :word, line_height: 1.5,
+  letter_spacing: 0.2, align: :start, kinsoku: :push).w(320)
+
+paragraph = system.layout_paragraph("Text", width: 320, wrap: :word)
+offset = paragraph.hit_test(Zaniah::Point.new(40, 20))
+point = paragraph.offset_to_point(offset)
+```
+
+Wrapping supports `:none`, `:word`, and `:anywhere`; Japanese kinsoku modes are
+`:push`, `:hanging`, and `:none`. Font fallback is selected per grapheme from the
+requested font through CJK, emoji, symbol, and general system faces. Colored
+COLR, CBDT, and sbix glyphs use the RGBA atlas.
+
+Use `selectable` for pointer/keyboard selection and `editable` for a UTF-8 text
+buffer with undo, redo, grapheme-safe changes, and IME composition:
+
+```ruby
+buffer = Zaniah::TextBuffer.new("hello")
+field = Zaniah::Text.new(buffer.to_s).editable(buffer)
+
+buffer.insert(buffer.bytesize, " 👋")
+buffer.undo.redo
+```
+
+Offsets are UTF-8 byte offsets and edits must land on extended grapheme-cluster
+boundaries. The string-backed buffer is intended for ordinary fields and
+documents up to tens of thousands of characters; a piece table is deliberately
+outside the current scope.

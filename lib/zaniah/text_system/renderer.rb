@@ -78,6 +78,15 @@ module Zaniah
         scene
       end
 
+      def paint_paragraph(scene, paragraph, x:, y:, color: "#ddd")
+        paragraph.lines.each do |line|
+          paint_line(scene, line.layout, x: x + line.x,
+            y: y + line.y + (line.height - line.layout.ascent - line.layout.descent) / 2.0 + line.layout.ascent,
+            color: color)
+        end
+        scene
+      end
+
       def end_frame
         @atlas.end_frame
         @color_atlas.end_frame

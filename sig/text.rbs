@@ -38,6 +38,39 @@ module Zaniah
       def end_frame: () -> void
       def close: () -> void
     end
+    interface _LineTypesetter
+      def layout_line: (String text, ?font: _Font?, ?size: Numeric) -> LineLayout
+    end
+    module Kinsoku
+      HEAD: Array[String]
+      TAIL: Array[String]
+      UNSPLIT: Array[String]
+      def self.adjust: (Array[String] clusters, Integer first, Integer cut, :hanging | :push | :none mode) -> Integer
+    end
+    class LineBreaker
+      def initialize: (String text, ?wrap: :none | :word | :anywhere, ?kinsoku: :hanging | :push | :none) -> void
+      def ranges: (Numeric width) { (String) -> Numeric } -> Array[Range[Integer]]
+    end
+    class Paragraph
+      class Line < Data
+        attr_reader layout: LineLayout
+        attr_reader start: Integer
+        attr_reader finish: Integer
+        attr_reader x: Numeric
+        attr_reader y: Numeric
+        attr_reader height: Numeric
+        def self.new: (LineLayout layout, Integer start, Integer finish, Numeric x, Numeric y, Numeric height) -> Line
+                    | (layout: LineLayout, start: Integer, finish: Integer, x: Numeric, y: Numeric, height: Numeric) -> Line
+      end
+      attr_reader text: String
+      attr_reader lines: Array[Line]
+      attr_reader width: Numeric
+      attr_reader height: Numeric
+      def initialize: (String text, width: Numeric, ?size: Numeric, ?font: _Font?, ?wrap: :none | :word | :anywhere, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none, ?typesetter: _LineTypesetter?) -> void
+      def hit_test: (Point point) -> Integer
+      def offset_to_point: (Integer offset) -> Point
+      def line_range_at: (Integer offset) -> Range[Integer]
+    end
     class FontDB
       class Face < Data
         attr_reader path: String
@@ -113,6 +146,7 @@ module Zaniah
       attr_reader segmenter: _Segmenter
       def initialize: (?font: _Font?, ?font_db: :native | _FontDB, ?capacity: Integer, ?shaper: :native | _Shaper, ?segmenter: :native | _Segmenter) -> void
       def layout_line: (String text, ?font: _Font?, ?size: Numeric) -> LineLayout
+      def layout_paragraph: (String text, width: Numeric, ?size: Numeric, ?font: _Font?, ?wrap: :none | :word | :anywhere, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none) -> Paragraph
       def fork: (?capacity: Integer) -> Typesetter
       def close: () -> void
     end
@@ -129,6 +163,7 @@ module Zaniah
       def initialize: (?font: _Font?, ?font_db: :native | _FontDB, ?capacity: Integer, ?font_raster: :native | :alhena | :core_text | :coretext | :freetype | _Rasterizer, ?shaper: :native | _Shaper, ?segmenter: :native | _Segmenter, ?cache_dir: String?) -> void
       def layout_line: (String text, ?font: _Font?, ?size: Numeric) -> LineLayout
       def paint_line: (Scene scene, LineLayout line, x: Numeric, y: Numeric, ?color: color, ?spans: spans?) -> void
+      def paint_paragraph: (Scene scene, Paragraph paragraph, x: Numeric, y: Numeric, ?color: color) -> Scene
       def end_frame: () -> void
       def prewarm: (?String text, ?size: Numeric) -> self
       def close: () -> void

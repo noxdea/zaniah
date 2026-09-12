@@ -80,8 +80,14 @@ module Zaniah
     attr_reader text: String
     attr_reader font_size: Numeric
     attr_reader text_color: color
-    def initialize: (String text, ?size: Numeric, ?color: color, ?font: TextSystem::_Font?) -> void
+    attr_reader selection: TextSelection?
+    def selection=: (TextSelection value) -> TextSelection
+    attr_reader buffer: TextBuffer?
+    def initialize: (String text, ?size: Numeric, ?color: color, ?font: TextSystem::_Font?, ?wrap: :none | :word | :anywhere, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none) -> void
     def measured: () { (Numeric width, Numeric height) -> Layout::measurement } -> self
+    def wrap: (?:none | :word | :anywhere mode, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none) -> self
+    def selectable: (?bool value) -> self
+    def editable: (?TextBuffer? buffer) -> self
   end
   class Image < Element
     def initialize: (String path) -> void

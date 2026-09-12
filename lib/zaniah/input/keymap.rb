@@ -29,6 +29,17 @@ module Zaniah
             .bind("pageup", :page_up, context: "in_list")
             .bind("pagedown", :page_down, context: "in_list")
             .bind("#{primary}-a", :select_all, context: "in_text_field || in_list")
+            .bind("left", :move_left, context: "in_text_field")
+            .bind("right", :move_right, context: "in_text_field")
+            .bind("shift-left", :select_left, context: "in_text_field")
+            .bind("shift-right", :select_right, context: "in_text_field")
+            .bind("home", :line_start, context: "in_text_field")
+            .bind("end", :line_end, context: "in_text_field")
+            .bind("shift-home", :select_line_start, context: "in_text_field")
+            .bind("shift-end", :select_line_end, context: "in_text_field")
+            .bind("backspace", :delete_backward, context: "in_text_field")
+            .bind("delete", :delete_forward, context: "in_text_field")
+            .bind("enter", :insert_newline, context: "in_text_field")
         end
       end
 

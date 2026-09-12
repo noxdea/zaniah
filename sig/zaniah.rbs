@@ -124,7 +124,47 @@ module Zaniah
 
   module Unicode
     def self.grapheme_clusters: (String text) -> Array[String]
+    def self.grapheme_boundaries: (String text) -> Array[Integer]
+    def self.grapheme_boundary?: (String text, Integer offset) -> bool
+    def self.previous_boundary: (String text, Integer offset) -> Integer
+    def self.next_boundary: (String text, Integer offset) -> Integer
+    def self.word_range_at: (String text, Integer offset) -> Range[Integer]
     def self.width: (String text, ?ambiguous: 1 | 2) -> Integer
+  end
+
+  class TextSelection < Data
+    attr_reader anchor: Integer
+    attr_reader head: Integer
+    def self.new: (Integer anchor, ?Integer head) -> TextSelection
+    def range: () -> Range[Integer]
+    def collapsed?: () -> bool
+    def normalized: () -> TextSelection
+  end
+
+  class TextBuffer
+    class Composition < Data
+      attr_reader text: String
+      attr_reader selection: [Integer, Integer]
+      def self.new: (String text, [Integer, Integer] selection) -> Composition
+                  | (text: String, selection: [Integer, Integer]) -> Composition
+    end
+    attr_reader composition: Composition?
+    def initialize: (?String text, ?clock: clock, ?group_interval: Numeric) -> void
+    def to_s: () -> String
+    def bytesize: () -> Integer
+    def insert: (Integer offset, String text) -> self
+    def delete: (Range[Integer] range) -> self
+    def replace: (Range[Integer] range, String text) -> self
+    def undo: () -> self
+    def redo: () -> self
+    def previous_boundary: (Integer offset) -> Integer
+    def next_boundary: (Integer offset) -> Integer
+    def line_at: (Integer offset) -> Integer
+    def offset_at: (Integer line, Integer column) -> Integer
+    def set_composition: (String text, ?selection: [Integer, Integer]) -> self
+    def clear_composition: () -> self
+    def commit_composition: (Integer offset) -> self
+    def preview: (Integer offset) -> String
   end
   module PNG
     SIGNATURE: String
