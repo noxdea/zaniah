@@ -28,6 +28,8 @@ module Zaniah
             .bind("end", :last, context: "in_list")
             .bind("pageup", :page_up, context: "in_list")
             .bind("pagedown", :page_down, context: "in_list")
+            .bind("up", :previous_option, context: "in_list")
+            .bind("down", :next_option, context: "in_list")
             .bind("#{primary}-a", :select_all, context: "in_text_field || in_list")
             .bind("left", :move_left, context: "in_text_field")
             .bind("right", :move_right, context: "in_text_field")
@@ -69,6 +71,12 @@ module Zaniah
             .bind("pageup", :page_up, context: "in_table")
             .bind("pagedown", :page_down, context: "in_table")
             .bind("#{primary}-a", :select_all, context: "in_table")
+            .bind("up", :previous_option, context: "in_combobox")
+            .bind("down", :next_option, context: "in_combobox")
+            .bind("home", :first, context: "in_combobox")
+            .bind("end", :last, context: "in_combobox")
+            .bind("enter", :choose_option, context: "in_combobox")
+            .bind("esc", :dismiss, context: "in_combobox")
         end
       end
 

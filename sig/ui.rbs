@@ -161,6 +161,23 @@ module Zaniah
       def initialize: (untyped label, items: Array[untyped], ?value: untyped) -> void
       def on_change: () { (untyped, untyped, FrameContext?) -> void } -> self
     end
+    class Select < Dropdown
+      def initialize: (Array[untyped] items, ?label: String, ?value: untyped, ?disabled: bool) -> void
+      def disabled: (?bool value) -> self
+    end
+    class Combobox < Component
+      attr_reader value: untyped
+      attr_reader query: String
+      def initialize: (Array[untyped] items, ?value: untyped, ?label: String, ?placeholder: String, ?disabled: bool) -> void
+      def on_change: () { (untyped, untyped, FrameContext?) -> void } -> self
+      def disabled: (?bool value) -> self
+    end
+    class MultiSelect < Component
+      attr_reader value: Array[untyped]
+      def initialize: (Array[untyped] items, ?value: Array[untyped], ?label: String, ?disabled: bool) -> void
+      def on_change: () { (Array[untyped], untyped, FrameContext?) -> void } -> self
+      def disabled: (?bool value) -> self
+    end
 
     class TextField < Component
       attr_reader buffer: TextBuffer
@@ -188,6 +205,25 @@ module Zaniah
       attr_reader tags: Array[String]
       def initialize: (?Array[untyped] tags, ?separator: String, **untyped options) -> void
       def on_tags_change: () { (Array[String], FrameContext?) -> void } -> self
+    end
+    class DatePicker < Component
+      attr_reader value: untyped
+      def initialize: (?untyped value, ?min: untyped, ?max: untyped, ?label: String, ?disabled: bool) -> void
+      def on_change: () { (untyped, FrameContext?) -> void } -> self
+      def disabled: (?bool value) -> self
+    end
+    class TimePicker < Component
+      attr_reader value: Integer
+      def initialize: (?untyped value, ?step: Integer, ?label: String, ?disabled: bool) -> void
+      def on_change: () { (String, FrameContext?) -> void } -> self
+      def disabled: (?bool value) -> self
+    end
+    class ColorPicker < Component
+      DEFAULT_SWATCHES: Array[String]
+      attr_reader value: String
+      def initialize: (?color value, ?label: String, ?swatches: Array[color], ?disabled: bool) -> void
+      def on_change: () { (String, FrameContext?) -> void } -> self
+      def disabled: (?bool value) -> self
     end
 
     class Tabs < Component
@@ -221,6 +257,20 @@ module Zaniah
     end
     class Sidebar < Bar
       def initialize: (*_Renderable children, ?width: dimension) -> void
+    end
+    class SplitPane < Component
+      attr_reader ratio: Float
+      def initialize: (_Renderable first, _Renderable second, ?orientation: :horizontal | :vertical, ?ratio: Numeric, ?min: Numeric, ?max: Numeric) -> void
+      def on_change: () { (Float, FrameContext?) -> void } -> self
+    end
+    class Resizable < Component
+      attr_reader width: Float
+      attr_reader height: Float
+      def initialize: (_Renderable content, ?width: Numeric, ?height: Numeric, ?min_width: Numeric, ?min_height: Numeric, ?max_width: Numeric, ?max_height: Numeric) -> void
+      def on_resize: () { (Size, FrameContext?) -> void } -> self
+    end
+    class DockPanel < Component
+      def initialize: (center: _Renderable, ?top: _Renderable?, ?right: _Renderable?, ?bottom: _Renderable?, ?left: _Renderable?) -> void
     end
 
     class Modal < OverlayComponent
@@ -281,6 +331,12 @@ module Zaniah
       def expand: (untyped id) -> self
       def collapse: (untyped id) -> self
     end
+    class ListView < Component
+      attr_reader selected_index: Integer?
+      attr_reader selected_value: untyped
+      def initialize: (Array[untyped] items, ?height: Numeric, ?row_height: Numeric, ?selected: Integer?) ?{ (untyped, Integer) -> _Renderable } -> void
+      def on_select: () { (untyped, Integer, Input::MouseDown?, FrameContext?) -> void } -> self
+    end
 
     class Sparkline < Component
       attr_reader series: Hash[String, Array[Float]]
@@ -290,6 +346,16 @@ module Zaniah
       def initialize: (Hash[untyped, Array[Numeric]] | Array[Numeric] series, ?width: Numeric, ?height: Numeric, ?colors: Array[color]?, ?label: String) -> void
     end
     class BarChart < LineChart
+    end
+    class CodeEditor < Component
+      attr_reader buffer: TextBuffer
+      def initialize: (?String | TextBuffer value, ?language: Symbol?, ?line_numbers: bool, ?read_only: bool) -> void
+      def value: () -> String
+      def on_change: () { (String, FrameContext?) -> void } -> self
+    end
+    class RichText < Component
+      attr_reader runs: Array[Hash[Symbol, untyped]]
+      def initialize: (Array[untyped] runs, ?selectable: bool) -> void
     end
 
     class Validation
