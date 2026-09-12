@@ -247,5 +247,78 @@ module Zaniah
       attr_reader query: String
       def initialize: (Array[[untyped, untyped]] commands, ?open: bool, ?placeholder: String) -> void
     end
+
+    class Table < Component
+      class Column < Data
+        attr_reader key: Symbol
+        attr_reader label: String
+        attr_reader width: Numeric
+        attr_reader sortable: bool
+        attr_reader resizable: bool
+        attr_reader editable: bool
+        attr_reader render: Proc?
+      end
+      attr_reader selection: Set[untyped]
+      attr_reader sort_key: Symbol?
+      attr_reader sort_direction: :asc | :desc
+      def initialize: (Array[untyped] rows, columns: Array[untyped], ?height: Numeric, ?row_height: Numeric, ?selection: :none | :single | :multiple, ?row_key: Proc?) -> void
+      def on_sort: () { (Symbol, :asc | :desc) -> void } -> self
+      def on_select: () { (Set[untyped], Input::MouseDown, FrameContext) -> void } -> self
+      def on_edit: () { (untyped, Symbol, String, Integer) -> void } -> self
+      def sort_by: (Symbol | String key, ?direction: :asc | :desc) -> self
+    end
+    class DataGrid < Table
+    end
+
+    class TreeView < Component
+      class Item < Data
+      end
+      attr_reader selected_id: untyped
+      attr_reader expanded: Set[untyped]
+      def initialize: (Array[untyped] items, ?height: Numeric, ?row_height: Numeric, ?selected: untyped) -> void
+      def on_select: () { (untyped, Input::MouseDown?, FrameContext?) -> void } -> self
+      def on_toggle: () { (untyped, bool) -> void } -> self
+      def expand: (untyped id) -> self
+      def collapse: (untyped id) -> self
+    end
+
+    class Sparkline < Component
+      attr_reader series: Hash[String, Array[Float]]
+      def initialize: (Array[Numeric] values, ?width: Numeric, ?height: Numeric, ?color: color?, ?label: String) -> void
+    end
+    class LineChart < Sparkline
+      def initialize: (Hash[untyped, Array[Numeric]] | Array[Numeric] series, ?width: Numeric, ?height: Numeric, ?colors: Array[color]?, ?label: String) -> void
+    end
+    class BarChart < LineChart
+    end
+
+    class Validation
+      def initialize: () ?{ (untyped) -> bool } -> void
+      def rule: (?String message) { (untyped) -> bool } -> self
+      def required: (?message: String) -> self
+      def format: (Regexp pattern, ?message: String) -> self
+      def length: (?min: Integer?, ?max: Integer?, ?message: String?) -> self
+      def number: (?min: Numeric?, ?max: Numeric?, ?message: String) -> self
+      def validate: (untyped value) -> Array[String]
+    end
+    class FormField < Component
+      attr_reader name: Symbol
+      attr_reader value: untyped
+      attr_reader errors: Array[String]
+      def initialize: (Symbol | String name, ?value: untyped, ?label: String?, ?control: Component?, ?validation: Validation?, ?hint: String?) -> void
+      def on_change: () { (untyped, FormField, FrameContext?) -> void } -> self
+      def error_id: () -> String
+      def validate: () -> bool
+    end
+    class Form < Component
+      attr_reader fields: Array[FormField]
+      def initialize: (?Array[FormField | Hash[Symbol, untyped]] fields, ?submit: String) -> void
+      def field: (name: Symbol | String, **untyped options) -> self
+      def on_change: () { (Hash[Symbol, untyped]) -> void } -> self
+      def on_submit: () { (Hash[Symbol, untyped], Input::MouseDown?, FrameContext?) -> void } -> self
+      def values: () -> Hash[Symbol, untyped]
+      def valid?: () -> bool
+      def submit: (?Input::MouseDown? event, ?FrameContext? context) -> self
+    end
   end
 end

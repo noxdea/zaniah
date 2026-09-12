@@ -54,6 +54,12 @@ module Zaniah
             .bind("right", :next_option, context: "in_menu || in_tabs")
             .bind("home", :first, context: "in_menu || in_tabs")
             .bind("end", :last, context: "in_menu || in_tabs")
+            .bind("up", :previous_option, context: "in_tree")
+            .bind("down", :next_option, context: "in_tree")
+            .bind("home", :first, context: "in_tree")
+            .bind("end", :last, context: "in_tree")
+            .bind("left", :collapse, context: "in_tree")
+            .bind("right", :expand, context: "in_tree")
         end
       end
 
