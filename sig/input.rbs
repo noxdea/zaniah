@@ -112,8 +112,9 @@ module Zaniah
       def clear_hits: () -> void
       def hits: () -> Array[Hit]
       def hover_chain: (Point? position) -> Array[untyped]
-      def hit: (Bounds bounds, ?clip: Bounds?, ?owner: Element?) { (mouse_event | FileDrop) -> (bool | :capture | nil) } -> void
+      def hit: (Bounds bounds, ?clip: Bounds?, ?owner: Element?, ?transform: Transform) { (mouse_event | FileDrop) -> (bool | :capture | nil) } -> void
       def clip: [T] (Bounds bounds) { () -> T } -> T
+      def push_transform: [T] (Transform transform) { () -> T } -> T
       def mouse: (mouse_event | FileDrop event) -> bool
     end
     class ActionRegistry

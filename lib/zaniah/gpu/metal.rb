@@ -19,35 +19,51 @@ module Zaniah
         #include <metal_stdlib>
         using namespace metal;
         struct Vertex { float4 position [[position]]; float2 local; float2 size;
-          float4 color; float4 radii; float4 border; float4 info; float2 uv; };
+          float4 color; float4 secondary; float4 radii; float4 border; float4 widths;
+          float4 gradient; float4 center_kind; float2 uv; float dash; };
         vertex Vertex zaniah_vertex(uint v [[vertex_id]], uint instance [[instance_id]],
             const device float *data [[buffer(0)]], constant float2 &viewport [[buffer(1)]]) {
-          const device float *p = data + instance * 24;
+          const device float *p = data + instance * 40;
           float2 corners[4] = {float2(0,0),float2(1,0),float2(0,1),float2(1,1)};
           float2 corner = corners[v], size = float2(p[2],p[3]);
           float2 position = float2(p[0],p[1]) + corner * size;
-          if (p[17] == 3) position = v == 0 ? float2(p[0],p[1]) : v == 1 ? float2(p[2],p[3]) : float2(p[8],p[9]);
+          if (p[31] == 3) position = v == 0 ? float2(p[0],p[1]) : v == 1 ? float2(p[2],p[3]) : float2(p[12],p[13]);
+          position = float2(p[32] * position.x + p[34] * position.y + p[36],
+                            p[33] * position.x + p[35] * position.y + p[37]);
           Vertex out;
           out.position = float4(position.x / viewport.x * 2 - 1, 1 - position.y / viewport.y * 2, 0, 1);
           out.local = corner * size; out.size = size;
-          out.color = float4(p[4],p[5],p[6],p[7]); out.radii = float4(p[8],p[9],p[10],p[11]);
-          out.border = float4(p[12],p[13],p[14],p[15]); out.info = float4(p[16],p[17],p[18],p[19]);
-          out.uv = float2(p[20],p[21]) + corner * float2(p[22],p[23]); return out;
+          out.color = float4(p[4],p[5],p[6],p[7]); out.secondary = float4(p[8],p[9],p[10],p[11]);
+          out.radii = float4(p[12],p[13],p[14],p[15]); out.border = float4(p[16],p[17],p[18],p[19]);
+          out.widths = float4(p[20],p[21],p[22],p[23]); out.gradient = float4(p[24],p[25],p[26],p[27]);
+          out.center_kind = float4(p[28],p[29],p[30],p[31]);
+          out.uv = float2(p[20],p[21]) + corner * float2(p[22],p[23]); out.dash = p[39]; return out;
         }
         fragment float4 zaniah_fragment(Vertex in [[stage_in]], texture2d<float> atlas [[texture(0)]]) {
           float4 color = in.color;
-          if (in.info.y == 0) {
+          if (in.center_kind.w == 0) {
+            if (in.gradient.x > 0) {
+              float2 normalized = in.local / in.size;
+              float raw = in.gradient.x == 1
+                ? dot(normalized - 0.5f, float2(cos(in.gradient.w * 0.01745329252f), sin(in.gradient.w * 0.01745329252f))) + 0.5f
+                : length(normalized - in.center_kind.xy) / in.center_kind.z;
+              color = mix(in.color, in.secondary, clamp((raw - in.gradient.y) / max(in.gradient.z - in.gradient.y, 0.000001f), 0.0f, 1.0f));
+            }
             float radius = in.local.y < in.size.y/2 ? (in.local.x < in.size.x/2 ? in.radii.x : in.radii.y) : (in.local.x < in.size.x/2 ? in.radii.w : in.radii.z);
             radius = clamp(radius, 0.0f, min(in.size.x,in.size.y)/2);
             float2 q = abs(in.local - in.size/2) - in.size/2 + radius;
             float distance = length(max(q,0.0f)) + min(max(q.x,q.y),0.0f) - radius;
             float coverage = clamp(0.5f - distance, 0.0f, 1.0f);
-            if (in.info.x > 0 && distance >= -in.info.x) color = in.border;
+            float4 edge_distance = float4(in.local.y, in.size.x-in.local.x, in.size.y-in.local.y, in.local.x);
+            float edge = min(min(edge_distance.x,edge_distance.y),min(edge_distance.z,edge_distance.w));
+            float border_width = edge == edge_distance.x ? in.widths.x : edge == edge_distance.y ? in.widths.y : edge == edge_distance.z ? in.widths.z : in.widths.w;
+            float coordinate = edge == edge_distance.x || edge == edge_distance.z ? in.local.x : in.local.y;
+            if (border_width > 0 && distance >= -border_width && !(in.dash == 1 && fmod(coordinate,6.0f) >= 3.0f)) color = in.border;
             color.a *= coverage;
-          } else if (in.info.y == 1 || in.info.y == 2) {
+          } else if (in.center_kind.w == 1 || in.center_kind.w == 2) {
             constexpr sampler texture_sampler(coord::normalized, address::clamp_to_edge, filter::nearest);
             float4 sample = atlas.sample(texture_sampler,in.uv);
-            if (in.info.y == 1) color.a *= sample.r; else color *= sample;
+            if (in.center_kind.w == 1) color.a *= sample.r; else color *= sample;
           }
           return float4(color.rgb * color.a, color.a);
         }

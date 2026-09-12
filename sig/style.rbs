@@ -31,6 +31,7 @@ module Zaniah
     def rotate: (Numeric degrees) -> Transform
     def skew: (?x: Numeric, ?y: Numeric) -> Transform
     def apply: (Point point) -> Point
+    def to_a: () -> [Numeric, Numeric, Numeric, Numeric, Numeric, Numeric]
     def inverse: () -> Transform
   end
 

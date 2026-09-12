@@ -184,9 +184,11 @@ module Zaniah
           end
           tint = paint_color("#fff") if color_glyph
           values.push((position.floor + entry.left) / scale, ((y * scale).floor - entry.top) / scale, entry.width / scale, entry.height / scale,
-            tint.r, tint.g, tint.b, tint.a, 0, 0, 0, 0, 0, 0, 0, 0, 0, texture.format == :r8 ? 1 : 2, 0, 0,
+            tint.r, tint.g, tint.b, tint.a, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             entry.x.to_f / texture.width, entry.y.to_f / texture.height,
-            entry.width.to_f / texture.width, entry.height.to_f / texture.height)
+            entry.width.to_f / texture.width, entry.height.to_f / texture.height,
+            0, 0, 0, 0, 0, 0, 0, texture.format == :r8 ? 1 : 2,
+            1, 0, 0, 1, 0, 0, 0, 0)
         end
         batches << Scene::SpriteBatch.new(values.pack("f*").freeze, texture) unless values.empty?
         batches.freeze

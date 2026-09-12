@@ -3,36 +3,52 @@
 module Zaniah
   # Primitive payloads are flat arrays; command order preserves alpha compositing.
   class Scene
-    QUAD_STRIDE = 17
-    SPRITE_INSTANCE_BYTES = 24 * 4
+    QUAD_STRIDE = 40
+    SPRITE_STRIDE = 13
+    SPRITE_INSTANCE_BYTES = 40 * 4
+    LAYER_CONTENT = 0
+    LAYER_SELECTION = 100_000
+    LAYER_FOCUS_RING = 200_000
+    LAYER_OVERLAY = 300_000
+    LAYER_POPUP = 1_000_000
+    LAYER_TOOLTIP = 1_100_000
+    LAYER_DEBUG = 2_000_000
     attr_reader :quads, :paths, :commands, :textures, :sprite_batches
 
     def initialize
-      @quads, @sprites, @paths, @commands, @textures = [], [], [], [], []
+      @quads, @sprites, @sprite_transforms, @paths, @commands, @textures = [], [], [], [], [], []
       @sprite_batches, @expanded_batches = [], {}
-      @clips, @layers = [], [0]
+      @clips, @layers, @transforms = [], [LAYER_CONTENT], [Transform.identity]
       @colors, @last_layer, @ordered = {}, -Float::INFINITY, true
     end
 
     def clear
-      [@quads, @sprites, @paths, @commands, @textures, @clips].each(&:clear)
+      [@quads, @sprites, @sprite_transforms, @paths, @commands, @textures, @clips].each(&:clear)
       @sprite_batches.clear
       @expanded_batches.clear
-      @layers.replace([0])
+      @layers.replace([LAYER_CONTENT])
+      @transforms.replace([Transform.identity])
       @last_layer, @ordered = -Float::INFINITY, true
       self
     end
 
-    def quad(x, y, width, height, color:, radius: 0, border_width: 0, border_color: "#0000")
+    def quad(x, y, width, height, color:, radius: 0, border_width: 0, border_color: "#0000",
+      opacity: 1.0, transform: nil, border_style: :solid)
       return self if width <= 0 || height <= 0
+      opacity = Float(opacity)
+      raise ArgumentError, "opacity must be between 0 and 1" unless opacity.finite? && opacity.between?(0, 1)
+      raise ArgumentError, "border style must be solid or dashed" unless %i[solid dashed].include?(border_style)
       offset = @quads.length
-      if radius.is_a?(Numeric)
-        @quads.push(x, y, width, height, *color_values(color), radius, radius, radius, radius, border_width, *color_values(border_color))
-      else
-        corners = radius.to_a
-        raise ArgumentError, "four radii required" unless corners.length == 4
-        @quads.push(x, y, width, height, *color_values(color), *corners, border_width, *color_values(border_color))
-      end
+      corners = radius.is_a?(Numeric) ? [radius] * 4 : radius.is_a?(Corners) ? radius.to_h.values : radius.to_a
+      borders = border_width.is_a?(Numeric) ? [border_width] * 4 : border_width.is_a?(Edges) ? border_width.to_h.values : border_width.to_a
+      raise ArgumentError, "four radii required" unless corners.length == 4
+      raise ArgumentError, "four border widths required" unless borders.length == 4
+      raise ArgumentError, "border widths must be nonnegative" unless borders.all? { |value| value.is_a?(Numeric) && value >= 0 }
+      primary, secondary, gradient = paint_values(color, opacity)
+      matrix = effective_transform(transform)
+      @quads.push(x, y, width, height, *primary, *secondary, *corners,
+        *opacity_values(border_color, opacity), *borders, *gradient,
+        0, *matrix.to_a, 0, border_style == :dashed ? 1 : 0)
       command(:quad, offset)
       self
     end
@@ -48,6 +64,7 @@ module Zaniah
       offset = @sprites.length
       @sprites.push(x, y, width, height, *color_values(color), id,
                     source.x, source.y, source.width, source.height)
+      @sprite_transforms << @transforms.last
       command(:sprite, offset)
       self
     end
@@ -59,6 +76,8 @@ module Zaniah
       raise ArgumentError, "invalid packed sprite bytes" unless bytes.is_a?(String) && bytes.bytesize % SPRITE_INSTANCE_BYTES == 0
       raise ArgumentError, "packed sprites need a texture" unless texture.is_a?(GPU::Texture)
       return self if bytes.empty?
+      batch = nil unless @transforms.last == Transform.identity
+      bytes = transform_batch(bytes, @transforms.last) unless @transforms.last == Transform.identity
       @textures << texture unless @textures.include?(texture)
       offset = @sprite_batches.length
       @sprite_batches << (batch && bytes.frozen? ? batch : SpriteBatch.new(bytes.frozen? ? bytes : bytes.dup.freeze, texture))
@@ -73,15 +92,17 @@ module Zaniah
       @sprites
     end
     def sprite_data = @sprites
+    def sprite_transform(offset) = @sprite_transforms.fetch(offset / SPRITE_STRIDE)
     def expand_sprite_batch(index)
       @expanded_batches[index] ||= begin
         batch = @sprite_batches.fetch(index)
         texture = batch.texture
         id = @textures.index(texture)
         offset = @sprites.length
-        batch.bytes.unpack("f*").each_slice(24) do |values|
+        batch.bytes.unpack("f*").each_slice(40) do |values|
           @sprites.push(*values[0, 8], id, values[20] * texture.width, values[21] * texture.height,
                         values[22] * texture.width, values[23] * texture.height)
+          @sprite_transforms << Transform.new(*values[32, 6])
         end
         [offset, batch.bytes.bytesize / SPRITE_INSTANCE_BYTES]
       end
@@ -90,20 +111,36 @@ module Zaniah
     def triangle(points, color:)
       raise ArgumentError, "three points required" unless points.length == 6
       offset = @paths.length
-      @paths.push(*points, *color_values(color))
+      @paths.push(*points, *color_values(color), *@transforms.last.to_a)
       command(:triangle, offset)
       self
     end
 
-    def shadow(x, y, width, height, color: "#0006", blur: 8, radius: 0)
-      raise ArgumentError, "blur must be positive" unless blur.positive?
-      # A small sequence of expanding translucent rounded rectangles approximates
-      # a Gaussian convolution without a temporary render target.
-      8.downto(1) do |step|
-        spread = blur * step / 8.0
-        alpha = Math.exp(-2.0 * (step / 8.0)**2) / 10.0
-        quad(x - spread, y - spread, width + 2 * spread, height + 2 * spread,
-             color: Color.parse(color).opacity(alpha), radius: radius + spread)
+    def path(path, fill: nil, stroke: nil, width: 1)
+      raise ArgumentError, "path needs a fill or stroke" unless fill || stroke
+      outline = path.is_a?(String) ? SVG::Path.parse(path) : path.respond_to?(:parse) ? path.parse : path
+      [[fill, nil], [stroke, width]].each do |color, stroke_width|
+        next unless color
+        bounds, texture = SVG.rasterize_outline(outline, stroke_width: stroke_width)
+        sprite(bounds.x, bounds.y, bounds.width, bounds.height, texture: texture, color: color) if texture
+      end
+      self
+    end
+
+    def shadow(x, y, width, height, color: "#0006", blur: 8, radius: 0, spread: 0, inset: false)
+      raise ArgumentError, "blur and spread must be nonnegative" unless blur >= 0 && spread >= 0
+      steps = blur.zero? ? 1 : 8
+      steps.downto(1) do |step|
+        amount = spread + blur * step / steps.to_f
+        alpha = blur.zero? ? 1 : Math.exp(-2.0 * (step / steps.to_f)**2) / 10.0
+        tint = Color.parse(color).opacity(alpha)
+        if inset
+          quad(x, y, width, height, color: "#0000", radius: radius,
+            border_width: amount, border_color: tint)
+        else
+          quad(x - amount, y - amount, width + 2 * amount, height + 2 * amount,
+            color: tint, radius: radius.is_a?(Numeric) ? radius + amount : radius)
+        end
       end
       self
     end
@@ -131,6 +168,15 @@ module Zaniah
       @layers.pop
     end
 
+    def push_transform(transform)
+      raise ArgumentError, "expected a Transform" unless transform.is_a?(Transform)
+      @transforms << @transforms.last.compose(transform)
+      pushed = true
+      yield
+    ensure
+      @transforms.pop if pushed
+    end
+
     def each_command
       return enum_for(__method__) unless block_given?
       if @ordered
@@ -147,6 +193,38 @@ module Zaniah
     end
 
     private
+
+    def effective_transform(transform)
+      return @transforms.last unless transform
+      raise ArgumentError, "expected a Transform" unless transform.is_a?(Transform)
+      @transforms.last.compose(transform)
+    end
+
+    def paint_values(value, opacity)
+      return [opacity_values(value, opacity), [0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0]] unless value.is_a?(Gradient)
+      raise ArgumentError, "rendered gradients require exactly two stops" unless value.stops.length == 2
+      raise ArgumentError, "conic gradients are not supported" if value.kind == :conic
+      first, last = value.stops
+      kind = value.kind == :linear ? 1 : 2
+      center = value.center || [0.5, 0.5]
+      [opacity_values(first.last, opacity), opacity_values(last.last, opacity),
+        [kind, first.first, last.first, value.angle || 0, center[0], center[1], value.radius || 0.5]]
+    end
+
+    def opacity_values(value, opacity)
+      values = color_values(value)
+      return values if opacity == 1
+      [values[0], values[1], values[2], values[3] * opacity]
+    end
+
+    def transform_batch(bytes, parent)
+      values = bytes.unpack("f*")
+      (0...values.length).step(40) do |offset|
+        matrix = parent.compose(Transform.new(*values.slice(offset + 32, 6)))
+        values[offset + 32, 6] = matrix.to_a
+      end
+      values.pack("f*").freeze
+    end
 
     def color_values(value)
       @colors.clear if @colors.length > 256

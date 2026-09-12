@@ -8,7 +8,15 @@ module Zaniah
 
   class Scene
     QUAD_STRIDE: Integer
+    SPRITE_STRIDE: Integer
     SPRITE_INSTANCE_BYTES: Integer
+    LAYER_CONTENT: Integer
+    LAYER_SELECTION: Integer
+    LAYER_FOCUS_RING: Integer
+    LAYER_OVERLAY: Integer
+    LAYER_POPUP: Integer
+    LAYER_TOOLTIP: Integer
+    LAYER_DEBUG: Integer
     type primitive = :quad | :sprite | :sprite_batch | :triangle
     class SpriteBatch < Data
       attr_reader bytes: String
@@ -24,19 +32,22 @@ module Zaniah
     attr_reader commands: Array[primitive | Numeric | Bounds | nil]
     def initialize: () -> void
     def clear: () -> self
-    def quad: (Numeric x, Numeric y, Numeric width, Numeric height, color: color, ?radius: radius, ?border_width: Numeric, ?border_color: color) -> self
+    def quad: (Numeric x, Numeric y, Numeric width, Numeric height, color: color | Gradient, ?radius: radius | Corners, ?border_width: Numeric | Edges, ?border_color: color, ?opacity: Numeric, ?transform: Transform?, ?border_style: :solid | :dashed) -> self
     def push_quad: (Numeric x, Numeric y, Numeric width, Numeric height, color bg, radius radius, Numeric border_width, color border_color, ?Numeric order) -> self
     def sprite: (Numeric x, Numeric y, Numeric width, Numeric height, texture: GPU::Texture, ?color: color, ?source: _Rectangle?) -> self
     def sprite_batch: (String bytes, texture: GPU::Texture) -> self
                     | (SpriteBatch batch) -> self
     def sprite_data: () -> Array[Numeric]
+    def sprite_transform: (Integer offset) -> Transform
     def expand_sprite_batch: (Integer index) -> [Integer, Integer]
     def triangle: ([Numeric, Numeric, Numeric, Numeric, Numeric, Numeric] points, color: color) -> self
-    def shadow: (Numeric x, Numeric y, Numeric width, Numeric height, ?color: color, ?blur: Numeric, ?radius: Numeric) -> self
+    def path: (String | SVG::Path | SVG::_Outline path, ?fill: color?, ?stroke: color?, ?width: Numeric) -> self
+    def shadow: (Numeric x, Numeric y, Numeric width, Numeric height, ?color: color, ?blur: Numeric, ?radius: radius | Corners, ?spread: Numeric, ?inset: bool) -> self
     def underline: (Numeric x, Numeric y, Numeric width, color: color, ?thickness: Numeric, ?wave: bool) -> self
     def clip: [T] (Bounds bounds) { () -> T } -> T
     def current_clip: () -> Bounds?
     def layer: [T] (Numeric order) { () -> T } -> T
+    def push_transform: [T] (Transform transform) { () -> T } -> T
     def each_command: () { (primitive, Integer, Bounds?) -> void } -> void
                     | () -> Enumerator[[primitive, Integer, Bounds?], void]
   end

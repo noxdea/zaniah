@@ -76,7 +76,7 @@ class PackedTextTest < Minitest::Test
     bytes, batches = Zaniah::GPU::InstancePacking.pack(packed)
     assert_equal %i[quad sprite quad], batches.map { |batch| batch.first.first }
     assert_equal [0, 1, 2], batches.map { |batch| batch[1] }
-    assert_equal 3 * 96, bytes.bytesize
+    assert_equal 3 * 160, bytes.bytesize
     device.release
   end
 
@@ -118,7 +118,7 @@ class PackedTextTest < Minitest::Test
     @system.paint_line(scene, line, x: 0, y: 1, color: "#00f")
     assert_equal :rgba8, scene.sprite_batches.first.texture.format
     assert_equal [1.0] * 4, scene.sprites[4, 4]
-    assert_equal 2.0, scene.sprite_batches.first.bytes.unpack("f*")[17]
+    assert_equal 2.0, scene.sprite_batches.first.bytes.unpack("f*")[31]
     device = Zaniah::GPU::Software.new(2, 2)
     assert_equal [255, 64, 0, 255], device.render(scene).byteslice(0, 4).bytes
     device.release
@@ -151,7 +151,7 @@ class PackedTextTest < Minitest::Test
     before = GC.stat(:total_allocated_objects)
     bytes, batches = frame.call
     allocated = GC.stat(:total_allocated_objects) - before
-    assert_equal 10_000 * 96, bytes.bytesize
+    assert_equal 10_000 * 160, bytes.bytesize
     assert_equal 1, batches.length
     budget = if Gem.win_platform?
       RUBY_VERSION.start_with?("3.1.") ? 2_000 : 1_500

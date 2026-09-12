@@ -95,6 +95,7 @@ module Zaniah
     end
     # Optional offscreen triangle probe, not a full window-renderer interface.
     class Vulkan
+      INSTANCE_STRIDE: Integer
       attr_reader width: Integer
       attr_reader height: Integer
       attr_reader pixels: String

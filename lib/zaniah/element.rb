@@ -84,6 +84,35 @@ module Zaniah
     end
 
     def prepaint(bounds, _state, cx)
+      transform = @style[:transform] || Transform.identity
+      return prepaint_contents(bounds, cx) if transform == Transform.identity
+      cx.dispatcher.push_transform(transform) { prepaint_contents(bounds, cx) }
+    end
+
+    def paint(bounds, _state, _prepaint, cx)
+      @resolved_style = @style_set.resolve(cx.interactivity.for(self, @static_flags))
+      border = @resolved_style[:border_widths] || @resolved_style[:border]
+      border = 0 unless border.is_a?(Numeric) || border.is_a?(Edges)
+      background = @resolved_style[:background] || "#0000"
+      transform = @resolved_style[:transform] || Transform.identity
+      z_index = Float(@resolved_style[:z_index])
+      if z_index.zero?
+        paint_transformed(bounds, border, background, transform, cx)
+      else
+        cx.scene.layer(Scene::LAYER_CONTENT + z_index) do
+          paint_transformed(bounds, border, background, transform, cx)
+        end
+      end
+      paint_ring(bounds, cx) if @resolved_style[:ring]
+    end
+
+    protected
+
+    attr_writer :parent
+
+    private
+
+    def prepaint_contents(bounds, cx)
       unless @handlers.empty? && !@tooltip && !@context_menu && !@style_set.interactive?
         cx.dispatcher.hit(bounds, owner: self) do |event|
           if event.is_a?(Input::MouseDown) && event.button == :right && @context_menu
@@ -104,29 +133,53 @@ module Zaniah
           @dragging && event.is_a?(Input::MouseDown) ? :capture : !!handler || !!(@tooltip && event.is_a?(Input::MouseMove))
         end
       end
-      visit = -> { @children.each { |child| child.prepaint(child.layout_node.bounds, nil, cx) } }
-      @style[:overflow] == :visible ? visit.call : cx.dispatcher.clip(bounds, &visit)
+      if @style[:overflow] == :visible
+        @children.each { |child| child.prepaint(child.layout_node.bounds, nil, cx) }
+      else
+        cx.dispatcher.clip(bounds) { @children.each { |child| child.prepaint(child.layout_node.bounds, nil, cx) } }
+      end
     end
 
-    def paint(bounds, _state, _prepaint, cx)
-      @resolved_style = @style_set.resolve(cx.interactivity.for(self, @static_flags))
-      border = @resolved_style[:border_widths] || @resolved_style[:border]
-      border = 0 unless border.is_a?(Numeric)
-      background = @resolved_style[:background] || "#0000"
-      background = Color.parse(background).opacity(@resolved_style[:opacity]) unless background.is_a?(Gradient)
+    def paint_transformed(bounds, border, background, transform, cx)
+      return paint_contents(bounds, border, background, cx) if transform == Transform.identity
+      cx.scene.push_transform(transform) { paint_contents(bounds, border, background, cx) }
+    end
+
+    def paint_contents(bounds, border, background, cx)
+      shadows = @resolved_style[:shadows]
+      shadows = [shadows] if shadows && !shadows.is_a?(Array)
+      shadows&.each do |shadow|
+        next unless shadow.is_a?(Shadow)
+        cx.scene.shadow(bounds.x + shadow.x, bounds.y + shadow.y, bounds.width, bounds.height,
+          color: shadow.color, blur: shadow.blur, spread: shadow.spread,
+          radius: @resolved_style[:corner_radii] || 0, inset: shadow.inset)
+      end
       cx.scene.quad(bounds.x, bounds.y, bounds.width, bounds.height,
-        color: background.is_a?(Gradient) ? "#0000" : background,
+        color: background, opacity: @resolved_style[:opacity],
         radius: @resolved_style[:corner_radii] || 0, border_width: border,
-        border_color: @resolved_style[:border_color] || "#0000")
-      paint_children = -> { @children.each { |child| child.paint(child.layout_node.bounds, nil, nil, cx) unless child.layout_node.style[:display] == :none } }
-      @style[:overflow] == :visible ? paint_children.call : cx.scene.clip(bounds, &paint_children)
+        border_color: @resolved_style[:border_color] || "#0000",
+        border_style: @resolved_style[:border_style])
+      if @style[:overflow] == :visible
+        @children.each { |child| child.paint(child.layout_node.bounds, nil, nil, cx) unless child.layout_node.style[:display] == :none }
+      else
+        cx.scene.clip(bounds) do
+          @children.each { |child| child.paint(child.layout_node.bounds, nil, nil, cx) unless child.layout_node.style[:display] == :none }
+        end
+      end
     end
 
-    protected
-
-    attr_writer :parent
-
-    private
+    def paint_ring(bounds, cx)
+      ring = @resolved_style[:ring]
+      extent = ring.width + ring.offset
+      radius = @resolved_style[:corner_radii] || 0
+      radius += extent if radius.is_a?(Numeric)
+      cx.scene.layer(Scene::LAYER_FOCUS_RING) do
+        paint = -> { cx.scene.quad(bounds.x - extent, bounds.y - extent, bounds.width + extent * 2, bounds.height + extent * 2,
+          color: "#0000", radius: radius, border_width: ring.width, border_color: ring.color) }
+        transform = @resolved_style[:transform] || Transform.identity
+        transform == Transform.identity ? paint.call : cx.scene.push_transform(transform, &paint)
+      end
+    end
 
     def state_style(state, properties)
       builder = StyleBuilder.new(properties)

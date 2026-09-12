@@ -12,42 +12,63 @@ module Zaniah
         #version 330 core
         layout(location=0) in vec4 rect;
         layout(location=1) in vec4 tint;
-        layout(location=2) in vec4 corners;
-        layout(location=3) in vec4 border_color;
-        layout(location=4) in vec4 extra;
-        layout(location=5) in vec4 source;
+        layout(location=2) in vec4 tint2;
+        layout(location=3) in vec4 corners;
+        layout(location=4) in vec4 border_color;
+        layout(location=5) in vec4 edges_source;
+        layout(location=6) in vec4 gradient_data;
+        layout(location=7) in vec4 gradient_center_kind;
+        layout(location=8) in vec4 matrix;
+        layout(location=9) in vec4 translation_flags;
         uniform vec2 viewport;
         out vec2 local_position; out vec2 size; out vec4 color; out vec4 radii;
-        out vec4 border; out vec4 info; out vec2 uv;
+        out vec4 secondary; out vec4 border; out vec4 widths; out vec4 gradient;
+        out vec4 center_kind; out vec2 uv; out float dash;
         void main() {
           vec2 vertices[4] = vec2[4](vec2(0,0),vec2(1,0),vec2(0,1),vec2(1,1));
           vec2 corner = vertices[gl_VertexID];
           vec2 position = rect.xy + corner * rect.zw;
-          if (extra.y == 3) position = gl_VertexID == 0 ? rect.xy : gl_VertexID == 1 ? rect.zw : corners.xy;
+          if (gradient_center_kind.w == 3) position = gl_VertexID == 0 ? rect.xy : gl_VertexID == 1 ? rect.zw : corners.xy;
+          position = vec2(matrix.x * position.x + matrix.z * position.y + translation_flags.x,
+                          matrix.y * position.x + matrix.w * position.y + translation_flags.y);
           gl_Position = vec4(position.x / viewport.x * 2 - 1, 1 - position.y / viewport.y * 2, 0, 1);
           local_position = corner * rect.zw; size = rect.zw; color = tint;
-          radii = corners; border = border_color; info = extra; uv = source.xy + corner * source.zw;
+          secondary = tint2; radii = corners; border = border_color; widths = edges_source;
+          gradient = gradient_data; center_kind = gradient_center_kind;
+          uv = edges_source.xy + corner * edges_source.zw; dash = translation_flags.w;
         }
       GLSL
       FRAGMENT = <<~GLSL.freeze
         #version 330 core
         in vec2 local_position; in vec2 size; in vec4 color; in vec4 radii;
-        in vec4 border; in vec4 info; in vec2 uv;
+        in vec4 secondary; in vec4 border; in vec4 widths; in vec4 gradient;
+        in vec4 center_kind; in vec2 uv; in float dash;
         uniform sampler2D atlas;
         out vec4 output_color;
         void main() {
           vec4 result = color;
-          if (info.y == 0) {
+          if (center_kind.w == 0) {
+            if (gradient.x > 0) {
+              vec2 normalized = local_position / size;
+              float raw = gradient.x == 1
+                ? dot(normalized - 0.5, vec2(cos(radians(gradient.w)), sin(radians(gradient.w)))) + 0.5
+                : length(normalized - center_kind.xy) / center_kind.z;
+              result = mix(color, secondary, clamp((raw - gradient.y) / max(gradient.z - gradient.y, 0.000001), 0, 1));
+            }
             float radius = local_position.y < size.y/2 ? (local_position.x < size.x/2 ? radii.x : radii.y) : (local_position.x < size.x/2 ? radii.w : radii.z);
             radius = clamp(radius, 0, min(size.x,size.y)/2);
             vec2 q = abs(local_position - size/2) - size/2 + radius;
             float distance = length(max(q,0)) + min(max(q.x,q.y),0) - radius;
             float coverage = clamp(0.5 - distance, 0, 1);
-            if (info.x > 0 && distance >= -info.x) result = border;
+            vec4 edge_distance = vec4(local_position.y, size.x-local_position.x, size.y-local_position.y, local_position.x);
+            float edge = min(min(edge_distance.x,edge_distance.y),min(edge_distance.z,edge_distance.w));
+            float border_width = edge == edge_distance.x ? widths.x : edge == edge_distance.y ? widths.y : edge == edge_distance.z ? widths.z : widths.w;
+            float coordinate = edge == edge_distance.x || edge == edge_distance.z ? local_position.x : local_position.y;
+            if (border_width > 0 && distance >= -border_width && !(dash == 1 && mod(coordinate,6) >= 3)) result = border;
             result.a *= coverage;
-          } else if (info.y == 1 || info.y == 2) {
+          } else if (center_kind.w == 1 || center_kind.w == 2) {
             vec4 sample_color = texture(atlas,uv);
-            if (info.y == 1) result.a *= sample_color.r; else result *= sample_color;
+            if (center_kind.w == 1) result.a *= sample_color.r; else result *= sample_color;
           }
           output_color = vec4(result.rgb * result.a, result.a);
         }
@@ -62,7 +83,7 @@ module Zaniah
         @vao, @buffer = generate(:glGenVertexArrays), generate(:glGenBuffers)
         gl(:glBindVertexArray, [I], V, @vao)
         gl(:glBindBuffer, [I, I], V, 0x8892, @buffer)
-        6.times do |location|
+        10.times do |location|
           gl(:glEnableVertexAttribArray, [I], V, location)
           gl(:glVertexAttribDivisor, [I, I], V, location, 1)
         end
@@ -148,7 +169,7 @@ module Zaniah
             clip = clip ? Bounds.new(0, 0, @width, @height).intersect(clip) : Bounds.new(0, 0, @width, @height)
             next unless clip.width.positive? && clip.height.positive?
             gl(:glScissor, [I] * 4, V, (clip.x * @scale).to_i, ((@height - clip.bottom) * @scale).to_i, (clip.width * @scale).to_i, (clip.height * @scale).to_i)
-            6.times do |location|
+            10.times do |location|
               gl(:glVertexAttribPointer, [I, I, I, I, I, P], V, location, 4, 0x1406, 0, InstancePacking::STRIDE * 4, (first * InstancePacking::STRIDE + location * 4) * 4)
             end
             native_texture(texture || @white)

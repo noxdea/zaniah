@@ -31,11 +31,11 @@ class NativeTest < Minitest::Test
     clip = Zaniah::Bounds.new(1, 1, 2, 2)
     scene.clip(clip) { scene.quad(0, 0, 10, 10, color: "#0f0") }
     bytes, batches = Zaniah::GPU::InstancePacking.pack(scene)
-    assert_equal 4 * 24 * 4, bytes.bytesize
+    assert_equal 4 * 40 * 4, bytes.bytesize
     assert_equal [2, 1, 1], batches.map(&:last)
     assert_equal [:quad, :sprite, :quad], batches.map { |batch| batch[0][0] }
     assert_equal clip, batches.last[0][2]
-    assert_equal 1, bytes.unpack("f*")[2 * 24 + 17]
+    assert_equal 1, bytes.unpack("f*")[2 * 40 + 31]
   end
 
   def test_objc_aggregate_call_and_callback

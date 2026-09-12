@@ -2,6 +2,7 @@
 
 require "fiddle/import"
 require_relative "../ffi/library"
+require_relative "instance_packing"
 
 module Zaniah
   module GPU
@@ -9,6 +10,7 @@ module Zaniah
     # It renders a vertex-index triangle into RGBA8 and reads back native memory.
     # Window presentation and general Scene rendering remain Metal/OpenGL work.
     class Vulkan
+      INSTANCE_STRIDE = InstancePacking::STRIDE
       module Types
         extend Fiddle::Importer
         Instance = struct ["int s_type", "void *next", "unsigned int flags", "void *application", "unsigned int layer_count", "void *layers", "unsigned int extension_count", "void *extensions"]

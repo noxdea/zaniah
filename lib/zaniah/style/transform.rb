@@ -2,7 +2,7 @@
 
 module Zaniah
   Transform = Data.define(:a, :b, :c, :d, :tx, :ty) do
-    def self.identity = new(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+    def self.identity = @identity ||= new(1.0, 0.0, 0.0, 1.0, 0.0, 0.0).freeze
     def self.translate(x, y = 0) = new(1.0, 0.0, 0.0, 1.0, x.to_f, y.to_f)
     def self.scale(x, y = x) = new(x.to_f, 0.0, 0.0, y.to_f, 0.0, 0.0)
 
@@ -28,6 +28,7 @@ module Zaniah
     def rotate(degrees) = self.then(Transform.rotate(degrees))
     def skew(x: 0, y: 0) = self.then(Transform.skew(x: x, y: y))
     def apply(point) = Point.new(a * point.x + c * point.y + tx, b * point.x + d * point.y + ty)
+    def to_a = [a, b, c, d, tx, ty]
 
     def inverse
       determinant = a * d - b * c

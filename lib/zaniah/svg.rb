@@ -65,6 +65,25 @@ module Zaniah
       @textures[key] = GPU::Texture.new(width, height, data: pixels)
     end
 
+    def self.rasterize_outline(outline, stroke_width: nil)
+      require "alhena"
+      renderer = allocate
+      if stroke_width
+        stroke_width = Float(stroke_width)
+        raise ArgumentError, "stroke width must be positive" unless stroke_width.positive? && stroke_width.finite?
+        style = DEFAULTS.merge("stroke-linecap" => "round", "stroke-linejoin" => "round")
+        outline = renderer.send(:stroke, outline, stroke_width, style)
+      end
+      return [Bounds.new(0, 0, 0, 0), nil] if outline.empty?
+      left, top, right, bottom = outline.bounds
+      left, top, right, bottom = left.floor, top.floor, right.ceil, bottom.ceil
+      width, height = right - left, bottom - top
+      return [Bounds.new(left, top, width, height), nil] unless width.positive? && height.positive?
+      translated = outline.transform([1, 0, 0, 1, -left, -top])
+      coverage = renderer.send(:mask, translated, width, height, "nonzero")
+      [Bounds.new(left, top, width, height), GPU::Texture.new(width, height, format: :r8, data: coverage)]
+    end
+
     private
 
     def validate(element, depth, count)

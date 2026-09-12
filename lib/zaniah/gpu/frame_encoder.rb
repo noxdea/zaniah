@@ -21,7 +21,16 @@ module Zaniah
             raise ArgumentError, "instance buffer too small" if values.length < instance_count * Scene::QUAD_STRIDE
             instance_count.times do |index|
               quad = values.slice(index * Scene::QUAD_STRIDE, Scene::QUAD_STRIDE)
-              @scene.quad(*quad.first(4), color: quad[4, 4], radius: quad[8, 4], border_width: quad[12], border_color: quad[13, 4])
+              color = if quad[24].zero?
+                quad[4, 4]
+              elsif quad[24] == 1
+                Gradient.linear(angle: quad[27], stops: [[quad[25], quad[4, 4]], [quad[26], quad[8, 4]]])
+              else
+                Gradient.radial(center: quad[28, 2], radius: quad[30], stops: [[quad[25], quad[4, 4]], [quad[26], quad[8, 4]]])
+              end
+              @scene.quad(*quad.first(4), color: color, radius: quad[12, 4],
+                border_width: Edges.new(*quad[20, 4]), border_color: quad[16, 4],
+                transform: Transform.new(*quad[32, 6]), border_style: quad[39] == 1 ? :dashed : :solid)
             end
           elsif [:mono_sprite, :poly_sprite].include?(@pipeline.shader)
             raise ArgumentError, "instance buffer too small" if values.length < instance_count * 12

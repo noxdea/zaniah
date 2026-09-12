@@ -4,7 +4,12 @@ module Zaniah
   Gradient = Data.define(:kind, :stops, :angle, :center, :radius) do
     class << self
       def linear(angle: 90, stops:) = new(:linear, normalize(stops), angle.to_f, nil, nil)
-      def radial(center: [0.5, 0.5], radius: 0.5, stops:) = new(:radial, normalize(stops), nil, center.map(&:to_f).freeze, radius.to_f)
+      def radial(center: [0.5, 0.5], radius: 0.5, stops:)
+        center, radius = center.map(&:to_f), radius.to_f
+        raise ArgumentError, "gradient center needs two finite coordinates" unless center.length == 2 && center.all?(&:finite?)
+        raise ArgumentError, "gradient radius must be positive" unless radius.positive? && radius.finite?
+        new(:radial, normalize(stops), nil, center.freeze, radius)
+      end
       def conic(angle: 0, center: [0.5, 0.5], stops:) = new(:conic, normalize(stops), angle.to_f, center.map(&:to_f).freeze, nil)
 
       private

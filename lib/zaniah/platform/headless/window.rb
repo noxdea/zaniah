@@ -182,7 +182,7 @@ module Zaniah
         def paint_popups
           if @menu
             box = popup_bounds(@menu)
-            @scene.layer(1_000_000) do
+            @scene.layer(Scene::LAYER_POPUP) do
               @scene.quad(box.x, box.y, box.width, box.height, color: "#202936", radius: 4, border_width: 1, border_color: "#526176")
               @scene.clip(box) do
                 @menu[:items].each_with_index do |(label, callback), index|
@@ -197,7 +197,7 @@ module Zaniah
             position = @tooltip[:position]
             width = [text.length * 8 + 20, @content_size.width].min
             x, y = position.x.clamp(0, @content_size.width - width), (position.y + 20).clamp(0, [@content_size.height - 30, 0].max)
-            @scene.layer(1_000_000) do
+            @scene.layer(Scene::LAYER_TOOLTIP) do
               @scene.quad(x, y, width, 28, color: "#202936", radius: 4, border_width: 1, border_color: "#526176")
               @scene.clip(Bounds.new(x, y, width, 28)) { popup_text(text, x + 10, y + 5, "#edf2f7") }
             end

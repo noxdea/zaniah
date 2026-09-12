@@ -142,6 +142,7 @@ module Zaniah
     attr_reader width: Numeric
     attr_reader height: Numeric
     attr_reader view_box: Array[Numeric]
+    def self.rasterize_outline: (_Outline outline, ?stroke_width: Numeric?) -> [Bounds, GPU::Texture?]
     def self.parse: (String source, ?color: String) -> SVG
     def self.open: (String path, ?color: String) -> SVG
     def initialize: (String source, ?color: String) -> void
