@@ -94,7 +94,7 @@ module Zaniah
       def dispatch: (String key, ?context: context, ?now: Numeric) -> (action | :pending | nil)
       def bindings: () -> Array[Binding]
     end
-    class FocusHandle
+  class FocusHandle
       attr_reader parent: FocusHandle?
       attr_reader children: Array[FocusHandle]
       attr_reader context: context
@@ -106,9 +106,10 @@ module Zaniah
       attr_accessor focusable: bool
       attr_accessor bounds: Bounds?
       def initialize: (?parent: FocusHandle?, ?context: context, ?owner: untyped, ?tab_index: Integer?, ?focusable: bool, ?bounds: Bounds?) -> void
-      def ancestors: () -> Array[FocusHandle]
+    def ancestors: () -> Array[FocusHandle]
+    def parent=: (FocusHandle? value) -> FocusHandle?
     end
-    class FocusTree
+  class FocusTree
       def initialize: () -> void
       def register: (FocusHandle handle) -> self
       def clear: () -> untyped
@@ -116,7 +117,8 @@ module Zaniah
       def previous: (?FocusHandle? from) -> FocusHandle?
       def spatial: (FocusHandle from, :left | :right | :up | :down direction) -> FocusHandle?
       def trap: [T] (FocusHandle handle) ?{ () -> T } -> (FocusHandle | T)
-      def restore: () -> FocusHandle?
+    def restore: () -> FocusHandle?
+    def release_trap: (FocusHandle handle) -> FocusHandle?
     end
     class Dispatcher
       attr_reader focused: FocusHandle?

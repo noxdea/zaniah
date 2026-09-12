@@ -3,6 +3,7 @@
 # Runs unchanged against source, runtime RBS hooks, and an installed gem.
 # No test framework is required.
 require "zaniah"
+require "zaniah/ui"
 require "tmpdir"
 
 module PublicAPISmoke
@@ -74,6 +75,11 @@ module PublicAPISmoke
     window.draw { root_element }
     window.tick
     check(!window.dirty? && !window.scene.commands.empty?, "element pipeline failed")
+    ui_button = Zaniah::UI::Button.new("Save", variant: :primary).icon(:check)
+    window.draw { ui_button }
+    window.request_frame
+    window.tick
+    check(ui_button.layout_node && ui_button.accessibility_node(nil).role == :button, "component pipeline failed")
     pixels = window.device.pixels
     encoded = Zaniah::PNG.encode(80, 60, pixels)
     check(Zaniah::PNG.decode(encoded) == [80, 60, pixels], "PNG roundtrip failed")

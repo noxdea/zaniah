@@ -1,0 +1,16 @@
+module Zaniah
+  module Accessibility
+    class Node < Data
+      attr_reader role: Symbol
+      attr_reader label: String?
+      attr_reader value: untyped
+      attr_reader bounds: Bounds?
+      attr_reader states: Hash[Symbol, untyped]
+      attr_reader children: Array[Node]
+      attr_reader actions: Array[Symbol]
+      def self.new: (Symbol role, String? label, untyped value, Bounds? bounds, Hash[Symbol, untyped] states, Array[Node] children, Array[Symbol] actions) -> Node
+                  | (role: Symbol, label: String?, value: untyped, bounds: Bounds?, states: Hash[Symbol, untyped], children: Array[Node], actions: Array[Symbol]) -> Node
+    end
+    def self.node: (role: Symbol, ?label: String?, ?value: untyped, ?bounds: Bounds?, ?states: Hash[Symbol, untyped], ?children: Array[Node], ?actions: Array[Symbol]) -> Node
+  end
+end

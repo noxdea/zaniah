@@ -49,7 +49,19 @@ module Zaniah
         action
       end
 
-      def register_focus(handle) = @focus_tree.register(handle)
+      def register_focus(handle)
+        owner = handle.owner&.respond_to?(:parent) ? handle.owner.parent : nil
+        while owner
+          if owner.respond_to?(:focus_handle) && (parent = owner.focus_handle)
+            unless parent.equal?(handle)
+              handle.parent = parent
+              break
+            end
+          end
+          owner = owner.respond_to?(:parent) ? owner.parent : nil
+        end
+        @focus_tree.register(handle)
+      end
 
       def input(event)
         return false unless @focused

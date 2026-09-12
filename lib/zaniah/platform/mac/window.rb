@@ -254,6 +254,7 @@ module Zaniah
         end
         def context_action(index) = @context_actions&.fetch(index)&.call
         def context_menu(items, position: Point.new(0, 0))
+          return super if defined?(Zaniah::UI::ContextMenu)
           menu = O.new("NSMenu")
           O.send(menu, "setAutoenablesItems:", 0, args: [:bool], result: :void)
           @context_actions = []

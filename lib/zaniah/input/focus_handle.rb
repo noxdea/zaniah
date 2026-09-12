@@ -20,6 +20,14 @@ module Zaniah
         end
         list
       end
+
+      def parent=(value)
+        raise ArgumentError, "focus handle cannot parent itself" if value.equal?(self)
+        return if @parent.equal?(value)
+        @parent&.children&.delete(self)
+        @parent = value
+        value&.children&.push(self) unless value&.children&.include?(self)
+      end
     end
   end
 end

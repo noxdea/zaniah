@@ -1,6 +1,6 @@
 # ADR 006: Components participate by duck typing
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-12
 - Decision deadline: before M6 implementation
 

@@ -13,6 +13,9 @@ module Zaniah
     end
 
     def measured(&block) = (@measure = block; self)
+    def on_change(&block) = (@on_change = block; self)
+    def placeholder(text, color: nil) = (@placeholder = text.to_s; @placeholder_color = color; self)
+    def secure(value = true) = (@secure = !!value; self)
     def text_color = @color
     def selection=(value)
       raise ArgumentError, "expected a TextSelection" unless value.is_a?(TextSelection)
@@ -78,7 +81,11 @@ module Zaniah
 
     def paint(bounds, state, prepaint, cx)
       super
-      color = @resolved_style[:text_color] || @color
+      color = if @placeholder && @text.empty? && !@buffer&.composition
+        @placeholder_color || cx.theme.colors.text_muted
+      else
+        @resolved_style[:text_color] || @color
+      end
       paint_selection(bounds, cx) if @selectable && @selection && !@selection.collapsed?
       cx.scene.layer(Scene::LAYER_SELECTION) do
         if @paragraph
@@ -104,7 +111,11 @@ module Zaniah
 
     private
 
-    def display_text = @buffer&.composition ? @buffer.preview(@selection.head) : @text
+    def display_text
+      value = @buffer&.composition ? @buffer.preview(@selection.head) : @text
+      value = @placeholder if value.empty? && @placeholder
+      @secure && !value.equal?(@placeholder) ? "*" * value.bytesize : value
+    end
 
     def begin_selection(event)
       offset = offset_at(event.position)
@@ -166,6 +177,7 @@ module Zaniah
       at = range.begin + value.bytesize
       @selection = TextSelection.new(at)
       @text = @buffer.to_s
+      @on_change&.call(@text)
     end
 
     def delete_backward
@@ -185,6 +197,7 @@ module Zaniah
       @buffer.delete(range)
       @selection = TextSelection.new(range.begin)
       @text = @buffer.to_s
+      @on_change&.call(@text)
     end
 
     def move_to_line_edge(action, edge)

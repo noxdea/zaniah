@@ -40,6 +40,20 @@ module Zaniah
             .bind("backspace", :delete_backward, context: "in_text_field")
             .bind("delete", :delete_forward, context: "in_text_field")
             .bind("enter", :insert_newline, context: "in_text_field")
+            .bind("left", :decrement, context: "in_slider")
+            .bind("down", :decrement, context: "in_slider")
+            .bind("right", :increment, context: "in_slider")
+            .bind("up", :increment, context: "in_slider")
+            .bind("home", :minimum, context: "in_slider")
+            .bind("end", :maximum, context: "in_slider")
+            .bind("pageup", :increment_page, context: "in_slider")
+            .bind("pagedown", :decrement_page, context: "in_slider")
+            .bind("up", :previous_option, context: "in_menu || in_tabs")
+            .bind("left", :previous_option, context: "in_menu || in_tabs")
+            .bind("down", :next_option, context: "in_menu || in_tabs")
+            .bind("right", :next_option, context: "in_menu || in_tabs")
+            .bind("home", :first, context: "in_menu || in_tabs")
+            .bind("end", :last, context: "in_menu || in_tabs")
         end
       end
 

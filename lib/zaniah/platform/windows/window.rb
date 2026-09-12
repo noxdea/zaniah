@@ -329,6 +329,7 @@ module Zaniah
         end
         def on_appearance(&block) = @on_appearance = block
         def context_menu(items, position: nil)
+          return super(items, position: position || Point.new(0, 0)) if defined?(Zaniah::UI::ContextMenu)
           menu = @user.fn(:CreatePopupMenu, [], P).call
           raise Error, "CreatePopupMenu failed" if menu.null?
           items.each_with_index do |(label, action), index|

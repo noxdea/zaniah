@@ -68,8 +68,8 @@ module Zaniah
         def on_close: () { () -> (bool | nil) } -> void
         def on_moved: () { ([Numeric, Numeric]) -> void } -> void
         def on_tick: () { () -> void } -> void
-        def on_frame: () { (Element, color) -> void } -> void
-        def draw: () { (Window) -> (Element | Scene | nil) } -> void
+        def on_frame: () { (_Renderable, color) -> void } -> void
+        def draw: () { (Window) -> (_Renderable | Scene | nil) } -> void
         def request_frame: () -> bool
         def dirty?: () -> bool
         def closed?: () -> bool
@@ -81,10 +81,10 @@ module Zaniah
         def resize: (Numeric width, Numeric height) -> void
         def input: (Input::event event) -> void
         def offer_tooltip: (String text, position: Point, ?delay: Numeric) -> void
-        def context_menu: (menu items, ?position: Point) -> void
+        def context_menu: (menu items, ?position: Point) -> untyped
         def close: () -> bool?
         def tick: () -> void
-        def render: (Element element, ?clear: color, ?present: bool) -> void
+        def render: (_Renderable element, ?clear: color, ?present: bool) -> void
         def element_state: [T] (Object key) { () -> T } -> T
         def write_png: (String path) -> Integer
       end

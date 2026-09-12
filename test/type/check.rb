@@ -8,6 +8,7 @@ $LOAD_PATH.unshift File.expand_path("../../lib", __dir__)
 require "zaniah"
 require "zaniah/svg"
 require "zaniah/platform/tui/text_renderer"
+require "zaniah/ui"
 
 RBS.logger_level = :error
 loader = RBS::EnvironmentLoader.new

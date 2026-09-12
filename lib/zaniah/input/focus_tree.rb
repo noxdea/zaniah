@@ -38,7 +38,7 @@ module Zaniah
       end
 
       def trap(handle)
-        @traps << handle
+        @traps << handle unless @traps.last.equal?(handle)
         return handle unless block_given?
         begin
           yield
@@ -48,6 +48,7 @@ module Zaniah
       end
 
       def restore = @traps.pop
+      def release_trap(handle) = @traps.delete(handle)
 
       private
 

@@ -65,7 +65,7 @@ module Zaniah
         break if missing.empty?
         missing.each do |index|
           element = @render_item.call(index)
-          raise TypeError, "row renderer must return an Element" unless element.is_a?(Element)
+          raise TypeError, "row renderer must return a renderable element" unless element.respond_to?(:request_layout) && element.respond_to?(:prepaint) && element.respond_to?(:paint)
           node = element.request_layout(cx)
           _natural_width, height = engine.measure(node, width: width, height: @viewport)
           @heights.update(index, [height, 1.0].max)

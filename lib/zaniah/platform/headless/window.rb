@@ -46,6 +46,10 @@ module Zaniah
         def displays = [Display.new(0, "Headless", Bounds.new(0, 0, @content_size.width, @content_size.height), @scale_factor, true)]
 
         def popup
+          if @popup_component.respond_to?(:popup_data)
+            data = @popup_component.popup_data
+            return Popup.new(labels: data[:labels], enabled: data[:enabled], selected_index: data[:selected_index], bounds: data[:bounds])
+          end
           return unless @menu
 
           Popup.new(labels: @menu[:items].map { |label, _| label.dup.freeze }.freeze,
@@ -87,6 +91,13 @@ module Zaniah
 
         def context_menu(items, position: Point.new(0, 0))
           raise ArgumentError, "menu items must be label/callback pairs" unless items.is_a?(Array) && items.all? { |item| item.is_a?(Array) && item.length == 2 && item.first.is_a?(String) && (item.last.nil? || item.last.respond_to?(:call)) }
+          if defined?(Zaniah::UI::ContextMenu)
+            @popup_component = Zaniah::UI::ContextMenu.new(items, anchor: position)
+            @menu = nil
+            @tooltip = nil
+            request_frame
+            return @popup_component
+          end
           @menu = {items: items.map(&:dup), position: position, index: items.index { |_, callback| callback } || 0}
           @tooltip = nil
           request_frame
@@ -110,8 +121,11 @@ module Zaniah
           return unless @dirty && !@closed
           @dirty = false
           result = @draw&.call(self)
-          render(result) if result.is_a?(Element)
-          @device.render(result) if result.is_a?(Scene)
+          if result.respond_to?(:request_layout) && result.respond_to?(:prepaint) && result.respond_to?(:paint)
+            render(result)
+          elsif result.is_a?(Scene)
+            @device.render(result)
+          end
         end
 
         def render(element, clear: DEFAULT_CLEAR, present: true)
@@ -146,6 +160,24 @@ module Zaniah
         private
 
         def popup_input(event)
+          if @popup_component
+            unless @popup_component.open?
+              @popup_component = nil
+              return false
+            end
+            @pointer_position = event.position if event.respond_to?(:position)
+            @pointer_down = true if event.is_a?(Input::MouseDown)
+            @pointer_down = false if event.is_a?(Input::MouseUp)
+            if event.respond_to?(:position)
+              @dispatcher.mouse(event)
+            elsif event.is_a?(Input::KeyDown)
+              @dispatcher.key(event.keystroke)
+            else
+              @dispatcher.input(event)
+            end
+            request_frame
+            return true
+          end
           return false unless @menu
           if event.is_a?(Input::KeyDown)
             key = Input::Keystroke.normalize(event.keystroke)
@@ -192,7 +224,9 @@ module Zaniah
         end
 
         def paint_popups
-          if @menu
+          if @popup_component
+            paint_popup_component(@popup_component)
+          elsif @menu
             box = popup_bounds(@menu)
             @scene.layer(Scene::LAYER_POPUP) do
               @scene.quad(box.x, box.y, box.width, box.height, color: "#202936", radius: 4, border_width: 1, border_color: "#526176")
@@ -204,6 +238,8 @@ module Zaniah
                 end
               end
             end
+          elsif @tooltip && @tooltip[:shown] && defined?(Zaniah::UI::Tooltip)
+            paint_popup_component(Zaniah::UI::Tooltip.new(@tooltip[:text], anchor: @tooltip[:position]))
           elsif @tooltip && @tooltip[:shown]
             text = @tooltip[:text]
             position = @tooltip[:position]
@@ -214,6 +250,14 @@ module Zaniah
               @scene.clip(Bounds.new(x, y, width, 28)) { popup_text(text, x + 10, y + 5, "#edf2f7") }
             end
           end
+        end
+
+        def paint_popup_component(component)
+          cx = FrameContext.new(self)
+          root = component.request_layout(cx)
+          Layout::Engine.new.compute(root, width: @content_size.width, height: @content_size.height)
+          component.prepaint(root.bounds, nil, cx)
+          component.paint(root.bounds, nil, nil, cx)
         end
       end
     end

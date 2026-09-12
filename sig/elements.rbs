@@ -1,4 +1,11 @@
 module Zaniah
+  interface _Renderable
+    def layout_node: () -> Layout::Node?
+    def request_layout: (FrameContext context) -> Layout::Node
+    def prepaint: (Bounds bounds, Object? state, FrameContext context) -> void
+    def paint: (Bounds bounds, Object? state, Object? prepaint, FrameContext context) -> void
+  end
+
   class FrameContext
     attr_reader window: Platform::Headless::Window
     attr_reader scene: Scene
@@ -13,13 +20,13 @@ module Zaniah
   class Element
     include LengthUnits
     attr_reader layout_node: Layout::Node?
-    attr_reader parent: Element?
+    attr_reader parent: _Renderable?
     attr_reader resolved_style: Layout::Style?
     # Child constructors forward their render blocks through super(); ignored here.
     def initialize: () ?{ (*untyped) -> void } -> void
-    def child: (Element? element) -> self
-    def children: () -> Array[Element]
-                | (Array[Element?] elements) -> self
+    def child: (_Renderable? element) -> self
+    def children: () -> Array[_Renderable]
+                | (Array[_Renderable?] elements) -> self
     def style: (**Layout::style_value properties) -> self
     def key: (Object value) -> self
     def test_id: () -> String?
@@ -85,6 +92,9 @@ module Zaniah
     attr_reader buffer: TextBuffer?
     def initialize: (String text, ?size: Numeric, ?color: color, ?font: TextSystem::_Font?, ?wrap: :none | :word | :anywhere, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none) -> void
     def measured: () { (Numeric width, Numeric height) -> Layout::measurement } -> self
+    def on_change: () { (String value) -> void } -> self
+    def placeholder: (String text, ?color: color?) -> self
+    def secure: (?bool value) -> self
     def wrap: (?:none | :word | :anywhere mode, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none) -> self
     def selectable: (?bool value) -> self
     def editable: (?TextBuffer? buffer) -> self
@@ -104,7 +114,7 @@ module Zaniah
     attr_accessor scroll_y: Numeric
     attr_reader visible_range: Range[Integer]?
     attr_reader scroll_state: ScrollState
-    def initialize: (count: Integer, row_height: Numeric) { (Integer) -> Element } -> void
+    def initialize: (count: Integer, row_height: Numeric) { (Integer) -> _Renderable } -> void
   end
 
   class ScrollState
@@ -163,7 +173,7 @@ module Zaniah
     attr_reader visible_range: Range[Integer]
     attr_reader heights: HeightIndex
     attr_reader scroll_state: ScrollState
-    def initialize: (count: Integer, ?estimated_height: Numeric, ?overscan: Integer) { (Integer) -> Element } -> void
+    def initialize: (count: Integer, ?estimated_height: Numeric, ?overscan: Integer) { (Integer) -> _Renderable } -> void
     def scroll_y=: (Numeric value) -> Numeric
     def total_height: () -> Float
     def update_height: (Integer index, Numeric height) -> self

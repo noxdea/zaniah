@@ -1,0 +1,248 @@
+module Zaniah
+  module UI
+    module Variants
+      def variants: (?Hash[Symbol, Hash[Symbol, untyped]] definitions, **untyped keywords) -> Hash[Symbol, Hash[Symbol, untyped]]
+      def variant_style: (Theme theme, Hash[Symbol, Symbol] selected) -> Hash[Symbol, untyped]
+    end
+
+    class Component
+      include LengthUnits
+      extend Variants
+      attr_reader root: _Renderable?
+      attr_reader layout_node: Layout::Node?
+      attr_reader parent: _Renderable?
+      def initialize: () -> void
+      def build: (FrameContext context) -> _Renderable
+      def key: (Object value) -> self
+      def test_id: () -> String?
+                 | (String value) -> self
+      def style: (**Layout::style_value properties) -> self
+      def accessibility_node: (FrameContext? context) -> Accessibility::Node?
+      def tui_cells: (?Bounds? bounds, ?FrameContext? context) -> String?
+      def focus_handle: () -> Input::FocusHandle?
+      def children: () -> Array[_Renderable]
+      def w: (dimension value) -> self
+      def h: (dimension value) -> self
+      def min_w: (dimension value) -> self
+      def min_h: (dimension value) -> self
+      def max_w: (dimension value) -> self
+      def max_h: (dimension value) -> self
+      def p: (Layout::style_value value) -> self
+      def m: (Layout::style_value value) -> self
+      def gap: (dimension value) -> self
+      def border: (Layout::style_value value) -> self
+      def flex_1: () -> self
+      def w_full: () -> self
+      def h_full: () -> self
+      def request_layout: (FrameContext context) -> Layout::Node
+      def prepaint: (Bounds bounds, Object? state, FrameContext context) -> void
+      def paint: (Bounds bounds, Object? state, Object? prepaint, FrameContext context) -> void
+    end
+
+    class Label < Component
+      attr_reader text: String
+      def initialize: (untyped text, ?tone: Symbol, ?size: Symbol, ?wrap: Symbol) -> void
+    end
+    class Icon < Component
+      GLYPHS: Hash[Symbol, String]
+      def initialize: (untyped source, ?size: Numeric, ?color: color?, ?label: String?) -> void
+    end
+    class Divider < Component
+      def initialize: (?axis: :horizontal | :vertical) -> void
+    end
+    class Spacer < Component
+      def initialize: (?dimension? size) -> void
+    end
+    class Card < Component
+      attr_reader children: Array[_Renderable]
+      def initialize: (*_Renderable children) -> void
+      def child: (_Renderable? value) -> self
+    end
+    class Badge < Component
+      def initialize: (untyped text, ?variant: Symbol) -> void
+    end
+    class Avatar < Component
+      def initialize: (untyped name, ?image: String?, ?size: Numeric) -> void
+    end
+    class Skeleton < Component
+      def initialize: (?width: dimension, ?height: dimension) -> void
+    end
+    class EmptyState < Component
+      def initialize: (untyped title, ?message: untyped, ?icon: untyped, ?action: _Renderable?) -> void
+    end
+
+    class Button < Component
+      attr_reader label: String
+      def initialize: (untyped label, ?size: Symbol, ?variant: Symbol) -> void
+      def on_click: () { (Input::MouseDown?, FrameContext?) -> void } -> self
+      def disabled: (?bool value) -> self
+      def loading: (?bool value) -> self
+      def icon: (untyped value, ?position: :leading | :trailing) -> self
+    end
+    class IconButton < Button
+      def initialize: (untyped icon, label: String, **untyped options) -> void
+    end
+    class ToggleButton < Button
+      attr_reader value: bool
+      def initialize: (untyped label, ?value: bool, **untyped options) -> void
+      def on_change: () { (bool, Input::MouseDown?, FrameContext?) -> void } -> self
+    end
+    class ButtonGroup < Component
+      def initialize: (*Button buttons) -> void
+      def child: (Button button) -> self
+    end
+    class Checkbox < Component
+      attr_reader value: bool | :mixed
+      def initialize: (untyped label, ?value: bool | :mixed, ?disabled: bool) -> void
+      def on_change: () { (bool, Input::MouseDown?, FrameContext?) -> void } -> self
+      def disabled: (?bool value) -> self
+    end
+    class Radio < Checkbox
+    end
+    class RadioGroup < Component
+      attr_reader value: untyped
+      def initialize: (Array[untyped] options, ?value: untyped) -> void
+      def on_change: () { (untyped, Input::MouseDown?, FrameContext?) -> void } -> self
+    end
+    class Switch < Checkbox
+    end
+    class Slider < Component
+      attr_reader value: Float
+      def initialize: (?value: Numeric, ?min: Numeric, ?max: Numeric, ?step: Numeric, ?label: String?, ?disabled: bool) -> void
+      def on_change: () { (Float, Input::MouseDown?, FrameContext?) -> void } -> self
+      def disabled: (?bool value) -> self
+    end
+    class RangeSlider < Slider
+      attr_reader upper_value: Float
+      def initialize: (?value: [Numeric, Numeric], **untyped options) -> void
+    end
+    class ProgressBar < Component
+      attr_reader value: Float?
+      def initialize: (?value: Numeric?, ?min: Numeric, ?max: Numeric, ?label: String?) -> void
+    end
+    class Spinner < Component
+      def initialize: (?label: String, ?size: Numeric) -> void
+    end
+    class Meter < ProgressBar
+      def initialize: (value: Numeric, ?low: Numeric?, ?high: Numeric?, ?optimum: Numeric?, **untyped options) -> void
+    end
+
+    module Placement
+      def self.place: (Point | Bounds anchor, Size | [Numeric, Numeric] size, Bounds viewport, ?side: :top | :bottom | :left | :right, ?offset: Numeric) -> Bounds
+    end
+    class OverlayComponent < Component
+      def initialize: (?open: bool, ?modal: bool) -> void
+      def open?: () -> bool
+      def open: (?bool value) -> self
+      def close: () -> self
+      def on_close: () { (untyped, FrameContext?) -> void } -> self
+    end
+    class Popover < OverlayComponent
+      def initialize: (_Renderable content, anchor: Point | Bounds, ?side: Symbol, ?width: Numeric, ?height: Numeric, ?open: bool, ?modal: bool) -> void
+    end
+    class Tooltip < Popover
+      def initialize: (untyped text, anchor: Point | Bounds, **untyped options) -> void
+    end
+    class Menu < OverlayComponent
+      attr_reader selected_index: Integer
+      def initialize: (Array[untyped] items, ?anchor: Point | Bounds, ?open: bool, ?modal: bool) -> void
+      def popup_data: () -> Hash[Symbol, untyped]
+    end
+    class ContextMenu < Menu
+    end
+    class MenuBar < Component
+      def initialize: (Array[untyped] menus) -> void
+    end
+    class Dropdown < Component
+      attr_reader value: untyped
+      def initialize: (untyped label, items: Array[untyped], ?value: untyped) -> void
+      def on_change: () { (untyped, untyped, FrameContext?) -> void } -> self
+    end
+
+    class TextField < Component
+      attr_reader buffer: TextBuffer
+      def initialize: (?untyped value, ?placeholder: untyped, ?label: untyped, ?prefix: untyped, ?suffix: untyped, ?error: untyped, ?max_length: Integer?, ?clearable: bool, ?disabled: bool) -> void
+      def value: () -> String
+      def on_change: () { (String, FrameContext?) -> void } -> self
+      def disabled: (?bool value) -> self
+      def error: (untyped value) -> self
+      def clear: () -> self
+    end
+    class TextArea < TextField
+      def initialize: (?untyped value, ?rows: Integer, **untyped options) -> void
+    end
+    class SearchInput < TextField
+    end
+    class PasswordInput < TextField
+    end
+    class NumberInput < TextField
+      def initialize: (?untyped value, ?min: Numeric?, ?max: Numeric?, ?step: Numeric, **untyped options) -> void
+      def number: () -> Float?
+      def increment: () -> self
+      def decrement: () -> self
+    end
+    class TagInput < TextField
+      attr_reader tags: Array[String]
+      def initialize: (?Array[untyped] tags, ?separator: String, **untyped options) -> void
+      def on_tags_change: () { (Array[String], FrameContext?) -> void } -> self
+    end
+
+    class Tabs < Component
+      attr_reader selected_index: Integer
+      def initialize: (Array[[untyped, _Renderable]] items, ?selected: Integer) -> void
+      def on_change: () { (Integer, untyped, FrameContext?) -> void } -> self
+    end
+    class Collapsible < Component
+      def initialize: (untyped label, _Renderable content, ?open: bool) -> void
+      def on_change: () { (bool, untyped, FrameContext) -> void } -> self
+      def open: (?bool value) -> self
+    end
+    class Accordion < Component
+      def initialize: (Array[[untyped, _Renderable]] items, ?multiple: bool, ?open: Integer | Array[Integer]?) -> void
+    end
+    class Breadcrumb < Component
+      def initialize: (Array[untyped] items) -> void
+    end
+    class Pagination < Component
+      attr_reader page: Integer
+      def initialize: (?page: Integer, pages: Integer, ?window: Integer) -> void
+      def on_change: () { (Integer, FrameContext) -> void } -> self
+    end
+    class Bar < Component
+      def initialize: (*_Renderable children) -> void
+      def child: (_Renderable value) -> self
+    end
+    class Toolbar < Bar
+    end
+    class StatusBar < Bar
+    end
+    class Sidebar < Bar
+      def initialize: (*_Renderable children, ?width: dimension) -> void
+    end
+
+    class Modal < OverlayComponent
+      def initialize: (_Renderable content, ?title: String?, ?open: bool, ?close_on_scrim: bool, ?width: dimension) -> void
+    end
+    class Dialog < Modal
+    end
+    class Drawer < Modal
+      def initialize: (_Renderable content, ?side: :left | :right, ?width: dimension, **untyped options) -> void
+    end
+    class Toast < Component
+      class Queue
+        def initialize: () -> void
+        def push: (untyped message, **untyped options) -> self
+        def shift: () -> [String, Hash[Symbol, untyped]]?
+        def first: () -> [String, Hash[Symbol, untyped]]?
+        def empty?: () -> bool
+        def size: () -> Integer
+      end
+      def initialize: (?untyped message, ?variant: Symbol, ?queue: Queue?) -> void
+      def dismiss: () -> self
+    end
+    class CommandPalette < Modal
+      attr_reader query: String
+      def initialize: (Array[[untyped, untyped]] commands, ?open: bool, ?placeholder: String) -> void
+    end
+  end
+end
