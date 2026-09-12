@@ -128,7 +128,7 @@ module Zaniah
         def run
           until closed?
             tick
-            @user.fn(:MsgWaitForMultipleObjectsEx, [U, P, U, U, U], U).call(0, 0, 50, 0x04FF, 4) unless dirty? || closed?
+            @user.fn(:MsgWaitForMultipleObjectsEx, [U, P, U, U, U], U).call(0, 0, 50, 0x04FF, 4) unless dirty? || animation_active? || closed?
           end
         end
         def native_callback
@@ -326,6 +326,11 @@ module Zaniah
           result = registry.fn(:RegGetValueW, [P, P, P, U, P, P, P], I).call(-2147483647,
             wide("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"), wide("AppsUseLightTheme"), 0x10, 0, value, size)
           result.zero? && value.unpack1("I").zero? ? :dark : :light
+        end
+        def reduced_motion?
+          enabled = [1].pack("I")
+          result = @user.fn(:SystemParametersInfoW, [U, U, P, U], I).call(0x1042, 0, enabled, 0)
+          !result.zero? && enabled.unpack1("I").zero?
         end
         def on_appearance(&block) = @on_appearance = block
         def context_menu(items, position: nil)

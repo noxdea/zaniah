@@ -32,6 +32,17 @@ module Zaniah
     end
 
     def key(value) = (@key = value; self)
+    def identity_key = @key
+    def paint_style(**properties)
+      @paint_opacity = properties.delete(:opacity) if properties.key?(:opacity)
+      @paint_style = (@paint_style || {}).merge(properties)
+      self
+    end
+    def transition(*properties, duration:, easing: :ease_in_out)
+      raise ArgumentError, "transition needs at least one property" if properties.empty?
+      @transition = Transition.new(properties.map(&:to_sym).freeze, Float(duration), easing)
+      self
+    end
     def test_id(value = (getter = true)) = getter ? @test_id : (@test_id = value.to_s.freeze; self)
     def handlers = @handlers.keys.freeze
     def with_state(&initial) = (@state_initializer = initial; self)
@@ -100,21 +111,28 @@ module Zaniah
 
     def paint(bounds, _state, _prepaint, cx)
       flags = cx.interactivity.for(self, @static_flags)
-      @resolved_style = @style_set.resolve(flags)
+      @resolved_style = transition_style(@style_set.resolve(flags), cx)
+      @resolved_style = @resolved_style.merge(**@paint_style) if @paint_style && !@paint_style.empty?
       cx.window.set_cursor(@resolved_style[:cursor]) if flags.include?(:hover) && @resolved_style[:cursor]
       border = @resolved_style[:border_widths] || @resolved_style[:border]
       border = 0 unless border.is_a?(Numeric) || border.is_a?(Edges)
       background = @resolved_style[:background] || "#0000"
       transform = @resolved_style[:transform] || Transform.identity
       z_index = Float(@resolved_style[:z_index])
-      if z_index.zero?
-        paint_transformed(bounds, border, background, transform, cx)
-      else
-        cx.scene.layer(Scene::LAYER_CONTENT + z_index) do
+      operation = lambda do
+        if z_index.zero?
           paint_transformed(bounds, border, background, transform, cx)
+        else
+          cx.scene.layer(Scene::LAYER_CONTENT + z_index) do
+            paint_transformed(bounds, border, background, transform, cx)
+          end
         end
       end
+      @paint_opacity ? cx.scene.push_opacity(@paint_opacity, &operation) : operation.call
       paint_ring(bounds, cx) if @resolved_style[:ring]
+    ensure
+      @paint_style = nil
+      @paint_opacity = nil
     end
 
     protected
@@ -150,11 +168,9 @@ module Zaniah
           @dragging && event.is_a?(Input::MouseDown) ? :capture : !!handler || !!(@focus_handle && event.is_a?(Input::MouseDown)) || !!(@tooltip && event.is_a?(Input::MouseMove))
         end
       end
-      if @style[:overflow] == :visible
-        @children.each { |child| child.prepaint(child.layout_node.bounds, nil, cx) }
-      else
-        cx.dispatcher.clip(bounds) { @children.each { |child| child.prepaint(child.layout_node.bounds, nil, cx) } }
-      end
+      operation = -> { @children.each { |child| child.prepaint(child.layout_node.bounds, nil, cx) } }
+      @style[:overflow] == :visible ? operation.call : cx.dispatcher.clip(bounds, &operation)
+      prepare_child_animations(cx)
     end
 
     def paint_transformed(bounds, border, background, transform, cx)
@@ -176,13 +192,11 @@ module Zaniah
         radius: @resolved_style[:corner_radii] || 0, border_width: border,
         border_color: @resolved_style[:border_color] || "#0000",
         border_style: @resolved_style[:border_style])
-      if @style[:overflow] == :visible
+      operation = lambda do
         @children.each { |child| child.paint(child.layout_node.bounds, nil, nil, cx) unless child.layout_node.style[:display] == :none }
-      else
-        cx.scene.clip(bounds) do
-          @children.each { |child| child.paint(child.layout_node.bounds, nil, nil, cx) unless child.layout_node.style[:display] == :none }
-        end
+        @departing_children&.each { |child, old_bounds, opacity| child.paint_style(opacity: opacity).paint(old_bounds, nil, nil, cx) }
       end
+      @style[:overflow] == :visible ? operation.call : cx.scene.clip(bounds, &operation)
     end
 
     def paint_ring(bounds, cx)
@@ -203,6 +217,77 @@ module Zaniah
       yield(builder) if block_given?
       @style_set.on(state, **builder.properties)
       self
+    end
+
+    def transition_style(target, cx)
+      return target unless @transition && @key
+      state = cx.state([:transition, @key]) { {targets: {}} }
+      values = {}
+      @transition.properties.each do |property|
+        value = target[property]
+        unless state[:targets].key?(property)
+          state[:targets][property] = value
+          next
+        end
+        previous = state[:targets][property]
+        animation_key = [:transition, @key, property]
+        if previous != value
+          from = cx.animator.value(animation_key, previous)
+          if Animation.interpolatable?(from, value)
+            cx.animator.animate(animation_key, from: from, to: value,
+              duration: @transition.duration, easing: @transition.easing)
+          else
+            cx.animator.cancel(animation_key)
+          end
+          state[:targets][property] = value
+        end
+        values[property] = cx.animator.value(animation_key, value)
+      end
+      values.empty? ? target : target.merge(**values)
+    end
+
+    def prepare_child_animations(cx)
+      keyed = @children.filter_map { |child| [child.identity_key, child] if child.respond_to?(:identity_key) && child.identity_key }
+      return if keyed.empty? && !@key && !@child_animation_state
+      identity = @key || object_id
+      state = cx.state([:children, identity]) { {previous: {}, departing: {}, initialized: false} }
+      @child_animation_state = state
+      current = keyed.to_h
+      duration = cx.theme.motion.duration_base
+      keyed.each do |key, child|
+        enter_key, move_key = [:enter, identity, key], [:move, identity, key]
+        if (departure = state[:departing].delete(key))
+          cx.animator.cancel([:exit, identity, key])
+          state[:previous][key] = departure.values_at(:child, :bounds)
+        end
+        previous = state[:previous][key]
+        if previous
+          old_bounds, new_bounds = previous.last, child.layout_node.bounds
+          if old_bounds.x != new_bounds.x || old_bounds.y != new_bounds.y
+            cx.animator.animate(move_key, from: 0.0, to: 1.0, duration: duration, easing: :ease_out)
+          end
+          progress = cx.animator.value(move_key, 1.0)
+          if progress < 1
+            child.paint_style(transform: Transform.translate((old_bounds.x - new_bounds.x) * (1 - progress), (old_bounds.y - new_bounds.y) * (1 - progress)))
+          end
+        elsif state[:initialized]
+          cx.animator.animate(enter_key, from: 0.0, to: 1.0, duration: duration, easing: :ease_out)
+          child.paint_style(opacity: cx.animator.value(enter_key, 1.0))
+        end
+      end
+      (state[:previous].keys - current.keys).each do |key|
+        child, old_bounds = state[:previous][key]
+        exit_key = [:exit, identity, key]
+        state[:departing][key] = {child: child, bounds: old_bounds}
+        cx.animator.animate(exit_key, from: 1.0, to: 0.0, duration: duration, easing: :ease_in) do
+          state[:departing].delete(key)
+        end
+      end
+      state[:previous] = keyed.to_h { |key, child| [key, [child, child.layout_node.bounds]] }
+      state[:initialized] = true
+      @departing_children = state[:departing].map do |key, departure|
+        [departure[:child], departure[:bounds], cx.animator.value([:exit, identity, key], 0.0)]
+      end
     end
   end
 end

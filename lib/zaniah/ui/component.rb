@@ -14,6 +14,8 @@ module Zaniah
 
       def build(_cx) = raise NotImplementedError
       def key(value) = (@key = value; self)
+      def identity_key = @key
+      def paint_style(**properties) = (@root.paint_style(**properties); self)
       def test_id(value = (getter = true)) = getter ? @test_id : (@test_id = value.to_s.freeze; self)
       def style(**properties) = (@component_style.merge!(properties); self)
       def accessibility_node(_cx) = nil

@@ -124,7 +124,7 @@ module Zaniah
         end
         def run
           until closed?
-            App.instance.poll(wait: dirty? ? 0 : 0.05)
+            App.instance.poll(wait: dirty? || animation_active? ? 0 : 0.05)
             tick(poll_events: false)
           end
         end
@@ -243,6 +243,12 @@ module Zaniah
         def appearance
           name = O.text(O.send(O.send(@view, "effectiveAppearance"), "name"))
           name.include?("Dark") ? :dark : :light
+        end
+        def reduced_motion?
+          workspace = O.send(O.klass("NSWorkspace"), "sharedWorkspace")
+          selector = O.selector("accessibilityDisplayShouldReduceMotion")
+          return false if O.send(workspace, "respondsToSelector:", selector, args: [:pointer], result: :bool).zero?
+          O.send(workspace, "accessibilityDisplayShouldReduceMotion", result: :bool) != 0
         end
         def on_appearance(&block) = @on_appearance = block
         def appearance_changed

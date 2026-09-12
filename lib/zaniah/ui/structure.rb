@@ -73,10 +73,23 @@ module Zaniah
       def open(value = true) = (@open = !!value; self)
 
       def build(cx)
+        identity = @key || object_id
+        state = cx.state([:collapsible, identity]) { {open: @open, visible: @open} }
+        if state[:open] != @open
+          state[:visible] = true if @open
+          cx.animator.animate([:collapsible, identity], from: cx.animator.value([:collapsible, identity], @open ? 0.0 : 1.0),
+            to: @open ? 1.0 : 0.0, duration: cx.theme.motion.duration_base, easing: @open ? :ease_out : :ease_in) do
+            state[:visible] = false unless @open
+            cx.window.request_frame
+          end
+          state[:open] = @open
+        end
+        progress = cx.animator.value([:collapsible, identity], @open ? 1.0 : 0.0)
+        content = Div.new.key([identity, :content]).overflow_hidden.paint_style(opacity: progress).child(@content) if @content && state[:visible]
         Div.new.gap(cx.theme.spacing[1])
           .child(Button.new("#{@open ? "▾" : "▸"} #{@label}", variant: :ghost).w_full
             .on_click { |event, context| toggle(event, context) })
-          .child(@content && @open ? @content : nil)
+          .child(content)
       end
 
       def tui_cells(*) = "#{@open ? "[-]" : "[+]"} #{@label}#{@open ? "\n#{content_text}" : ""}"
@@ -102,7 +115,7 @@ module Zaniah
 
       def build(cx)
         Div.new.gap(1).children(@items.map.with_index do |(label, content), index|
-          Collapsible.new(label, content, open: @open.include?(index)).on_change do |opened, _event, context|
+          Collapsible.new(label, content, open: @open.include?(index)).key([@key || object_id, index]).on_change do |opened, _event, context|
             if @multiple
               opened ? @open << index : @open.delete(index)
             else

@@ -16,7 +16,8 @@ module Zaniah
       @viewport, @visible_range = 0.0, 0...0
       style(overflow: :hidden)
       on_scroll_wheel do |event, cx|
-        @scroll_state.scroll_by(event.delta.y)
+        @scroll_state.glide_by(event.delta.y, animator: cx.animator, key: [:scroll, object_id],
+          duration: cx.theme.motion.reduced? ? 0 : cx.theme.motion.duration_slow)
         cx.window.request_frame
       end
     end
@@ -53,6 +54,11 @@ module Zaniah
 
     def request_layout(cx)
       @state = cx.state(@key, &@state_initializer) if @key && @state_initializer
+      if cx.respond_to?(:animator)
+        @scroll_state.animation(animator: cx.animator, key: [:scroll, object_id],
+          duration: cx.theme.motion.reduced? ? 0 : cx.theme.motion.duration_slow)
+      end
+      @scroll_state.sample_glide
       @viewport = dimension(:height, cx.window.content_size.height)
       width = dimension(:width, cx.window.content_size.width)
       @scroll_state.update(content_size: Size.new(width, total_height), viewport_size: Size.new(width, @viewport))

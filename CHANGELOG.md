@@ -6,6 +6,7 @@
 - Add Grid, ScrollView/ScrollState, spatial focus navigation, and modern scene primitives.
 - Add paragraph layout, Japanese kinsoku, selection, Unicode-safe editing, and IME composition.
 - Add the opt-in `zaniah/ui` component library with keyboard, TUI, and accessibility contracts.
+- Add clock-driven animation, keyed transitions, inertial scrolling, and reduced-motion support.
 
 ## 0.2.0 — 2026-09-11
 

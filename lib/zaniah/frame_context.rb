@@ -12,5 +12,6 @@ module Zaniah
 
     def state(key, &initial) = @window.element_state(key, &initial)
     def theme = @window.app&.global(:theme) || Theme.dark
+    def animator = @window.animator
   end
 end

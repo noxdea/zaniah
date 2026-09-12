@@ -23,7 +23,7 @@ module Zaniah
             @input.raw do
               until closed?
                 tick
-                if IO.select([@input], nil, nil, 0.05)
+                if IO.select([@input], nil, nil, animation_active? ? 0 : 0.05)
                   data = @input.readpartial(4096)
                   feed_input(data)
                 else

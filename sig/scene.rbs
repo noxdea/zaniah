@@ -49,6 +49,7 @@ module Zaniah
     def current_clip: () -> Bounds?
     def layer: [T] (Numeric order) { () -> T } -> T
     def push_transform: [T] (Transform transform) { () -> T } -> T
+    def push_opacity: [T] (Numeric opacity) { () -> T } -> T
     def each_command: () { (primitive, Integer, Bounds?) -> void } -> void
                     | () -> Enumerator[[primitive, Integer, Bounds?], void]
   end

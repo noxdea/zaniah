@@ -229,7 +229,19 @@ module Zaniah
       offset = @selection.head + (@buffer.composition&.selection&.first || 0)
       point = point_at(offset)
       height = @paragraph ? @paragraph.lines.first.height : [@font_size * 1.4, @line ? @line.ascent + @line.descent : 0].max
-      cx.scene.layer(Scene::LAYER_FOCUS_RING) { cx.scene.quad(bounds.x + point.x, bounds.y + point.y, 1, height, color: @resolved_style[:text_color] || @color) }
+      opacity = 1.0
+      unless cx.theme.motion.reduced?
+        animation_key = [:caret, object_id]
+        unless cx.animator.animating?(animation_key)
+          from = cx.animator.value(animation_key, 1.0)
+          cx.animator.animate(animation_key, from: from, to: from > 0.5 ? 0.0 : 1.0, duration: 0.5, easing: :linear)
+        end
+        opacity = cx.animator.value(animation_key, 1.0)
+      end
+      cx.scene.layer(Scene::LAYER_FOCUS_RING) do
+        cx.scene.quad(bounds.x + point.x, bounds.y + point.y, 1, height,
+          color: @resolved_style[:text_color] || @color, opacity: opacity)
+      end
       cx.window.ime_state = Bounds.new(bounds.x + point.x, bounds.y + point.y, 1, height)
     end
 

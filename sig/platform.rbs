@@ -6,6 +6,7 @@ module Zaniah
     type native_window = Mac::Window | Linux::Window | Linux::WaylandWindow | Windows::Window
     module Appearance
       def appearance: () -> (:light | :dark)
+      def reduced_motion?: () -> bool
       def on_appearance: () ?{ (:light | :dark) -> void } -> void
     end
     class Display < Data
@@ -58,6 +59,8 @@ module Zaniah
         attr_reader text_runs: Array[text_run]
         attr_reader pointer_position: Point?
         attr_reader cursor_style: cursor
+        attr_reader animator: Animator
+        attr_reader clock: clock
         attr_accessor text_system: TextSystem::_System?
         attr_accessor ime_state: Bounds?
         attr_accessor title: String
@@ -72,6 +75,7 @@ module Zaniah
         def draw: () { (Window) -> (_Renderable | Scene | nil) } -> void
         def request_frame: () -> bool
         def dirty?: () -> bool
+        def animation_active?: () -> bool
         def closed?: () -> bool
         def pointer_down?: () -> bool
         def set_cursor: (cursor style) -> cursor

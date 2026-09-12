@@ -108,9 +108,9 @@ module Zaniah
       window = Platform.open_window(**options)
       window.app = self
       @windows << window
-      @globals[:theme] = Theme.for(window.appearance)
+      @globals[:theme] = platform_theme(window)
       window.on_appearance do |appearance|
-        @globals[:theme] = Theme.for(appearance)
+        @globals[:theme] = platform_theme(window, appearance)
         @windows.each(&:request_frame)
       end
       window.draw(&render) if render
@@ -121,7 +121,7 @@ module Zaniah
       until @windows.empty? || @windows.all?(&:closed?)
         @executor.drain
         @windows.reject(&:closed?).each(&:tick)
-        @executor.wait(0.05) unless @windows.any?(&:dirty?)
+        @executor.wait(0.05) unless @windows.any? { |window| window.dirty? || window.animation_active? }
       end
     ensure
       @executor.shutdown
@@ -130,6 +130,11 @@ module Zaniah
     def alive?(entity) = @generations[entity.id] == entity.generation && !@free.include?(entity.id) && entity.id < @slots.length
 
     private
+
+    def platform_theme(window, appearance = window.appearance)
+      theme = Theme.for(appearance)
+      window.reduced_motion? ? theme.with(motion: theme.motion.with(reduced: true)) : theme
+    end
 
     def validate(entity)
       raise Error, "entity has been released" unless alive?(entity)

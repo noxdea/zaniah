@@ -37,17 +37,32 @@ module Zaniah
     class OverlayComponent < Component
       def initialize(open: true, modal: false)
         super()
-        @open, @modal = !!open, !!modal
+        @open, @visible, @modal = !!open, !!open, !!modal
+        @entered = !@open
         @focus_scope = Input::FocusHandle.new(owner: self, focusable: false)
       end
 
       def focus_handle = @focus_scope
       def open? = @open
-      def open(value = true) = (@open = !!value; self)
+      def visible? = @visible
+      def open(value = true)
+        value = !!value
+        return self if value == @open
+        @open = value
+        if value
+          @visible, @entered = true, false
+          @cx&.window&.request_frame
+        else
+          @cx ? animate_close(@cx) : @visible = false
+        end
+        self
+      end
       def close = open(false)
       def on_close(&block) = (@on_close = block; self)
 
       def request_layout(cx)
+        @cx = cx
+        animate_open(cx) if @open && @visible && !@entered
         @focus_scope.children.dup.each { |child| child.parent = nil }
         super
       end
@@ -71,6 +86,11 @@ module Zaniah
         end
       end
 
+      def paint(bounds, state, prepaint, cx)
+        @root.paint_style(opacity: cx.animator.value(visibility_key, @open ? 1.0 : 0.0)) if @visible
+        super
+      end
+
       protected
 
       def dismiss(event = nil, cx = nil)
@@ -80,11 +100,29 @@ module Zaniah
         cx&.dispatcher&.focus_tree&.release_trap(@focus_scope)
         cx&.dispatcher&.focus(@return_focus) if @return_focus&.focusable
         @trapped = false
+        animate_close(cx) if cx
+        @visible = false unless cx
         cx&.window&.request_frame
         true
       end
 
       def viewport(cx) = Bounds.new(0, 0, cx.window.content_size.width, cx.window.content_size.height)
+
+      def visibility_key = [:overlay, object_id]
+
+      def animate_open(cx)
+        @entered = true
+        cx.animator.animate(visibility_key, from: 0.0, to: 1.0,
+          duration: cx.theme.motion.duration_base, easing: :ease_out)
+      end
+
+      def animate_close(cx)
+        cx.animator.animate(visibility_key, from: cx.animator.value(visibility_key, 1.0), to: 0.0,
+          duration: cx.theme.motion.duration_base, easing: :ease_in) do
+          @visible = false
+          cx.window.request_frame
+        end
+      end
     end
 
     class Popover < OverlayComponent
@@ -94,7 +132,7 @@ module Zaniah
       end
 
       def build(cx)
-        return Div.new.style(display: :none) unless @open
+        return Div.new.style(display: :none) unless @visible
         box = Placement.place(@anchor, @panel_size, viewport(cx), side: @side)
         panel = Anchored.new(anchor: Point.new(box.x, box.y)).w(box.width).h(box.height)
           .p(cx.theme.spacing[3]).bg(cx.theme.colors.surface).border(1)
@@ -133,7 +171,7 @@ module Zaniah
       end
 
       def build(cx)
-        return Div.new.style(display: :none) unless @open
+        return Div.new.style(display: :none) unless @visible
         @cx = cx
         width = [@items.map { |item| item[:label].length * 8 + 24 }.max || 80, cx.window.content_size.width].min
         height = [@items.length * 26 + 8, cx.window.content_size.height].min

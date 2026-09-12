@@ -15,6 +15,7 @@ module Zaniah
     def initialize: (Platform::Headless::Window window) -> void
     def state: [T] (Object key) { () -> T } -> T
     def theme: () -> Theme
+    def animator: () -> Animator
   end
 
   class Element
@@ -29,6 +30,9 @@ module Zaniah
                 | (Array[_Renderable?] elements) -> self
     def style: (**Layout::style_value properties) -> self
     def key: (Object value) -> self
+    def identity_key: () -> Object?
+    def paint_style: (**Layout::style_value properties) -> self
+    def transition: (*Symbol properties, duration: Numeric, ?easing: Symbol | ^(Numeric) -> Numeric) -> self
     def test_id: () -> String?
                | (String value) -> self
     def handlers: () -> Array[Symbol]
@@ -122,11 +126,15 @@ module Zaniah
     attr_reader content_size: Size
     attr_reader viewport_size: Size
     attr_reader axis: :vertical | :horizontal | :both
-    def initialize: (?axis: :vertical | :horizontal | :both) -> void
+    attr_reader revision: Integer
+    def initialize: (?axis: :vertical | :horizontal | :both, ?inertia: bool) -> void
     def update: (content_size: Size | [Numeric, Numeric], viewport_size: Size | [Numeric, Numeric]) -> Point
     def offset=: (Point | Numeric value) -> (Point | Numeric)
     def scroll_by: (Point | Numeric delta) -> (Point | Numeric)
     def scroll_to: (Point | Numeric position, ?animate: bool) -> (Point | Numeric)
+    def animation: (animator: Animator, key: Object, duration: Numeric) -> self
+    def glide_by: (Point | Numeric delta, animator: Animator, key: Object, ?duration: Numeric) -> void
+    def sample_glide: () -> Point
     def preserve_anchor: (Numeric delta) -> (Point | Numeric)
     def at_top?: () -> bool
     def at_bottom?: () -> bool
@@ -143,6 +151,7 @@ module Zaniah
     def initialize: (?axis: :vertical | :horizontal | :both, ?scrollbar: :overlay | :always | :hidden) -> void
     def request_layout: (FrameContext context) -> Layout::Node
     def prepaint: (Bounds bounds, Object? state, FrameContext context) -> void
+    def paint: (Bounds bounds, Object? state, Object? prepaint, FrameContext context) -> void
     def scroll_to: (Bounds | Point | Numeric target, ?align: :start | :center | :end | :nearest, ?animate: bool) -> self
   end
 

@@ -11,6 +11,7 @@ module Zaniah
         style(**(axis == :vertical ? {width: 8} : {height: 8}), display: mode == :hidden ? :none : :flex)
         on_mouse_down { |event, cx| start_drag(event, cx) }
         on_drag { |event, cx| drag(event, cx) }
+        on_mouse_up { @drag_offset = nil }
       end
 
       def prepaint(bounds, state, cx)
@@ -20,10 +21,24 @@ module Zaniah
 
       def paint(bounds, _state, _prepaint, cx)
         return if maximum.zero?
+        flags = cx.interactivity.for(self)
+        animation_key = [:scrollbar, object_id]
+        active = flags.include?(:hover) || @drag_offset
+        if @mode == :always || active
+          cx.animator.animate(animation_key, from: cx.animator.value(animation_key, 0.0), to: 1.0,
+            duration: cx.theme.motion.duration_fast, easing: :ease_out) unless cx.animator.value(animation_key, 0.0) == 1.0
+        elsif @last_revision != @scroll_state.revision
+          cx.animator.animate(animation_key, from: 1.0, to: 0.0,
+            duration: cx.theme.motion.duration_slow, easing: :ease_in)
+        end
+        @last_revision = @scroll_state.revision
+        opacity = @mode == :always ? 1.0 : cx.animator.value(animation_key, 0.0)
         start, length = thumb(bounds)
-        cx.scene.quad(bounds.x, bounds.y, bounds.width, bounds.height, color: "#0003", radius: 4)
-        x, y, width, height = @axis == :vertical ? [bounds.x, start, bounds.width, length] : [start, bounds.y, length, bounds.height]
-        cx.scene.quad(x, y, width, height, color: "#8997aa", radius: 4)
+        cx.scene.push_opacity(opacity) do
+          cx.scene.quad(bounds.x, bounds.y, bounds.width, bounds.height, color: "#0003", radius: 4)
+          x, y, width, height = @axis == :vertical ? [bounds.x, start, bounds.width, length] : [start, bounds.y, length, bounds.height]
+          cx.scene.quad(x, y, width, height, color: "#8997aa", radius: 4)
+        end
       end
 
       private

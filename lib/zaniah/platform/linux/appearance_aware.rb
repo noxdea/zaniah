@@ -17,6 +17,14 @@ module Zaniah
           ENV.fetch("GTK_THEME", "").downcase.include?("dark") ? :dark : :light
         end
 
+        def reduced_motion?
+          return @reduced_motion if instance_variable_defined?(:@reduced_motion)
+          output, status = Open3.capture2e("gsettings", "get", "org.gnome.desktop.interface", "enable-animations")
+          @reduced_motion = status.success? && output.strip == "false"
+        rescue Errno::ENOENT
+          @reduced_motion = false
+        end
+
         def on_appearance(&block)
           @on_appearance = block
           close_appearance

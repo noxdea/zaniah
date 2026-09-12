@@ -10,7 +10,7 @@ module Zaniah
       end
 
       def build(cx)
-        return Div.new.style(display: :none) unless @open
+        return Div.new.style(display: :none) unless @visible
         @cx = cx
         panel = Div.new.w(@panel_width).max_h(percent(90)).p(cx.theme.spacing[4]).gap(cx.theme.spacing[3])
           .bg(cx.theme.colors.surface).border(1).border_color(cx.theme.colors.border)
@@ -41,7 +41,7 @@ module Zaniah
       end
 
       def build(cx)
-        return Div.new.style(display: :none) unless @open
+        return Div.new.style(display: :none) unless @visible
         @cx = cx
         panel = Div.new.w(@panel_width).h_full.p(cx.theme.spacing[4]).gap(cx.theme.spacing[3])
           .bg(cx.theme.colors.surface).style(position: :absolute, top: 0, @side => 0, z_index: Scene::LAYER_MODAL)

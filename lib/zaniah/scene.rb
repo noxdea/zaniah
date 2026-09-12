@@ -19,7 +19,7 @@ module Zaniah
     def initialize
       @quads, @sprites, @sprite_transforms, @paths, @commands, @textures = [], [], [], [], [], []
       @sprite_batches, @expanded_batches = [], {}
-      @clips, @layers, @transforms = [], [LAYER_CONTENT], [Transform.identity]
+      @clips, @layers, @transforms, @opacities = [], [LAYER_CONTENT], [Transform.identity], [1.0]
       @colors, @last_layer, @ordered = {}, -Float::INFINITY, true
     end
 
@@ -29,6 +29,7 @@ module Zaniah
       @expanded_batches.clear
       @layers.replace([LAYER_CONTENT])
       @transforms.replace([Transform.identity])
+      @opacities.replace([1.0])
       @last_layer, @ordered = -Float::INFINITY, true
       self
     end
@@ -36,7 +37,7 @@ module Zaniah
     def quad(x, y, width, height, color:, radius: 0, border_width: 0, border_color: "#0000",
       opacity: 1.0, transform: nil, border_style: :solid)
       return self if width <= 0 || height <= 0
-      opacity = Float(opacity)
+      opacity = Float(opacity) * @opacities.last
       raise ArgumentError, "opacity must be between 0 and 1" unless opacity.finite? && opacity.between?(0, 1)
       raise ArgumentError, "border style must be solid or dashed" unless %i[solid dashed].include?(border_style)
       offset = @quads.length
@@ -63,7 +64,7 @@ module Zaniah
       source ||= Bounds.new(0, 0, texture.width, texture.height)
       id = @textures.index(texture) || @textures.push(texture).length - 1
       offset = @sprites.length
-      @sprites.push(x, y, width, height, *color_values(color), id,
+      @sprites.push(x, y, width, height, *opacity_values(color, @opacities.last), id,
                     source.x, source.y, source.width, source.height)
       @sprite_transforms << @transforms.last
       command(:sprite, offset)
@@ -77,8 +78,9 @@ module Zaniah
       raise ArgumentError, "invalid packed sprite bytes" unless bytes.is_a?(String) && bytes.bytesize % SPRITE_INSTANCE_BYTES == 0
       raise ArgumentError, "packed sprites need a texture" unless texture.is_a?(GPU::Texture)
       return self if bytes.empty?
-      batch = nil unless @transforms.last == Transform.identity
+      batch = nil unless @transforms.last == Transform.identity && @opacities.last == 1
       bytes = transform_batch(bytes, @transforms.last) unless @transforms.last == Transform.identity
+      bytes = opacity_batch(bytes, @opacities.last) unless @opacities.last == 1
       @textures << texture unless @textures.include?(texture)
       offset = @sprite_batches.length
       @sprite_batches << (batch && bytes.frozen? ? batch : SpriteBatch.new(bytes.frozen? ? bytes : bytes.dup.freeze, texture))
@@ -112,7 +114,7 @@ module Zaniah
     def triangle(points, color:)
       raise ArgumentError, "three points required" unless points.length == 6
       offset = @paths.length
-      @paths.push(*points, *color_values(color), *@transforms.last.to_a)
+      @paths.push(*points, *opacity_values(color, @opacities.last), *@transforms.last.to_a)
       command(:triangle, offset)
       self
     end
@@ -178,6 +180,16 @@ module Zaniah
       @transforms.pop if pushed
     end
 
+    def push_opacity(opacity)
+      opacity = Float(opacity)
+      raise ArgumentError, "opacity must be between 0 and 1" unless opacity.finite? && opacity.between?(0, 1)
+      @opacities << @opacities.last * opacity
+      pushed = true
+      yield
+    ensure
+      @opacities.pop if pushed
+    end
+
     def each_command
       return enum_for(__method__) unless block_given?
       if @ordered
@@ -224,6 +236,12 @@ module Zaniah
         matrix = parent.compose(Transform.new(*values.slice(offset + 32, 6)))
         values[offset + 32, 6] = matrix.to_a
       end
+      values.pack("f*").freeze
+    end
+
+    def opacity_batch(bytes, opacity)
+      values = bytes.unpack("f*")
+      (0...values.length).step(40) { |offset| values[offset + 7] *= opacity }
       values.pack("f*").freeze
     end
 

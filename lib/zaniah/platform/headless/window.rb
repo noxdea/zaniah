@@ -9,7 +9,7 @@ module Zaniah
         include Appearance
         DEFAULT_CLEAR = "#181b20"
 
-        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style
+        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style, :animator, :clock
         attr_accessor :text_system, :ime_state, :title, :app
 
         def initialize(width: 800, height: 600, title: "Zaniah UI", scale_factor: 1,
@@ -19,6 +19,7 @@ module Zaniah
           @device = GPU::Software.new(width, height)
           @dispatcher = Input::Dispatcher.new(keymap: keymap || Input::Keymap.default_ui(clock: clock))
           @clock = clock
+          @animator = Animator.new(clock: clock)
           @state, @used_state, @text_runs = {}, {}, []
           @dirty, @closed, @pointer_down, @cursor_style = true, false, false, :arrow
         end
@@ -32,6 +33,7 @@ module Zaniah
         def draw(&block) = @draw = block
         def request_frame = @dirty = true
         def dirty? = @dirty
+        def animation_active? = !!@animator&.active?
         def closed? = @closed
         def pointer_down? = @pointer_down
         def set_cursor(style)
@@ -118,6 +120,7 @@ module Zaniah
             @tooltip[:shown] = true
             request_frame
           end
+          request_frame if @animator&.active?
           return unless @dirty && !@closed
           @dirty = false
           result = @draw&.call(self)
@@ -126,6 +129,7 @@ module Zaniah
           elsif result.is_a?(Scene)
             @device.render(result)
           end
+          request_frame if @animator&.active?
         end
 
         def render(element, clear: DEFAULT_CLEAR, present: true)
@@ -138,6 +142,8 @@ module Zaniah
           cx = FrameContext.new(self)
           root = element.request_layout(cx)
           Layout::Engine.new.compute(root, width: @content_size.width, height: @content_size.height)
+          @animator.reduced_motion = cx.theme.motion.reduced?
+          @animator.sample(@clock.call)
           element.prepaint(root.bounds, nil, cx)
           cx.interactivity.resolve(@dispatcher, @pointer_position, @pointer_down)
           set_cursor(:arrow)

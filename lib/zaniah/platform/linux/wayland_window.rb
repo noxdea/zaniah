@@ -140,7 +140,7 @@ module Zaniah
         end
         def run
           until closed?
-            @connection.poll(timeout: dirty? ? 0 : 0.05)
+            @connection.poll(timeout: dirty? || animation_active? ? 0 : 0.05)
             tick
           end
         end

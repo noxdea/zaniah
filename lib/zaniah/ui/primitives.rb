@@ -160,7 +160,19 @@ module Zaniah
         @width, @height = width, height
       end
 
-      def build(cx) = Div.new.w(@width).h(@height).bg(cx.theme.colors.surface_hover).rounded(cx.theme.radii[:sm])
+      def build(cx)
+        opacity = 1.0
+        unless cx.theme.motion.reduced?
+          animation_key = [:skeleton, object_id]
+          unless cx.animator.animating?(animation_key)
+            from = cx.animator.value(animation_key, 0.45)
+            cx.animator.animate(animation_key, from: from, to: from > 0.7 ? 0.45 : 1.0,
+              duration: cx.theme.motion.duration_slow, easing: :ease_in_out)
+          end
+          opacity = cx.animator.value(animation_key, 0.45)
+        end
+        Div.new.w(@width).h(@height).bg(cx.theme.colors.surface_hover).rounded(cx.theme.radii[:sm]).paint_style(opacity: opacity)
+      end
       def tui_cells(*) = "░░░"
       def accessibility_node(_cx) = node(:progressbar, label: "Loading", states: {busy: true})
     end

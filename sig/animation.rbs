@@ -1,0 +1,54 @@
+module Zaniah
+  module Easing
+    def self.linear: () -> ^(Numeric) -> Numeric
+    def self.ease_in: () -> ^(Numeric) -> Numeric
+    def self.ease_out: () -> ^(Numeric) -> Numeric
+    def self.ease_in_out: () -> ^(Numeric) -> Numeric
+    def self.resolve: (Symbol | ^(Numeric) -> Numeric value) -> ^(Numeric) -> Numeric
+    def self.cubic_bezier: (Numeric x1, Numeric y1, Numeric x2, Numeric y2) -> ^(Numeric) -> Numeric
+    def self.spring: (?stiffness: Numeric, ?damping: Numeric, ?mass: Numeric) -> Spring
+  end
+
+  class Spring
+    attr_reader stiffness: Float
+    attr_reader damping: Float
+    attr_reader mass: Float
+    attr_reader settling_duration: Float
+    def initialize: (stiffness: Numeric, damping: Numeric, ?mass: Numeric) -> void
+    def call: (Numeric progress) -> Numeric
+  end
+
+  class Animation
+    attr_reader key: Object
+    attr_reader from: Object
+    attr_reader to: Object
+    attr_reader started_at: Numeric
+    attr_reader duration: Numeric
+    attr_reader easing: ^(Numeric) -> Numeric
+    def initialize: (Object key, from: Object, to: Object, started_at: Numeric, duration: Numeric, easing: ^(Numeric) -> Numeric, ?on_complete: ^() -> void) -> void
+    def sample: (Numeric now) -> [Object, bool]
+    def complete: () -> untyped
+    def self.interpolatable?: (Object from, Object to) -> bool
+    def self.interpolate: (Object from, Object to, Numeric progress) -> Object
+  end
+
+  class Animator
+    attr_reader reduced_motion: bool
+    def initialize: (clock: clock, ?reduced_motion: bool) -> void
+    def reduced_motion=: (bool value) -> bool
+    def animate: (Object key, from: Object, to: Object, duration: Numeric, ?easing: Symbol | ^(Numeric) -> Numeric) ?{ () -> void } -> Animation
+    def spring: (Object key, to: Object, ?stiffness: Numeric, ?damping: Numeric, ?mass: Numeric, ?from: Object) ?{ () -> void } -> Animation
+    def sample: (?Numeric now) -> Hash[Object, Object]
+    def active?: () -> bool
+    def animating?: (Object key) -> bool
+    def value: (Object key, ?Object fallback) -> Object
+    def cancel: (Object key) -> Object?
+    def finish: (Object key) -> Object?
+  end
+
+  class Transition < Data
+    attr_reader properties: Array[Symbol]
+    attr_reader duration: Float
+    attr_reader easing: Symbol | ^(Numeric) -> Numeric
+  end
+end

@@ -14,6 +14,8 @@ module Zaniah
       def initialize: () -> void
       def build: (FrameContext context) -> _Renderable
       def key: (Object value) -> self
+      def identity_key: () -> Object?
+      def paint_style: (**Layout::style_value properties) -> self
       def test_id: () -> String?
                  | (String value) -> self
       def style: (**Layout::style_value properties) -> self
@@ -133,6 +135,7 @@ module Zaniah
     class OverlayComponent < Component
       def initialize: (?open: bool, ?modal: bool) -> void
       def open?: () -> bool
+      def visible?: () -> bool
       def open: (?bool value) -> self
       def close: () -> self
       def on_close: () { (untyped, FrameContext?) -> void } -> self

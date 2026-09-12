@@ -116,7 +116,7 @@ module Zaniah
           io = IO.for_fd(fd, autoclose: false)
           until closed?
             tick
-            IO.select([io], nil, nil, 0.05) unless dirty? || closed?
+            IO.select([io], nil, nil, 0.05) unless dirty? || animation_active? || closed?
           end
         end
         def poll_events

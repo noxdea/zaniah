@@ -32,7 +32,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L0 | `Card` | `(*children)`, `child` | theme surface | group |
 | L0 | `Badge` | `(text, variant:)` | neutral/accent/success/warning/danger | text |
 | L0 | `Avatar` | `(name, image:, size:)` | initials or PNG | image |
-| L0 | `Skeleton` | `(width:, height:)` | static until M7 animation | progressbar/busy |
+| L0 | `Skeleton` | `(width:, height:)` | pulsing loading placeholder | progressbar/busy |
 | L0 | `EmptyState` | `(title, message:, icon:, action:)` | compositional | group |
 | L1 | `Button` | `(label, size:, variant:)`; `disabled`, `loading`, `icon`, `on_click` | sm/md/lg × primary/secondary/ghost/danger | button |
 | L1 | `IconButton` | `(icon, label:, ...)` | Button variants | button |
@@ -45,7 +45,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L1 | `Slider` | `(value:, min:, max:, step:, label:)`; `on_change` | pointer + arrow/Home/End/Page keys | slider |
 | L1 | `RangeSlider` | `(value: [low, high], ...)` | two thumbs | slider |
 | L1 | `ProgressBar` | `(value:, min:, max:, label:)` | determinate/indeterminate | progressbar |
-| L1 | `Spinner` | `(label:, size:)` | static until M7 animation | progressbar/busy |
+| L1 | `Spinner` | `(label:, size:)` | animated loading indicator | progressbar/busy |
 | L1 | `Meter` | `(value:, low:, high:, optimum:)` | thresholds | meter |
 | L2 | `Tooltip` | `(text, anchor:, side:, open:)` | top/bottom/left/right | tooltip |
 | L2 | `Popover` | `(content, anchor:, side:, width:, height:, open:, modal:)` | flipped and viewport-clamped | group |

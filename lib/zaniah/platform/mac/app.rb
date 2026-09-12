@@ -57,7 +57,7 @@ module Zaniah
         def run
           yield self if block_given?
           until WINDOWS.values.uniq.all?(&:closed?)
-            poll(wait: WINDOWS.values.any?(&:dirty?) ? 0 : 0.05)
+            poll(wait: WINDOWS.values.any? { |window| window.dirty? || window.animation_active? } ? 0 : 0.05)
             WINDOWS.values.uniq.each { |window| window.tick(poll_events: false) }
           end
         end

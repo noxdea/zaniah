@@ -400,7 +400,19 @@ module Zaniah
         @label, @size = label.to_s, size
       end
 
-      def build(cx) = Text.new("◌", size: @size, color: cx.theme.colors.accent)
+      def build(cx)
+        angle = 0.0
+        unless cx.theme.motion.reduced?
+          animation_key = [:spinner, object_id]
+          unless cx.animator.animating?(animation_key)
+            from = cx.animator.value(animation_key, 0.0) % 360
+            cx.animator.animate(animation_key, from: from, to: from + 360,
+              duration: 0.9, easing: :linear)
+          end
+          angle = cx.animator.value(animation_key, 0.0)
+        end
+        Text.new(%w[◴ ◷ ◶ ◵][(angle / 90).floor % 4], size: @size, color: cx.theme.colors.accent)
+      end
       def tui_cells(*) = "◌ #{@label}"
       def accessibility_node(_cx) = node(:progressbar, label: @label, states: {busy: true})
     end
