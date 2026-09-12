@@ -45,6 +45,7 @@ module Zaniah
     def flush_effects: () -> void
     def open_window: (?backend: Platform::backend, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?input: IO, ?output: IO, ?gpu: :metal | :opengl | :gl, ?display_server: :auto | :x11 | :wayland, ?keymap: Input::Keymap?, ?clock: clock) ?{ (Platform::Headless::Window) -> (Element | Scene | nil) } -> Platform::Headless::Window
     def run: () -> void
+    def hot_reload: (String | Array[String] paths, **untyped options) ?{ (Array[String]) -> void } -> DevTools::HotReload
   end
 
   # Task is the framework's cancellable future, shared by both executor queues.

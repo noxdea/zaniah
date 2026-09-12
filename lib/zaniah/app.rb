@@ -119,12 +119,21 @@ module Zaniah
 
     def run
       until @windows.empty? || @windows.all?(&:closed?)
+        @hot_reloads&.each(&:poll)
         @executor.drain
         @windows.reject(&:closed?).each(&:tick)
         @executor.wait(0.05) unless @windows.any? { |window| window.dirty? || window.animation_active? }
       end
     ensure
+      @hot_reloads&.each(&:close)
       @executor.shutdown
+    end
+
+    def hot_reload(paths, **options, &block)
+      require_relative "devtools"
+      reload = DevTools::HotReload.new(self, paths, **options, &block)
+      (@hot_reloads ||= []) << reload
+      reload
     end
 
     def alive?(entity) = @generations[entity.id] == entity.generation && !@free.include?(entity.id) && entity.id < @slots.length

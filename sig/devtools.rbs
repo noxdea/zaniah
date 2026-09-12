@@ -1,0 +1,37 @@
+module Zaniah
+  module DevTools
+    class Entry < Data
+      attr_reader object: _Renderable
+      attr_reader name: String
+      attr_reader key: Object?
+      attr_reader test_id: String?
+      attr_reader bounds: Bounds?
+      attr_reader style: Hash[Symbol, Layout::style_value]
+      attr_reader children: Array[Entry]
+    end
+
+    class Inspector
+      attr_reader window: Platform::Headless::Window
+      attr_reader snapshot: Entry?
+      attr_reader selected: Entry?
+      def initialize: (Platform::Headless::Window window, ?visible: bool, ?stats: bool) -> void
+      def visible?: () -> bool
+      def toggle: () -> self
+      def handle_input: (Input::event event) -> bool
+      def frame: (_Renderable element) -> void
+    end
+
+    class StatsOverlay
+      def paint: (Platform::Headless::Window window, x: Numeric, y: Numeric) -> void
+    end
+
+    class HotReload
+      attr_reader error: Exception?
+      def initialize: (App app, String | Array[String] paths, ?watcher: Platform::_Watcher?, ?loader: Proc?) ?{ (Array[String]) -> void } -> void
+      def poll: () -> Array[String]
+      def close: () -> void
+    end
+
+    def self.attach: (Platform::Headless::Window window, **untyped options) -> Inspector
+  end
+end

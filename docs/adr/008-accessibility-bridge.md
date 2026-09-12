@@ -1,6 +1,6 @@
 # ADR 008: Separate the accessibility tree from OS bridges
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-12
 - Decision deadline: before M8 implementation
 
@@ -14,4 +14,6 @@ Build a backend-neutral accessibility tree first. Add Fiddle-based adapters for 
 
 ## Consequences
 
-Semantics can be tested headlessly and native adapters can ship independently. Each adapter still requires platform-specific integration tests.
+Semantics and diffs are tested headlessly. Native adapters publish layout-change
+notifications through NSAccessibility, Windows accessibility events, and AT-SPI's
+D-Bus event namespace while retaining the same backend-neutral tree for queries.

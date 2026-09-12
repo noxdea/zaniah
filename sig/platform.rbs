@@ -61,10 +61,14 @@ module Zaniah
         attr_reader cursor_style: cursor
         attr_reader animator: Animator
         attr_reader clock: clock
+        attr_reader accessibility_tree: Accessibility::Tree
+        attr_reader accessibility_revision: Integer
+        attr_reader frame_stats: Hash[Symbol, Numeric]
         attr_accessor text_system: TextSystem::_System?
         attr_accessor ime_state: Bounds?
         attr_accessor title: String
         attr_accessor app: App?
+        attr_accessor devtools: DevTools::Inspector?
         def initialize: (?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> void
         def on_input: () { (Input::event) -> void } -> void
         def on_resize: () { (Size) -> void } -> void
@@ -90,6 +94,7 @@ module Zaniah
         def tick: () -> void
         def render: (_Renderable element, ?clear: color, ?present: bool) -> void
         def element_state: [T] (Object key) { () -> T } -> T
+        def accessibility_changed: (Accessibility::Node? root, Array[Accessibility::Change] changes) -> void
         def write_png: (String path) -> Integer
       end
     end

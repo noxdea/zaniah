@@ -9,8 +9,8 @@ module Zaniah
         include Appearance
         DEFAULT_CLEAR = "#181b20"
 
-        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style, :animator, :clock
-        attr_accessor :text_system, :ime_state, :title, :app
+        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style, :animator, :clock, :accessibility_tree, :accessibility_revision, :frame_stats
+        attr_accessor :text_system, :ime_state, :title, :app, :devtools
 
         def initialize(width: 800, height: 600, title: "Zaniah UI", scale_factor: 1,
                        keymap: nil, clock: MONOTONIC_CLOCK)
@@ -20,6 +20,8 @@ module Zaniah
           @dispatcher = Input::Dispatcher.new(keymap: keymap || Input::Keymap.default_ui(clock: clock))
           @clock = clock
           @animator = Animator.new(clock: clock)
+          @accessibility_tree, @accessibility_revision = Accessibility::Tree.new, 0
+          @frame_stats = {fps: 0.0, frame_ms: 0.0, layout_ms: 0.0, prepaint_ms: 0.0, paint_ms: 0.0, command_count: 0}.freeze
           @state, @used_state, @text_runs = {}, {}, []
           @dirty, @closed, @pointer_down, @cursor_style = true, false, false, :arrow
         end
@@ -74,6 +76,7 @@ module Zaniah
           @tooltip_offered = false if event.is_a?(Input::MouseMove)
           @tooltip = nil if event.is_a?(Input::MouseDown) || event.is_a?(Input::KeyDown)
           @on_input&.call(event)
+          @devtools&.handle_input(event)
           if event.respond_to?(:position)
             @dispatcher.mouse(event)
           elsif event.is_a?(Input::KeyDown)
@@ -133,6 +136,7 @@ module Zaniah
         end
 
         def render(element, clear: DEFAULT_CLEAR, present: true)
+          frame_started = MONOTONIC_CLOCK.call
           @text_system.scale_factor = @scale_factor if @text_system.respond_to?(:scale_factor=)
           @scene.clear
           @text_runs.clear
@@ -140,16 +144,31 @@ module Zaniah
           @used_state.clear
           @dispatcher.clear_hits
           cx = FrameContext.new(self)
+          layout_started = MONOTONIC_CLOCK.call
           root = element.request_layout(cx)
           Layout::Engine.new.compute(root, width: @content_size.width, height: @content_size.height)
+          layout_finished = MONOTONIC_CLOCK.call
           @animator.reduced_motion = cx.theme.motion.reduced?
           @animator.sample(@clock.call)
           element.prepaint(root.bounds, nil, cx)
           cx.interactivity.resolve(@dispatcher, @pointer_position, @pointer_down)
+          prepaint_finished = MONOTONIC_CLOCK.call
           set_cursor(:arrow)
           element.paint(root.bounds, nil, nil, cx)
           paint_popups
+          paint_finished = MONOTONIC_CLOCK.call
+          overlays = [@popup_component].compact
+          accessibility_changed(@accessibility_tree.root, @accessibility_tree.changes) if @accessibility_tree.update(element, cx, overlays: overlays)
           @state.delete_if { |key, _| !@used_state[key] }
+          elapsed = frame_started - (@last_frame_at || frame_started)
+          fps = elapsed.positive? ? 1.0 / elapsed : 0.0
+          @smoothed_fps = @smoothed_fps ? @smoothed_fps * 0.9 + fps * 0.1 : fps
+          @last_frame_at = frame_started
+          @frame_stats = {fps: @smoothed_fps, frame_ms: (paint_finished - frame_started) * 1000,
+            layout_ms: (layout_finished - layout_started) * 1000,
+            prepaint_ms: (prepaint_finished - layout_finished) * 1000,
+            paint_ms: (paint_finished - prepaint_finished) * 1000,
+            command_count: @scene.commands.length / 4}.freeze
           @on_frame&.call(element, clear)
           @device.render(@scene, clear: clear) if present
           @text_system.end_frame if @text_system.respond_to?(:end_frame)
@@ -159,6 +178,11 @@ module Zaniah
           @used_state[key] = true
           return @state[key] if @state.key?(key)
           @state[key] = yield
+        end
+
+        def accessibility_changed(root, changes)
+          @accessibility_revision += 1
+          Accessibility.publish(self, root, changes)
         end
 
         def write_png(path) = @device.write_png(path)

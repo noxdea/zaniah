@@ -12,5 +12,23 @@ module Zaniah
                   | (role: Symbol, label: String?, value: untyped, bounds: Bounds?, states: Hash[Symbol, untyped], children: Array[Node], actions: Array[Symbol]) -> Node
     end
     def self.node: (role: Symbol, ?label: String?, ?value: untyped, ?bounds: Bounds?, ?states: Hash[Symbol, untyped], ?children: Array[Node], ?actions: Array[Symbol]) -> Node
+
+    class Change < Data
+      attr_reader kind: :added | :removed | :updated
+      attr_reader path: Array[Integer]
+      attr_reader before: Node?
+      attr_reader after: Node?
+    end
+    class Tree
+      attr_reader root: Node?
+      attr_reader changes: Array[Change]
+      attr_reader revision: Integer
+      def initialize: () -> void
+      def update: (_Renderable renderable, FrameContext context, ?overlays: Array[_Renderable]) -> bool
+      def each: () { (Node, Array[Integer]) -> void } -> void
+              | () -> Enumerator[[Node, Array[Integer]], void]
+      def find: () { (Node) -> bool } -> Node?
+    end
+    def self.publish: (Platform::Headless::Window window, Node? root, Array[Change] changes) -> untyped
   end
 end
