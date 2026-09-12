@@ -45,6 +45,11 @@ module Zaniah
       def draw_quad(data, offset, clip)
         x, y, width, height, red, green, blue, alpha, top_left, top_right, bottom_right, bottom_left, border, border_red, border_green, border_blue, border_alpha = data.slice(offset, Scene::QUAD_STRIDE)
         bounds = Bounds.new(x, y, width, height).intersect(clip)
+        if border.zero? && alpha == 1 && [top_left, top_right, bottom_right, bottom_left].all?(&:zero?) &&
+            [bounds.x, bounds.y, bounds.width, bounds.height].all? { |value| value == value.to_i }
+          fill_rect(bounds, red, green, blue)
+          return
+        end
         colors = [[red, green, blue, alpha], [border_red, border_green, border_blue, border_alpha]]
         top, bottom = [bounds.y.floor, 0].max, [bounds.bottom.ceil, @height].min
         left, right = [bounds.x.floor, 0].max, [bounds.right.ceil, @width].min
@@ -67,6 +72,14 @@ module Zaniah
           end
           pixel_y += 1
         end
+      end
+
+      def fill_rect(bounds, red, green, blue)
+        left, right = [bounds.x.to_i, 0].max, [bounds.right.to_i, @width].min
+        top, bottom = [bounds.y.to_i, 0].max, [bounds.bottom.to_i, @height].min
+        return if left >= right || top >= bottom
+        row = [red, green, blue, 1].map { |value| (value.clamp(0, 1) * 255).round }.pack("C4") * (right - left)
+        (top...bottom).each { |pixel_y| @pixels[pixel_y * @width * 4 + left * 4, row.bytesize] = row }
       end
 
       def draw_sprite(scene, offset, clip)

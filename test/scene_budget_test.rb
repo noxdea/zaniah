@@ -27,4 +27,14 @@ class SceneBudgetTest < Minitest::Test
     texture.upload(0, 0, 1, 1, "\xff".b * 4)
     assert_equal before + 1, texture.revision
   end
+
+
+  def test_opaque_quad_fast_path_respects_clip
+    scene = Zaniah::Scene.new
+    scene.clip(Zaniah::Bounds.new(1, 1, 2, 1)) { scene.quad(0, 0, 4, 3, color: "#f00") }
+    pixels = Zaniah::GPU::Software.new(4, 3).render(scene)
+    assert_equal [0, 0, 0, 0], pixels.byteslice(0, 4).bytes
+    assert_equal [255, 0, 0, 255], pixels.byteslice((1 * 4 + 1) * 4, 4).bytes
+    assert_equal [0, 0, 0, 0], pixels.byteslice((2 * 4 + 1) * 4, 4).bytes
+  end
 end
