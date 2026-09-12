@@ -14,6 +14,7 @@ module Zaniah
         @width, @height = width.to_i, height.to_i
         @viewport = Bounds.new(0, 0, @width, @height)
         @pixels = "\0".b * (@width * @height * 4)
+        @gradient_cache ||= {}
       end
 
       def create_texture(width, height, **options) = Texture.new(width, height, **options)
@@ -60,6 +61,12 @@ module Zaniah
         if matrix == Transform.identity && borders.all?(&:zero?) && radii.all?(&:zero?) &&
             color[3] == 1 && secondary[3] == 1 && gradient[0] == 1 &&
             fill_axis_gradient(bounds, x, y, width, height, color, secondary, gradient)
+          return
+        end
+        if matrix == Transform.identity && borders.all?(&:zero?) && radii.all?(&:zero?) &&
+            color[3] == 1 && secondary[3] == 1 && gradient[0].positive? &&
+            [x, y, width, height].all? { |value| value == value.to_i }
+          fill_cached_gradient(bounds, x.to_i, y.to_i, width.to_i, height.to_i, color, secondary, gradient)
           return
         end
         inverse = matrix.inverse
@@ -126,6 +133,41 @@ module Zaniah
 
       def gradient_pixel(left, right, amount)
         3.times.map { |index| ((left[index] + (right[index] - left[index]) * amount).clamp(0, 1) * 255).round } << 255
+      end
+
+      def fill_cached_gradient(bounds, x, y, width, height, color, secondary, gradient)
+        return if width <= 0 || height <= 0
+        @gradient_cache.clear if @gradient_cache.length >= 256
+        key = [width, height, color, secondary, gradient]
+        tile = @gradient_cache[key] ||= gradient_tile(width, height, color, secondary, gradient)
+        left, right = [bounds.x.ceil, 0].max, [bounds.right.floor, @width].min
+        top, bottom = [bounds.y.ceil, 0].max, [bounds.bottom.floor, @height].min
+        return if left >= right || top >= bottom
+        bytes = (right - left) * 4
+        (top...bottom).each do |pixel_y|
+          source = ((pixel_y - y) * width + left - x) * 4
+          @pixels[pixel_y * @width * 4 + left * 4, bytes] = tile.byteslice(source, bytes)
+        end
+      end
+
+      def gradient_tile(width, height, left, right, gradient)
+        kind, first, scale, cosine, sine, center_x, center_y, radius = gradient
+        starts = left.first(3).map { |value| value * 255 }
+        deltas = 3.times.map { |index| (right[index] - left[index]) * 255 }
+        bytes = String.new(capacity: width * height * 4, encoding: Encoding::BINARY)
+        height.times do |pixel_y|
+          ny = (pixel_y + 0.5) / height
+          width.times do |pixel_x|
+            nx = (pixel_x + 0.5) / width
+            raw = kind == 1 ? (nx - 0.5) * cosine + (ny - 0.5) * sine + 0.5 : Math.hypot(nx - center_x, ny - center_y) / radius
+            amount = ((raw - first) * scale).clamp(0, 1)
+            bytes << (starts[0] + deltas[0] * amount).round.clamp(0, 255)
+            bytes << (starts[1] + deltas[1] * amount).round.clamp(0, 255)
+            bytes << (starts[2] + deltas[2] * amount).round.clamp(0, 255)
+            bytes << 255
+          end
+        end
+        bytes.freeze
       end
 
       def draw_sprite(scene, offset, clip)

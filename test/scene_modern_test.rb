@@ -28,6 +28,11 @@ class SceneModernTest < Minitest::Test
       color: T::Gradient.radial(stops: [[0, "#fff"], [1, "#000"]]))
     pixels = T::GPU::Software.new(9, 9).render(radial)
     assert_operator pixel(pixels, 9, 4, 4).first, :>, pixel(pixels, 9, 0, 0).first
+
+    angled = T::Scene.new.quad(0, 0, 20, 20,
+      color: T::Gradient.linear(angle: 25, stops: [[0, "#000"], [1, "#fff"]]))
+    pixels = T::GPU::Software.new(20, 20).render(angled)
+    assert_operator pixel(pixels, 20, 19, 19).first, :>, pixel(pixels, 20, 0, 0).first
   end
 
   def test_transform_applies_to_rendering_and_hit_testing
