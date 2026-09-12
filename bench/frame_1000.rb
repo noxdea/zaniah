@@ -18,4 +18,10 @@ Bench.budget("prepaint and paint for 1000 elements", 5.0) do
   element.prepaint(root.bounds, nil, context)
   element.paint(root.bounds, nil, nil, context)
 end
+
+now = 0.0
+animator = Zaniah::Animator.new(clock: -> { now })
+50.times { |index| animator.animate(index, from: 0, to: 1, duration: 1) }
+now = 0.5
+Bench.budget("sample 50 animations", 0.5) { animator.sample }
 window.close

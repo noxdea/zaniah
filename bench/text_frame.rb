@@ -3,6 +3,7 @@
 require "benchmark"
 require_relative "../lib/zaniah"
 require_relative "../lib/zaniah/gpu/instance_packing"
+require_relative "support/budget"
 
 font_path = File.expand_path("../assets/fonts/Abel-Regular.ttf", __dir__)
 database = Zaniah::TextSystem::FontDB.new(paths: [font_path])
@@ -40,4 +41,8 @@ puts "Ruby #{RUBY_VERSION} YJIT=#{defined?(RubyVM::YJIT) && RubyVM::YJIT.enabled
 printf "paint=%.3fms/%dobjects pack=%.3fms/%dobjects total=%.3fms/%dobjects bytes=%d batches=%d\n", paint_ms, paint_objects, pack_ms, pack_objects, total_ms, total_objects, bytes.bytesize, batches.length
 abort "cached text CPU frame exceeds 8ms" if ENV["BUDGET"] == "1" && total_ms > 8
 abort "cached text CPU frame exceeds 200 objects" if ENV["BUDGET"] == "1" && total_objects >= 200
+paragraph = Array.new(1_000, "Ruby UI").join("\n").freeze
+Bench.budget("layout paragraph with 1000 lines", 20.0, samples: 5) do
+  system.layout_paragraph(paragraph, width: 800, wrap: :word)
+end
 system.close

@@ -56,8 +56,13 @@ module Zaniah
           fill_rect(bounds, *color.first(3))
           return
         end
-        inverse = matrix.inverse
         gradient = gradient_parameters(gradient)
+        if matrix == Transform.identity && borders.all?(&:zero?) && radii.all?(&:zero?) &&
+            color[3] == 1 && secondary[3] == 1 && gradient[0] == 1 &&
+            fill_axis_gradient(bounds, x, y, width, height, color, secondary, gradient)
+          return
+        end
+        inverse = matrix.inverse
         top, bottom = [bounds.y.floor, 0].max, [bounds.bottom.ceil, @height].min
         left, right = [bounds.x.floor, 0].max, [bounds.right.ceil, @width].min
         pixel_y = top
@@ -92,6 +97,35 @@ module Zaniah
         return if left >= right || top >= bottom
         row = [red, green, blue, 1].map { |value| (value.clamp(0, 1) * 255).round }.pack("C4") * (right - left)
         (top...bottom).each { |pixel_y| @pixels[pixel_y * @width * 4 + left * 4, row.bytesize] = row }
+      end
+
+      def fill_axis_gradient(bounds, x, y, width, height, color, secondary, gradient)
+        left, right = [bounds.x.floor, 0].max, [bounds.right.ceil, @width].min
+        top, bottom = [bounds.y.floor, 0].max, [bounds.bottom.ceil, @height].min
+        return true if left >= right || top >= bottom
+        cosine, sine = gradient[3], gradient[4]
+        if sine.abs < 1e-10
+          bytes = []
+          (left...right).each do |pixel_x|
+            amount = gradient_offset(gradient, pixel_x + 0.5 - x, 0.5, width, height)
+            bytes.concat(gradient_pixel(color, secondary, amount))
+          end
+          row = bytes.pack("C*")
+          (top...bottom).each { |pixel_y| @pixels[pixel_y * @width * 4 + left * 4, row.bytesize] = row }
+        elsif cosine.abs < 1e-10
+          (top...bottom).each do |pixel_y|
+            amount = gradient_offset(gradient, 0.5, pixel_y + 0.5 - y, width, height)
+            row = gradient_pixel(color, secondary, amount).pack("C4") * (right - left)
+            @pixels[pixel_y * @width * 4 + left * 4, row.bytesize] = row
+          end
+        else
+          return false
+        end
+        true
+      end
+
+      def gradient_pixel(left, right, amount)
+        3.times.map { |index| ((left[index] + (right[index] - left[index]) * amount).clamp(0, 1) * 255).round } << 255
       end
 
       def draw_sprite(scene, offset, clip)
