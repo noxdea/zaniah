@@ -9,7 +9,7 @@ module Zaniah
         include Appearance
         DEFAULT_CLEAR = "#181b20"
 
-        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position
+        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style
         attr_accessor :text_system, :ime_state, :title, :app
 
         def initialize(width: 800, height: 600, title: "Zaniah UI", scale_factor: 1,
@@ -17,10 +17,10 @@ module Zaniah
           @content_size, @scale_factor, @title = Size.new(width, height), scale_factor, title
           @scene = Scene.new
           @device = GPU::Software.new(width, height)
-          @dispatcher = Input::Dispatcher.new(keymap: keymap || Input::Keymap.new(clock: clock))
+          @dispatcher = Input::Dispatcher.new(keymap: keymap || Input::Keymap.default_ui(clock: clock))
           @clock = clock
           @state, @used_state, @text_runs = {}, {}, []
-          @dirty, @closed, @pointer_down = true, false, false
+          @dirty, @closed, @pointer_down, @cursor_style = true, false, false, :arrow
         end
 
         def on_input(&block) = @on_input = block
@@ -34,6 +34,15 @@ module Zaniah
         def dirty? = @dirty
         def closed? = @closed
         def pointer_down? = @pointer_down
+        def set_cursor(style)
+          raise ArgumentError, "unknown cursor #{style}" unless %i[arrow text pointer crosshair resize_horizontal resize_vertical].include?(style)
+          return style if @cursor_style == style
+          self.cursor_style = style
+          @cursor_style = style
+        end
+        def cursor_style=(style)
+          @cursor_style = style
+        end
         def displays = [Display.new(0, "Headless", Bounds.new(0, 0, @content_size.width, @content_size.height), @scale_factor, true)]
 
         def popup
@@ -115,6 +124,7 @@ module Zaniah
           Layout::Engine.new.compute(root, width: @content_size.width, height: @content_size.height)
           element.prepaint(root.bounds, nil, cx)
           cx.interactivity.resolve(@dispatcher, @pointer_position, @pointer_down)
+          set_cursor(:arrow)
           element.paint(root.bounds, nil, nil, cx)
           paint_popups
           @state.delete_if { |key, _| !@used_state[key] }

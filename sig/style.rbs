@@ -40,7 +40,7 @@ module Zaniah
     attr_reader y: Float
     attr_reader blur: Float
     attr_reader spread: Float
-    attr_reader color: Color
+    attr_reader color: Color?
     attr_reader inset: bool
     def self.new: (?x: Numeric, ?y: Numeric, ?blur: Numeric, ?spread: Numeric, ?color: color, ?inset: bool) -> Shadow
   end
@@ -49,7 +49,7 @@ module Zaniah
     attr_reader width: Float
     attr_reader color: Color
     attr_reader offset: Float
-    def self.new: (Numeric width, color color, ?Numeric offset) -> Ring
+    def self.new: (Numeric width, ?(color?) color, ?Numeric offset) -> Ring
   end
 
   class StyleBuilder
@@ -60,7 +60,7 @@ module Zaniah
     def border_color: (color color) -> self
     def rounded: (radius radius) -> self
     def opacity: (Numeric value) -> self
-    def ring: (Numeric width, color color, ?Numeric offset) -> self
+    def ring: (Numeric width, ?(color?) color, ?Numeric offset) -> self
   end
 
   class StyleSet

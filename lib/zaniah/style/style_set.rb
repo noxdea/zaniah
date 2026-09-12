@@ -12,7 +12,7 @@ module Zaniah
     def border_color(color) = style(border_color: color)
     def rounded(radius) = style(corner_radii: radius)
     def opacity(value) = style(opacity: value)
-    def ring(width, color, offset = 0) = style(ring: Ring.new(width, color, offset))
+    def ring(width, color = nil, offset = 0) = style(ring: Ring.new(width, color, offset))
   end
 
   class StyleSet

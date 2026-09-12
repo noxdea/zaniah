@@ -5,8 +5,8 @@ module Zaniah
     class << self
       alias record_new new
 
-      def new(width, color, offset = 0)
-        record_new(width.to_f, Color.parse(color), offset.to_f)
+      def new(width, color = nil, offset = 0)
+        record_new(width.to_f, color && Color.parse(color), offset.to_f)
       end
     end
   end

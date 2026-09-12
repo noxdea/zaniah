@@ -39,7 +39,16 @@ module Zaniah
     def border_color(color) = style(border_color: color)
     def rounded(radius) = style(corner_radii: radius)
     def opacity(value) = style(opacity: value)
-    def ring(width, color, offset = 0) = style(ring: Ring.new(width, color, offset))
+    def ring(width, color = nil, offset = 0) = style(ring: Ring.new(width, color, offset))
+    def cursor(value) = style(cursor: value)
+    def focusable(tab_index: 0, context: {}, &on_action)
+      @focus_handle ||= Input::FocusHandle.new(owner: self)
+      @focus_handle.tab_index, @focus_handle.focusable = Integer(tab_index), true
+      @focus_handle.context.merge!(context)
+      @focus_handle.on_action = on_action if on_action
+      self
+    end
+    def focus_handle = @focus_handle
     def tooltip(text) = (@tooltip = text.to_s; self)
     def context_menu(items) = (@context_menu = items; self)
     def flex = style(display: :flex)
@@ -90,7 +99,9 @@ module Zaniah
     end
 
     def paint(bounds, _state, _prepaint, cx)
-      @resolved_style = @style_set.resolve(cx.interactivity.for(self, @static_flags))
+      flags = cx.interactivity.for(self, @static_flags)
+      @resolved_style = @style_set.resolve(flags)
+      cx.window.set_cursor(@resolved_style[:cursor]) if flags.include?(:hover) && @resolved_style[:cursor]
       border = @resolved_style[:border_widths] || @resolved_style[:border]
       border = 0 unless border.is_a?(Numeric) || border.is_a?(Edges)
       background = @resolved_style[:background] || "#0000"
@@ -113,13 +124,19 @@ module Zaniah
     private
 
     def prepaint_contents(bounds, cx)
-      unless @handlers.empty? && !@tooltip && !@context_menu && !@style_set.interactive?
+      if @focus_handle
+        @focus_handle.bounds = bounds
+        @focus_handle.focusable = !@static_flags.include?(:disabled)
+        cx.dispatcher.register_focus(@focus_handle)
+      end
+      unless @handlers.empty? && !@tooltip && !@context_menu && !@style_set.interactive? && !@focus_handle
         cx.dispatcher.hit(bounds, owner: self) do |event|
           if event.is_a?(Input::MouseDown) && event.button == :right && @context_menu
             cx.window.context_menu(@context_menu, position: event.position)
             next true
           end
           cx.window.offer_tooltip(@tooltip, position: event.position) if @tooltip && event.is_a?(Input::MouseMove)
+          cx.dispatcher.focus(@focus_handle, origin: :pointer) if @focus_handle && event.is_a?(Input::MouseDown)
           kind = case event
           when Input::MouseDown then @handlers.key?(:mouse_down) ? :mouse_down : :click
           when Input::MouseMove then @dragging && @handlers.key?(:drag) ? :drag : :hover
@@ -130,7 +147,7 @@ module Zaniah
           @dragging = true if event.is_a?(Input::MouseDown) && @handlers[:drag]
           @dragging = false if event.is_a?(Input::MouseUp)
           handler&.call(event, cx)
-          @dragging && event.is_a?(Input::MouseDown) ? :capture : !!handler || !!(@tooltip && event.is_a?(Input::MouseMove))
+          @dragging && event.is_a?(Input::MouseDown) ? :capture : !!handler || !!(@focus_handle && event.is_a?(Input::MouseDown)) || !!(@tooltip && event.is_a?(Input::MouseMove))
         end
       end
       if @style[:overflow] == :visible
@@ -175,7 +192,7 @@ module Zaniah
       radius += extent if radius.is_a?(Numeric)
       cx.scene.layer(Scene::LAYER_FOCUS_RING) do
         paint = -> { cx.scene.quad(bounds.x - extent, bounds.y - extent, bounds.width + extent * 2, bounds.height + extent * 2,
-          color: "#0000", radius: radius, border_width: ring.width, border_color: ring.color) }
+          color: "#0000", radius: radius, border_width: ring.width, border_color: ring.color || cx.theme.colors.ring) }
         transform = @resolved_style[:transform] || Transform.identity
         transform == Transform.identity ? paint.call : cx.scene.push_transform(transform, &paint)
       end

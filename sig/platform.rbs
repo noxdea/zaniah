@@ -57,6 +57,7 @@ module Zaniah
         attr_reader scale_factor: Numeric
         attr_reader text_runs: Array[text_run]
         attr_reader pointer_position: Point?
+        attr_reader cursor_style: cursor
         attr_accessor text_system: TextSystem::_System?
         attr_accessor ime_state: Bounds?
         attr_accessor title: String
@@ -73,6 +74,8 @@ module Zaniah
         def dirty?: () -> bool
         def closed?: () -> bool
         def pointer_down?: () -> bool
+        def set_cursor: (cursor style) -> cursor
+        def cursor_style=: (cursor style) -> cursor
         def displays: () -> Array[Display]
         def popup: () -> Popup?
         def resize: (Numeric width, Numeric height) -> void

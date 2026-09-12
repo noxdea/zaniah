@@ -30,7 +30,10 @@ module Zaniah
     def border_color: (color color) -> self
     def rounded: (radius radius) -> self
     def opacity: (Numeric value) -> self
-    def ring: (Numeric width, color color, ?Numeric offset) -> self
+    def ring: (Numeric width, ?(color?) color, ?Numeric offset) -> self
+    def cursor: (Platform::cursor value) -> self
+    def focusable: (?tab_index: Integer, ?context: Input::context) ?{ (Input::action) -> bool } -> self
+    def focus_handle: () -> Input::FocusHandle?
     def tooltip: (String text) -> self
     def context_menu: (menu items) -> self
     def flex: () -> self

@@ -86,6 +86,8 @@ module Zaniah
         def self.new: (Array[String] keys, ContextPredicate predicate, action action) -> Binding
                     | (keys: Array[String], predicate: ContextPredicate, action: action) -> Binding
       end
+      def self.default_ui: (?platform: String | Symbol, ?timeout: Numeric, ?clock: clock) -> Keymap
+      def self.platform_defaults: (String | Symbol platform, ?timeout: Numeric, ?clock: clock) -> Keymap
       def initialize: (?timeout: Numeric, ?clock: clock) -> void
       def bind: (String keys, action action, ?context: String) -> self
       def load_json: (String text) -> self
@@ -99,16 +101,31 @@ module Zaniah
       attr_reader owner: untyped
       attr_accessor on_action: (^(action) -> bool)?
       attr_accessor on_focus: (^(bool) -> void)?
-      def initialize: (?parent: FocusHandle?, ?context: context, ?owner: untyped) -> void
+      attr_accessor tab_index: Integer?
+      attr_accessor focusable: bool
+      attr_accessor bounds: Bounds?
+      def initialize: (?parent: FocusHandle?, ?context: context, ?owner: untyped, ?tab_index: Integer?, ?focusable: bool, ?bounds: Bounds?) -> void
       def ancestors: () -> Array[FocusHandle]
+    end
+    class FocusTree
+      def initialize: () -> void
+      def register: (FocusHandle handle) -> self
+      def clear: () -> untyped
+      def next: (?FocusHandle? from) -> FocusHandle?
+      def previous: (?FocusHandle? from) -> FocusHandle?
+      def spatial: (FocusHandle from, :left | :right | :up | :down direction) -> FocusHandle?
+      def trap: [T] (FocusHandle handle) ?{ () -> T } -> (FocusHandle | T)
+      def restore: () -> FocusHandle?
     end
     class Dispatcher
       attr_reader focused: FocusHandle?
       attr_reader focus_origin: Symbol?
+      attr_reader focus_tree: FocusTree
       def initialize: (?keymap: Keymap) -> void
       def focus: (FocusHandle? handle, ?origin: Symbol) -> void
       def focus_visible?: () -> bool
       def key: (String key) -> (action | :pending | nil)
+      def register_focus: (FocusHandle handle) -> FocusTree
       def clear_hits: () -> void
       def hits: () -> Array[Hit]
       def hover_chain: (Point? position) -> Array[untyped]

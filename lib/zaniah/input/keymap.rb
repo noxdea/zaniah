@@ -7,6 +7,31 @@ require_relative "context_predicate"
 module Zaniah
   module Input
     class Keymap
+      class << self
+        def default_ui(platform: RUBY_PLATFORM, **options)
+          platform_defaults(platform, **options)
+        end
+
+        def platform_defaults(platform, **options)
+          primary = platform.to_s.match?(/darwin|mac/) ? "cmd" : "ctrl"
+          new(**options)
+            .bind("tab", :focus_next)
+            .bind("shift-tab", :focus_previous)
+            .bind("left", :focus_left, context: "!in_text_field && !in_list")
+            .bind("right", :focus_right, context: "!in_text_field && !in_list")
+            .bind("up", :focus_up, context: "!in_text_field && !in_list")
+            .bind("down", :focus_down, context: "!in_text_field && !in_list")
+            .bind("enter", :activate)
+            .bind("space", :activate, context: "!in_text_field")
+            .bind("esc", :dismiss)
+            .bind("home", :first, context: "in_list")
+            .bind("end", :last, context: "in_list")
+            .bind("pageup", :page_up, context: "in_list")
+            .bind("pagedown", :page_down, context: "in_list")
+            .bind("#{primary}-a", :select_all, context: "in_text_field || in_list")
+        end
+      end
+
       def initialize(timeout: 1.0, clock: MONOTONIC_CLOCK)
         @bindings, @pending, @last_time, @timeout, @clock = [], [], 0, timeout, clock
       end

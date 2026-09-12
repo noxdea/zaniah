@@ -5,14 +5,17 @@ module Zaniah
     Hit = Data.define(:bounds, :owner)
 
     class Dispatcher
-      attr_reader :focused, :focus_origin
+      attr_reader :focused, :focus_origin, :focus_tree
 
-      def initialize(keymap: Keymap.new)
+      def initialize(keymap: Keymap.default_ui)
         @keymap, @hits = keymap, []
         @transforms = [Transform.identity]
+        @focus_tree = FocusTree.new
       end
 
       def focus(handle, origin: :programmatic)
+        return unless handle.nil? || handle.focusable
+        @focus_tree.register(handle) if handle
         if @focused == handle
           @focus_origin = origin
           return
@@ -20,6 +23,7 @@ module Zaniah
         @focused&.on_focus&.call(false)
         @focused, @focus_origin = handle, origin
         handle&.on_focus&.call(true)
+        reveal(handle)
       end
 
       def focus_visible? = @focus_origin == :keyboard
@@ -29,12 +33,27 @@ module Zaniah
         context = chain.reverse.each_with_object({}) { |handle, result| result.merge!(handle.context) }
         action = @keymap.dispatch(key, context: context)
         return action if action.nil? || action == :pending
+        target = case action
+        when :focus_next then @focus_tree.next(@focused)
+        when :focus_previous then @focus_tree.previous(@focused)
+        when :focus_left then @focus_tree.spatial(@focused, :left)
+        when :focus_right then @focus_tree.spatial(@focused, :right)
+        when :focus_up then @focus_tree.spatial(@focused, :up)
+        when :focus_down then @focus_tree.spatial(@focused, :down)
+        end
+        if target
+          focus(target, origin: :keyboard)
+          return action
+        end
         chain.each { |handle| break if handle.on_action&.call(action) }
         action
       end
 
+      def register_focus(handle) = @focus_tree.register(handle)
+
       def clear_hits
         @hits.clear
+        @focus_tree.clear
         @transforms.replace([Transform.identity])
       end
       def hits = @hits.map { |bounds, _, owner, _, clip| Hit.new(clip ? bounds.intersect(clip) : bounds, owner) }.freeze
@@ -95,6 +114,14 @@ module Zaniah
         bounds.contains?(transform.inverse.apply(position))
       rescue ArgumentError
         false
+      end
+
+      def reveal(handle)
+        owner, bounds = handle&.owner, handle&.bounds
+        while owner
+          owner.scroll_to(bounds, align: :nearest) if bounds && owner.is_a?(ScrollView)
+          owner = owner.respond_to?(:parent) ? owner.parent : nil
+        end
       end
     end
   end
