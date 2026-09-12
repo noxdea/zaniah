@@ -12,6 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       BUNDLE_PATH: .bundle/gems
+      GOLDEN: skip
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -22,6 +23,24 @@ jobs:
       - run: bundle install
       - run: bundle exec rake test
       - run: gem build --strict zaniah.gemspec
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
+        with:
+          ruby-version: '3.3'
+      - run: bundle install
+      - run: bundle exec rake test:golden
+      - run: bundle exec rake bench BUDGET=1
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: golden-diff
+          path: test/golden/diff/
+          if-no-files-found: ignore
   types:
     runs-on: ubuntu-24.04
     steps:
@@ -32,6 +51,5 @@ jobs:
         with:
           ruby-version: '3.4'
       - run: bundle install
-      - run: gem install rbs --version '~> 4.2' --no-document # zizmor: ignore[adhoc-packages]
-      - run: rbs -I sig validate
+      - run: bundle exec rake rbs
       - run: ruby test/type/check.rb

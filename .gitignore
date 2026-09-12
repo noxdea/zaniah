@@ -9,6 +9,8 @@
 /pkg/
 /spec/reports/
 /tmp/
+/bench/results.json
+/test/golden/diff/
 Gemfile.lock
 .rspec_status
 *.gem
