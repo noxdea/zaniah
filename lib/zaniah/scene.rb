@@ -165,7 +165,7 @@ module Zaniah
     def current_clip = @clips.last
 
     def layer(order)
-      @layers << order
+      @layers << [@layers.last, order].max
       yield
     ensure
       @layers.pop

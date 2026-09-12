@@ -36,12 +36,14 @@ module Zaniah
 
       def build(cx)
         @cx, @display_rows = cx, sorted_rows
+        @active_index = @active_index.to_i.clamp(0, [@display_rows.length - 1, 0].max)
         header = Div.new.flex_row.h(@row_height).bg(cx.theme.colors.surface)
           .border_b(1).border_color(cx.theme.colors.border).children(@columns.map { |column| header_cell(column, cx) })
         @body = List.new(count: @display_rows.length, estimated_height: @row_height, overscan: 2) { |index| row(index, cx) }
           .h([@height - @row_height, 1].max)
         Div.new.h(@height).overflow_hidden.border(1).border_color(cx.theme.colors.border)
           .rounded(cx.theme.radii[:sm]).child(header).child(@body)
+          .focusable(context: {in_table: true}) { |action| table_action(action) }
       end
 
       def tui_cells(*)
@@ -51,12 +53,16 @@ module Zaniah
       end
 
       def accessibility_node(_cx)
+        header = Accessibility.node(role: :row, children: @columns.map do |column|
+          Accessibility.node(role: :columnheader, label: column.label,
+            states: {sort: @sort_key == column.key ? @sort_direction : nil}, actions: column.sortable ? [:sort] : [])
+        end)
         rows = visible_indices.map do |index|
           row = @display_rows[index]
           Accessibility.node(role: :row, states: {selected: @selection.include?(row_identity(row, index))},
             children: @columns.map { |column| Accessibility.node(role: :cell, label: column.label, value: cell_value(row, column.key)) })
         end
-        node(:table, states: {sort_key: @sort_key, sort_direction: @sort_direction}, children: rows)
+        node(:table, states: {sort_key: @sort_key, sort_direction: @sort_direction}, children: [header, *rows])
       end
 
       private
@@ -85,11 +91,13 @@ module Zaniah
           .cursor(column.sortable ? :pointer : :arrow)
           .on_click { sort_by(column.key) if column.sortable }
           .child(Label.new("#{column.label}#{sort_marker(column)}", size: :sm).flex_1)
+        cell.focusable { |action| action == :activate && !!sort_by(column.key) } if column.sortable
         if column.resizable
           cell.child(Div.new.w(5).h_full.cursor(:resize_horizontal)
             .on_mouse_down { |event, _| @resize = [column.key, event.position.x, @widths[column.key]] }
             .on_drag { |event, context| resize_column(event, context) }
-            .on_mouse_up { @resize = nil }.bg(cx.theme.colors.border))
+            .on_mouse_up { @resize = nil }.bg(cx.theme.colors.border)
+            .focusable(context: {in_slider: true}) { |action| resize_action(column.key, action) })
         end
         cell
       end
@@ -101,6 +109,14 @@ module Zaniah
         key, start, width = @resize
         @widths[key] = [width + event.position.x - start, 40].max
         cx.window.request_frame
+      end
+
+      def resize_action(key, action)
+        delta = {decrement: -8, decrement_page: -32, increment: 8, increment_page: 32}[action]
+        return false unless delta
+        @widths[key] = [@widths[key] + delta, 40].max
+        @cx.window.request_frame
+        true
       end
 
       def row(index, cx)
@@ -148,6 +164,10 @@ module Zaniah
       def select_row(identity, index, event, cx)
         return if @selection_mode == :none
         modifiers = event.modifiers.map(&:to_s)
+        select_index(identity, index, modifiers, event, cx)
+      end
+
+      def select_index(identity, index, modifiers, event, cx)
         if @selection_mode == :single
           @selection.replace([identity])
         elsif modifiers.include?("shift") && @selection_anchor
@@ -161,6 +181,33 @@ module Zaniah
         @selection_anchor = index
         @on_select&.call(@selection.dup.freeze, event, cx)
         cx.window.request_frame
+      end
+
+      def table_action(action)
+        return false if @display_rows.empty?
+        index = case action
+        when :previous_option, :extend_previous then [@active_index - 1, 0].max
+        when :next_option, :extend_next then [@active_index + 1, @display_rows.length - 1].min
+        when :first then 0
+        when :last then @display_rows.length - 1
+        when :page_up then [@active_index - visible_indices.size, 0].max
+        when :page_down then [@active_index + visible_indices.size, @display_rows.length - 1].min
+        when :activate then @active_index
+        when :select_all
+          return false unless @selection_mode == :multiple
+          @selection.replace(@display_rows.map.with_index { |row, row_index| row_identity(row, row_index) })
+          @on_select&.call(@selection.dup.freeze, nil, @cx)
+          @cx.window.request_frame
+          return true
+        else return false
+        end
+        @active_index = index
+        identity = row_identity(@display_rows[index], index)
+        modifiers = action.to_s.start_with?("extend_") ? ["shift"] : []
+        select_index(identity, index, modifiers, nil, @cx) unless @selection_mode == :none
+        @body.scroll_to(index, align: :nearest)
+        @cx.window.request_frame
+        true
       end
 
       def row_identity(row, index) = @row_key.arity == 1 ? @row_key.call(row) : @row_key.call(row, index)

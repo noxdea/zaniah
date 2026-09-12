@@ -263,7 +263,7 @@ module Zaniah
       attr_reader sort_direction: :asc | :desc
       def initialize: (Array[untyped] rows, columns: Array[untyped], ?height: Numeric, ?row_height: Numeric, ?selection: :none | :single | :multiple, ?row_key: Proc?) -> void
       def on_sort: () { (Symbol, :asc | :desc) -> void } -> self
-      def on_select: () { (Set[untyped], Input::MouseDown, FrameContext) -> void } -> self
+      def on_select: () { (Set[untyped], Input::MouseDown?, FrameContext) -> void } -> self
       def on_edit: () { (untyped, Symbol, String, Integer) -> void } -> self
       def sort_by: (Symbol | String key, ?direction: :asc | :desc) -> self
     end

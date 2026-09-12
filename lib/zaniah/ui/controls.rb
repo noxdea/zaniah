@@ -41,10 +41,7 @@ module Zaniah
           .focusable(context: {in_button: true}) { |action| action == :activate && activate(nil, @cx) }
           .on_click { |event, context| activate(event, context) }
         root.disabled(@disabled || @loading)
-        content = [Text.new(@loading ? "…" : @label, size: style[:font_size], color: style[:foreground])]
-        content.unshift(icon_element(style[:foreground])) if @icon && @icon_position != :trailing
-        content << icon_element(style[:foreground]) if @icon && @icon_position == :trailing
-        root.children(content)
+        root.children(button_content(style))
       end
 
       def tui_cells(*) = @disabled ? "( #{@label} )" : "[ #{@loading ? "…" : @label} ]"
@@ -67,6 +64,13 @@ module Zaniah
       def icon_element(color)
         @icon.is_a?(Icon) ? @icon : Icon.new(@icon, size: @size == :sm ? 12 : 16, color: color)
       end
+
+      def button_content(style)
+        content = [Text.new(@loading ? "…" : @label, size: style[:font_size], color: style[:foreground])]
+        content.unshift(icon_element(style[:foreground])) if @icon && @icon_position != :trailing
+        content << icon_element(style[:foreground]) if @icon && @icon_position == :trailing
+        content
+      end
     end
 
     class IconButton < Button
@@ -80,6 +84,10 @@ module Zaniah
       end
 
       def tui_cells(*) = @disabled ? "(#{Icon::GLYPHS[@icon] || @label})" : "[#{Icon::GLYPHS[@icon] || @label}]"
+
+      private
+
+      def button_content(style) = [icon_element(style[:foreground])]
     end
 
     class ToggleButton < Button

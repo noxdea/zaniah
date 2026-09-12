@@ -83,6 +83,10 @@ class LayoutModernTest < Minitest::Test
     window.input(T::Input::MouseDown.new(T::Point.new(4, 5), :left, [], 1))
     window.input(T::Input::MouseMove.new(T::Point.new(4, 45), []))
     assert_in_delta 450, state.offset.y
+    window.dispatcher.focus(bar.focus_handle)
+    window.input(T::Input::KeyDown.new("end", false))
+    assert_equal state.max_offset.y, state.offset.y
+    assert_equal :scrollbar, bar.accessibility_node(nil).role
   ensure
     window&.close
   end

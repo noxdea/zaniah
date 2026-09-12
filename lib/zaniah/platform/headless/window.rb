@@ -144,11 +144,11 @@ module Zaniah
           @used_state.clear
           @dispatcher.clear_hits
           cx = FrameContext.new(self)
+          @animator.reduced_motion = cx.theme.motion.reduced?
           layout_started = MONOTONIC_CLOCK.call
           root = element.request_layout(cx)
           Layout::Engine.new.compute(root, width: @content_size.width, height: @content_size.height)
           layout_finished = MONOTONIC_CLOCK.call
-          @animator.reduced_motion = cx.theme.motion.reduced?
           @animator.sample(@clock.call)
           element.prepaint(root.bounds, nil, cx)
           cx.interactivity.resolve(@dispatcher, @pointer_position, @pointer_down)

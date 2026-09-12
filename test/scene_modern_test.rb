@@ -67,6 +67,16 @@ class SceneModernTest < Minitest::Test
     window&.close
   end
 
+  def test_nested_layers_do_not_fall_behind_their_parent
+    scene = T::Scene.new
+    scene.layer(10) do
+      scene.quad(0, 0, 1, 1, color: "#f00")
+      scene.layer(1) { scene.quad(0, 0, 1, 1, color: "#0f0") }
+    end
+
+    assert_equal [10, 10], scene.commands.each_slice(4).map { |command| command[2] }
+  end
+
   private
 
   def pixel(data, width, x, y) = data.byteslice((y * width + x) * 4, 4).bytes

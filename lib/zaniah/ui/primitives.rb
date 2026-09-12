@@ -121,7 +121,7 @@ module Zaniah
 
       def initialize(text, variant: :neutral)
         super()
-        @text, @variant = text.to_s, variant
+        @text, @variant = text.to_s.encode(Encoding::UTF_8), variant
       end
 
       def build(cx)

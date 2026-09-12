@@ -47,6 +47,15 @@ class DataComponentsTest < Minitest::Test
     @window.input(T::Input::MouseUp.new(T::Point.new(90, 10), :left, []))
     assert_operator table.instance_variable_get(:@widths)[:id], :>, before
     assert_equal :table, table.accessibility_node(nil).role
+
+    @window.dispatcher.focus(table.focus_handle)
+    @window.input(T::Input::KeyDown.new("down", false))
+    assert_includes table.selection, 9_998
+    @window.input(T::Input::KeyDown.new("shift-down", false))
+    assert_includes table.selection, 9_997
+    primary = RUBY_PLATFORM.include?("darwin") ? "cmd" : "ctrl"
+    @window.input(T::Input::KeyDown.new("#{primary}-a", false))
+    assert_equal rows.length, table.selection.length
   end
 
   def test_tree_lazy_load_and_keyboard_navigation

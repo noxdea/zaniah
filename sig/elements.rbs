@@ -201,6 +201,7 @@ module Zaniah
   module UI
     class Scrollbar < Element
       def initialize: (ScrollState scroll_state, ?axis: :vertical | :horizontal, ?mode: :overlay | :always | :hidden) -> void
+      def accessibility_node: (FrameContext? context) -> Accessibility::Node
     end
   end
 

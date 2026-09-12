@@ -12,10 +12,11 @@ module Zaniah
         on_mouse_down { |event, cx| start_drag(event, cx) }
         on_drag { |event, cx| drag(event, cx) }
         on_mouse_up { @drag_offset = nil }
+        focusable(context: {in_slider: true}) { |action| keyboard_scroll(action) }
       end
 
       def prepaint(bounds, state, cx)
-        @bounds = bounds
+        @bounds, @cx = bounds, cx
         super
       end
 
@@ -41,6 +42,11 @@ module Zaniah
         end
       end
 
+      def accessibility_node(_cx)
+        Accessibility.node(role: :scrollbar, label: "#{@axis.to_s.capitalize} scrollbar", value: offset,
+          bounds: @bounds, states: {minimum: 0, maximum: maximum, viewport: viewport}, actions: %i[increment decrement])
+      end
+
       private
 
       def start_drag(event, cx)
@@ -61,6 +67,21 @@ module Zaniah
         position = (coordinate(event.position) - coordinate(@bounds) - @drag_offset).clamp(0, track - length)
         @scroll_state.scroll_to(maximum * position / [track - length, 1].max)
         cx.window.request_frame
+      end
+
+      def keyboard_scroll(action)
+        value = case action
+        when :minimum then 0
+        when :maximum then maximum
+        when :increment then offset + viewport / 10.0
+        when :decrement then offset - viewport / 10.0
+        when :increment_page then offset + viewport
+        when :decrement_page then offset - viewport
+        else return false
+        end
+        @scroll_state.scroll_to(value)
+        @cx&.window&.request_frame
+        true
       end
 
       def thumb(bounds)

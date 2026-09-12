@@ -45,6 +45,17 @@ class AnimationTest < Minitest::Test
     assert called
   end
 
+  def test_theme_reduced_motion_applies_before_component_layout
+    theme = T::Theme.dark
+    @app.global(:theme, theme.with(motion: theme.motion.with(reduced: true)))
+    modal = T::UI::Modal.new(T::UI::Label.new("Body"))
+    @window.draw { modal }
+    @window.tick
+
+    assert_equal 1.0, @window.animator.value([:overlay, modal.object_id])
+    refute @window.animation_active?
+  end
+
   def test_keyed_transition_uses_previous_resolved_style
     color, current = T::Color.parse("#000"), nil
     @window.draw { current = T::Div.new.key(:box).bg(color).transition(:background, duration: 1, easing: :linear) }

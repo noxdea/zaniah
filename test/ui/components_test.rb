@@ -60,6 +60,14 @@ class UIComponentsTest < Minitest::Test
     assert_same button.focus_handle, @window.dispatcher.focused
   end
 
+  def test_icon_button_uses_label_for_accessibility_only
+    button = render(Zaniah::UI::IconButton.new(:close, label: "Dismiss"))
+
+    assert_equal 1, button.root.children.length
+    assert_instance_of Zaniah::UI::Icon, button.root.children.first
+    assert_equal "Dismiss", button.accessibility_node(nil).label
+  end
+
   def test_toggle_slider_and_text_field_interactions
     checkbox = render(Zaniah::UI::Checkbox.new("Ready"))
     @window.input(Zaniah::Input::MouseDown.new(Zaniah::Point.new(10, 10), :left, [], 1))

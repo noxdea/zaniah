@@ -60,6 +60,15 @@ module Zaniah
             .bind("end", :last, context: "in_tree")
             .bind("left", :collapse, context: "in_tree")
             .bind("right", :expand, context: "in_tree")
+            .bind("up", :previous_option, context: "in_table")
+            .bind("down", :next_option, context: "in_table")
+            .bind("shift-up", :extend_previous, context: "in_table")
+            .bind("shift-down", :extend_next, context: "in_table")
+            .bind("home", :first, context: "in_table")
+            .bind("end", :last, context: "in_table")
+            .bind("pageup", :page_up, context: "in_table")
+            .bind("pagedown", :page_down, context: "in_table")
+            .bind("#{primary}-a", :select_all, context: "in_table")
         end
       end
 
