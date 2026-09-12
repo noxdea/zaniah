@@ -1,4 +1,6 @@
 /.bundle/
+/.idea/
+/.vscode/
 /Gemfile.lock
 /.yardoc
 /_yardoc/
@@ -7,6 +9,6 @@
 /pkg/
 /spec/reports/
 /tmp/
-
-# rspec failure tracking
+Gemfile.lock
 .rspec_status
+*.gem
