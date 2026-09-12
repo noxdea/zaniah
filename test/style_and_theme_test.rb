@@ -32,10 +32,24 @@ class StyleAndThemeTest < Minitest::Test
     assert_raises(ArgumentError) { Zaniah::Gradient.linear(stops: [[1, "#000"], [0, "#fff"]]) }
   end
 
-  def test_themes_have_readable_primary_text
+  def test_all_semantic_color_pairs_meet_wcag_contrast
     [Zaniah::Theme.dark, Zaniah::Theme.light, Zaniah::Theme.high_contrast].each do |theme|
-      assert_operator theme.colors.text.contrast_ratio(theme.colors.background), :>=, 4.5
-      assert_operator theme.colors.accent_text.contrast_ratio(theme.colors.accent), :>=, 4.5
+      colors = theme.colors
+      {
+        text: %i[background surface surface_hover surface_pressed selection],
+        text_muted: %i[background surface surface_hover],
+        accent_text: %i[accent accent_hover],
+        text_inverse: %i[success warning danger info]
+      }.each do |foreground, backgrounds|
+        backgrounds.each do |background|
+          assert_operator colors.public_send(foreground).contrast_ratio(colors.public_send(background)), :>=, 4.5,
+            "#{theme.name}: #{foreground} on #{background}"
+        end
+      end
+      %i[border border_focus ring].product(%i[background surface]).each do |foreground, background|
+        assert_operator colors.public_send(foreground).contrast_ratio(colors.public_send(background)), :>=, 3,
+          "#{theme.name}: #{foreground} on #{background}"
+      end
     end
     assert Zaniah::Theme.dark.motion.duration_base.positive?
     refute Zaniah::Theme.dark.motion.reduced?

@@ -58,6 +58,12 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L2 | `PasswordInput` | TextField options | masked display | textbox |
 | L2 | `NumberInput` | TextField plus `min:`, `max:`, `step:`; `increment`, `decrement` | numeric | textbox |
 | L2 | `TagInput` | `(tags, separator:, ...)`; `on_tags_change` | badge list + editor | textbox |
+| L2 | `Select` | `(items, label:, value:, disabled:)`; `on_change` | single choice | combobox |
+| L2 | `Combobox` | `(items, value:, label:, placeholder:, disabled:)`; `on_change` | editable, filtered choices | combobox |
+| L2 | `MultiSelect` | `(items, value:, label:, disabled:)`; `on_change` | multiple selected badges | listbox |
+| L2 | `DatePicker` | `(value, min:, max:, label:, disabled:)`; `on_change` | ISO date, day/week keyboard steps | combobox |
+| L2 | `TimePicker` | `(value, step:, label:, disabled:)`; `on_change` | 24-hour time, minute/hour keyboard steps | combobox |
+| L2 | `ColorPicker` | `(value, label:, swatches:, disabled:)`; `on_change` | hex input and swatches | combobox |
 | L3 | `Tabs` | `(items, selected:)`; `on_change` | arrows/Home/End | tab/tabpanel |
 | L3 | `Accordion` | `(items, multiple:, open:)` | single/multiple | group |
 | L3 | `Collapsible` | `(label, content, open:)`; `on_change` | open/closed | button/expanded |
@@ -70,6 +76,10 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L3 | `Drawer` | Modal plus `side:` | left/right | dialog/modal |
 | L3 | `Toast` | `(message, variant:, queue:)`; `dismiss` | info/success/warning/danger | live status |
 | L3 | `CommandPalette` | `(commands, open:, placeholder:)` | searchable modal | dialog/list |
+| L3 | `SplitPane` | `(first, second, orientation:, ratio:, min:, max:)`; `on_change` | horizontal/vertical, draggable separator | group/separator |
+| L3 | `Resizable` | `(content, width:, height:, min_width:, min_height:, max_width:, max_height:)`; `on_resize` | drag or keyboard resize | group/separator |
+| L3 | `DockPanel` | `(center:, top:, right:, bottom:, left:)` | five-region layout | group |
+| L3 | `ListView` | `(items, height:, row_height:, selected:)`; `on_select` | virtual rows and keyboard selection | list/listitem |
 | L4 | `Table`, `DataGrid` | `(rows, columns:, height:, selection:, row_key:)`; `on_sort`, `on_select`, `on_edit` | virtual rows, sorting, resizing, editing | table/row/cell |
 | L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, lazy `children` proc | arrows/Home/End | tree/treeitem |
 | L5 | `Sparkline` | `(values, width:, height:, color:, label:)` | line + tooltip | image |
@@ -77,6 +87,8 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L5 | `Validation` | `required`, `format`, `length`, `number`, `rule` | composable rules | n/a |
 | L5 | `FormField` | `(name, value:, label:, control:, validation:, hint:)` | errors + describedby | group/control/alert |
 | L5 | `Form` | `field`, `on_change`, `on_submit`, `values`, `valid?` | validates before submit | form |
+| L5 | `CodeEditor` | `(value, language:, line_numbers:, read_only:)`; `on_change` | multiline editor with scrolling | textbox |
+| L5 | `RichText` | `(runs, selectable:)` | styled selectable runs | text |
 
 All input components are keyboard operable. Disabled controls remain visible but are
 removed from focus traversal. Overlay components close on Esc; modal overlays restore
@@ -92,4 +104,4 @@ headers and resize handles are separate Tab stops; Enter sorts and arrow/Page ke
 resize. Tree views use Up/Down to select and Left/Right to collapse or expand.
 
 Run `bundle exec ruby tools/generate_component_gallery.rb` to rebuild the dark,
-light, and high-contrast component sheets plus the two-theme overlay variants.
+light, and high-contrast component sheets plus overlay variants in all three themes.

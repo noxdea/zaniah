@@ -14,15 +14,20 @@ tests and non-window integrations.
 | Checkbox, Radio, Switch | `[x]`, `(o)`, `[on ]` |
 | Slider, RangeSlider | ten-cell track and numeric value/range |
 | Text inputs | `[value]`; password values are masked and validation errors have `!` |
+| Select, Combobox, MultiSelect | labeled brackets, filtered menu marker, or comma-separated selected values |
+| DatePicker, TimePicker, ColorPicker | labeled ISO date, 24-hour time, or hex color in brackets |
 | Tooltip, Popover, Menu, Dropdown | status text or a box/menu with `>` selection marker |
 | Tabs, Accordion, Collapsible | selected tab in brackets and `[+]`/`[-]` disclosure markers |
 | Breadcrumb, Pagination, bars | slash-separated path, page status, space-separated content |
 | Modal, Dialog, Drawer, CommandPalette | box-drawing overlay; focus stays inside until dismissed |
+| SplitPane, Resizable, DockPanel | `│`/`─` separators, resize corner, or ordered dock regions |
+| ListView | visible rows with `>` on the selected item |
 | Toast | live status text |
 | Table, DataGrid | header and visible rows separated with `|` |
 | TreeView | indentation with `▸`/`▾` expansion markers |
 | Sparkline, LineChart, BarChart | eight-level Unicode sparkline summary |
 | Form, FormField | labeled values, `!` errors, and a submit button |
+| CodeEditor, RichText | numbered plain-text lines or concatenated text runs |
 
 Rounded corners, shadows, gradients, and alpha scrims reduce to solid cells. Focus is
 reported by the terminal cursor/reverse-video capability; motion introduced in M7 is

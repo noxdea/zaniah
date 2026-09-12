@@ -48,7 +48,27 @@ module Gallery
         Zaniah::UI::Sparkline.new([2, 5, 3, 8, 6, 9], width: 190, height: 120, label: "Frames"),
         Zaniah::UI::LineChart.new({Frames: [2, 5, 3, 8, 6, 9], Input: [1, 2, 2, 4, 3, 5]}, width: 300, height: 150),
         Zaniah::UI::BarChart.new({GPU: [4, 7, 6], TUI: [3, 4, 5]}, width: 300, height: 150)]))
-    Zaniah::Div.new.h(1840).p(16).gap(12)
+    choices = Zaniah::Div.new.w_full.gap(10)
+      .child(Zaniah::Div.new.flex_row.gap(12).children([
+        Zaniah::UI::Select.new([["Ruby", :ruby], ["Zig", :zig]], value: :ruby),
+        Zaniah::UI::Combobox.new(%w[Ruby Zig Rust], value: "Ruby", label: "Language"),
+        Zaniah::UI::MultiSelect.new(%w[GPU TUI A11y], value: %w[GPU A11y], label: "Targets")]))
+      .child(Zaniah::Div.new.flex_row.gap(12).children([
+        Zaniah::UI::DatePicker.new("2026-09-13"), Zaniah::UI::TimePicker.new("14:30"),
+        Zaniah::UI::ColorPicker.new("#2563eb")]))
+    workspaces = Zaniah::Div.new.w_full.gap(12)
+      .child(Zaniah::Div.new.flex_row.gap(12).children([
+        Zaniah::UI::SplitPane.new(Zaniah::UI::Label.new("Left pane"), Zaniah::UI::Label.new("Right pane")).w(300).h(100),
+        Zaniah::UI::Resizable.new(Zaniah::UI::Label.new("Resize me"), width: 180, height: 100),
+        Zaniah::UI::ListView.new(%w[Alpha Beta Gamma Delta], height: 100, selected: 1).w(180)]))
+      .child(Zaniah::UI::DockPanel.new(
+        center: Zaniah::UI::Label.new("Editor"), top: Zaniah::UI::StatusBar.new(Zaniah::UI::Label.new("Top", size: :sm)),
+        left: Zaniah::UI::Sidebar.new(Zaniah::UI::Label.new("Files", size: :sm), width: 90),
+        bottom: Zaniah::UI::StatusBar.new(Zaniah::UI::Label.new("Ready", size: :sm))).w(420).h(120))
+    editors = Zaniah::Div.new.w_full.flex_row.gap(12).children([
+      Zaniah::UI::CodeEditor.new("def hello\n  :world\nend\n", language: :ruby).w(390).h(150),
+      Zaniah::UI::RichText.new([{text: "Rich ", size: 20}, {text: "text", color: "#2563eb", size: 20}]).w(260)])
+    Zaniah::Div.new.h(2480).p(16).gap(12)
       .child(section("Foundation", foundation, height: 180))
       .child(section("Actions",
         Zaniah::UI::Button.new("Primary").icon(:check).on_click(&clicks),
@@ -72,6 +92,9 @@ module Gallery
       .child(section("Structure", structure, height: 235))
       .child(section("Variants", variants, height: 285))
       .child(section("Data", data, height: 440))
+      .child(section("Choice and pickers", choices, height: 210))
+      .child(section("Workspace layout", workspaces, height: 300))
+      .child(section("Editors", editors, height: 210))
       .child(section("Forms", Zaniah::UI::Form.new.field(name: :email, label: "Release email", value: "ruby@example.com", validation: validation).w(320), height: 150))
   end
 

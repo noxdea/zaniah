@@ -220,7 +220,7 @@ module Zaniah
         Div.new.gap(cx.theme.spacing[2]).children(radios)
       end
 
-      def tui_cells(*) = (@radios || []).map(&:tui_cells).join(" ")
+      def tui_cells(*) = @options.map { |label, value = label| "(#{@value == value ? "o" : " "}) #{label}" }.join(" ")
       def accessibility_node(cx) = node(:radiogroup, value: @value, children: (@radios || []).map { |radio| radio.accessibility_node(cx) })
     end
 

@@ -3,7 +3,7 @@
 require_relative "../test_helper"
 
 class GoldenThemeTest < Zaniah::UITest
-  %i[dark light].each do |appearance|
+  %i[dark light high_contrast].each do |appearance|
     define_method("test_#{appearance}_theme") do
       assert_golden("theme/#{appearance}", theme: appearance) do
         theme = @app.global(:theme)

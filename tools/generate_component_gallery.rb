@@ -18,7 +18,7 @@ FileUtils.mkdir_p(OUTPUT)
 
 SHEETS.each do |appearance|
   app = Zaniah::App.new(clock: -> { 0.0 })
-  window = app.open_window(width: 900, height: 1840)
+  window = app.open_window(width: 900, height: 2480)
   theme = Zaniah::Theme.public_send(appearance)
   app.global(:theme, theme.with(motion: theme.motion.with(reduced: true)))
   window.text_system = Zaniah::TextSystem::Renderer.new(font: FONT, font_db: Zaniah::TextSystem::FontDB.new(paths: []))
@@ -30,7 +30,6 @@ SHEETS.each do |appearance|
 
   OVERLAYS.each do |name|
     next if ARGV.include?("--sheets-only")
-    next if appearance == :high_contrast
     window.resize(900, 700)
     window.draw do
       Zaniah::Div.new.w_full.h_full.bg(theme.colors.background)
@@ -45,5 +44,5 @@ SHEETS.each do |appearance|
   app.executor.shutdown
 end
 
-count = (ARGV.include?("--overlays-only") ? 0 : SHEETS.length) + (ARGV.include?("--sheets-only") ? 0 : OVERLAYS.length * 2)
+count = (ARGV.include?("--overlays-only") ? 0 : SHEETS.length) + (ARGV.include?("--sheets-only") ? 0 : OVERLAYS.length * SHEETS.length)
 puts "gallery: wrote #{count} PNG files to #{OUTPUT}"
