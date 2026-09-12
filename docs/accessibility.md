@@ -42,11 +42,19 @@ node retain semantic descendants in a generated `group` node.
 
 ## Native bridges
 
-- macOS maps the application root to an NSAccessibility role and posts an
-  `AXLayoutChanged` notification.
-- Windows emits `EVENT_OBJECT_REORDER` for the client object so UI Automation
-  and legacy accessibility clients refresh the window provider.
-- Linux emits the corresponding AT-SPI object event on the session D-Bus.
+- macOS publishes an `NSAccessibilityElement` hierarchy with roles, labels,
+  values, state, bounds, and children, then posts `AXLayoutChanged`.
+- Windows answers `WM_GETOBJECT` with `IRawElementProviderSimple`, fragment,
+  fragment-root, and Invoke providers. UI Automation clients can navigate and
+  query the semantic hierarchy rather than relying on refresh events alone.
+- Linux registers `Accessible`, `Component`, `Action`, and `Application`
+  objects on the AT-SPI D-Bus, embeds the application root in the registry,
+  and emits object-change events. Actions route back through the normal input
+  dispatcher on every platform.
+
+The Linux provider is exercised in CI inside a private D-Bus session. Native
+macOS and Windows objects retain the same `Accessibility::NativeTree` path and
+bounds model used by the headless assertions.
 
 The semantic tree remains the authoritative source on every backend. See
 [ADR-008](adr/008-accessibility-bridge.md) for the boundary between components

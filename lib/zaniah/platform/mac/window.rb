@@ -130,6 +130,7 @@ module Zaniah
         end
         def close
           return false unless super
+          Accessibility.close(self)
           WINDOWS.delete_if { |_, window| window.equal?(self) }
           O.send(@handle, "setDelegate:", 0, args: [:pointer], result: :void)
           O.send(@handle, "close", result: :void)

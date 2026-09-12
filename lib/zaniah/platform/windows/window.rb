@@ -146,6 +146,9 @@ module Zaniah
         def message(message, wparam, lparam)
           case message
           when 0x0010 then close; return 0
+          when 0x003d
+            result = Accessibility::Windows.provider_result(self, wparam, lparam)
+            return result if result
           when 0x0233
             dropped_files(wparam)
             return 0
@@ -399,6 +402,7 @@ module Zaniah
         end
         def close
           return false unless super
+          Accessibility.close(self)
           @gl.fn(:wglMakeCurrent, [P, P], I).call(0, 0)
           @gl.fn(:wglDeleteContext, [P], I).call(@context)
           @user.fn(:ReleaseDC, [P, P], I).call(@handle, @dc)

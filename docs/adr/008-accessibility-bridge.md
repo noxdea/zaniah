@@ -15,5 +15,5 @@ Build a backend-neutral accessibility tree first. Add Fiddle-based adapters for 
 ## Consequences
 
 Semantics and diffs are tested headlessly. Native adapters publish layout-change
-notifications through NSAccessibility, Windows accessibility events, and AT-SPI's
-D-Bus event namespace while retaining the same backend-neutral tree for queries.
+query providers and notifications through NSAccessibility, Windows UI Automation,
+and AT-SPI's D-Bus interfaces while retaining the same backend-neutral tree.

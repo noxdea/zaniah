@@ -130,6 +130,7 @@ module Zaniah
           return if closed?
           @connection.poll
           poll_appearance
+          Accessibility.poll(self)
           return close if @close_requested
           finish_drop if @pending_drop
           if @repeat_key && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= @repeat_at
@@ -345,6 +346,7 @@ module Zaniah
         end
         def close
           return false unless super
+          Accessibility.close(self)
           close_appearance
           cleanup_native
           true

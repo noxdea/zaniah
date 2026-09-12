@@ -108,6 +108,7 @@ module Zaniah
         def tick
           poll_events unless closed?
           poll_appearance unless closed?
+          Accessibility.poll(self) unless closed?
           raise @native_error if @native_error
           super
         end
@@ -402,6 +403,7 @@ module Zaniah
         end
         def close
           return false unless super
+          Accessibility.close(self)
           close_appearance
           x(:XDestroyIC, [P], V, @ic) if @ic
           x(:XCloseIM, [P], I, @im) if @im && !@im.null?

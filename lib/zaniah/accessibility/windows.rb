@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "windows/provider"
+
 module Zaniah
   module Accessibility
     module Windows
@@ -11,6 +13,8 @@ module Zaniah
 
       def publish(window, root, _changes)
         return unless root && window.respond_to?(:handle)
+        bridge = bridges[window.handle.to_i] ||= Provider::Bridge.new(window)
+        bridge.update(root)
         user = window.instance_variable_get(:@user)
         return unless user
         user.fn(:NotifyWinEvent,
@@ -19,6 +23,16 @@ module Zaniah
       rescue Fiddle::DLError
         nil
       end
+
+      def provider_result(window, wparam, lparam)
+        return unless (lparam.to_i & 0xffffffff) == 0xffffffe7
+        bridge = bridges[window.handle.to_i]
+        return unless bridge&.root_provider
+        bridge.return_provider(wparam, lparam)
+      end
+
+      def close(window) = bridges.delete(window.handle.to_i)
+      def bridges = (@bridges ||= {})
     end
   end
 end
