@@ -5,18 +5,23 @@ module Zaniah
     Hit = Data.define(:bounds, :owner)
 
     class Dispatcher
-      attr_reader :focused
+      attr_reader :focused, :focus_origin
 
       def initialize(keymap: Keymap.new)
         @keymap, @hits = keymap, []
       end
 
-      def focus(handle)
-        return if @focused == handle
+      def focus(handle, origin: :programmatic)
+        if @focused == handle
+          @focus_origin = origin
+          return
+        end
         @focused&.on_focus&.call(false)
-        @focused = handle
+        @focused, @focus_origin = handle, origin
         handle&.on_focus&.call(true)
       end
+
+      def focus_visible? = @focus_origin == :keyboard
 
       def key(key)
         chain = @focused ? @focused.ancestors : []
@@ -29,6 +34,17 @@ module Zaniah
 
       def clear_hits = @hits.clear
       def hits = @hits.map { |bounds, _, owner| Hit.new(bounds, owner) }.freeze
+
+      def hover_chain(position)
+        return [] unless position
+        owner = @hits.reverse_each.find { |bounds, _, _| bounds.contains?(position) }&.last
+        [].tap do |chain|
+          while owner
+            chain << owner
+            owner = owner.respond_to?(:parent) ? owner.parent : nil
+          end
+        end
+      end
 
       def hit(bounds, clip: nil, owner: nil, &handler)
         bounds = bounds.intersect(@clip) if @clip

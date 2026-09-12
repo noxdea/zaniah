@@ -1,6 +1,6 @@
 # ADR 004: Resolve interaction styles in elements before paint
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-12
 - Decision deadline: before M1 implementation
 

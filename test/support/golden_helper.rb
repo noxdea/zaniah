@@ -13,13 +13,15 @@ module Zaniah
     def setup
       super
       @clock = TestClock.new
-      @window = Platform.open_window(width: 800, height: 600, scale_factor: 1, clock: @clock)
+      @app = App.new(clock: @clock)
+      @window = @app.open_window(width: 800, height: 600, scale_factor: 1)
       font = Alhena::Font.open(File.expand_path("../../assets/fonts/Abel-Regular.ttf", __dir__))
       @window.text_system = TextSystem::Renderer.new(font: font, font_db: TextSystem::FontDB.new(paths: []))
     end
 
     def teardown
       @window&.close
+      @app&.executor&.shutdown
       super
     end
 
@@ -27,6 +29,7 @@ module Zaniah
       skip "golden images run in the dedicated CI job" if ENV["GOLDEN"] == "skip"
       raise ArgumentError, "invalid golden name" unless name.match?(/\A[\w-]+(?:\/[\w-]+)*\z/)
 
+      @app.global(:theme, theme.is_a?(Theme) ? theme : Theme.public_send(theme))
       element = block.call
       @window.draw { element }
       move_to(*pointer) if pointer

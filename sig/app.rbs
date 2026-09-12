@@ -25,7 +25,7 @@ module Zaniah
     def spawn: [U] () { (EntityContext[T]) -> U } -> Task[U]
     def background: [U] () { () -> U } -> U
     def update: () { (App) -> void } -> void
-    def theme: () -> untyped
+    def theme: () -> Theme
   end
   class App
     attr_reader windows: Array[Platform::Headless::Window]

@@ -1,6 +1,6 @@
 module Zaniah
   module Layout
-    type style_value = dimension | Edges | Array[dimension] | Symbol | bool | nil
+    type style_value = dimension | Edges | Corners | color | Gradient | Transform | Shadow | Ring | Array[untyped] | Range[Integer] | Symbol | bool | nil
     type properties = Hash[Symbol, style_value]
     type measurement = [Numeric, Numeric] | [Numeric, Numeric, Numeric]
     type measure = ^(Numeric width, Numeric height) -> measurement
@@ -20,6 +20,7 @@ module Zaniah
       def []: (Symbol name) -> style_value
       def merge: (**style_value properties) -> Style
       def to_h: () -> properties
+      def inherit: (Style parent) -> Style
     end
     class Node
       attr_reader style: Style

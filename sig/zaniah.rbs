@@ -94,9 +94,13 @@ module Zaniah
                 | (r: Numeric, g: Numeric, b: Numeric, a: Numeric) -> Color
     def self.parse: (color value) -> Color
     def opacity: (Numeric value) -> Color
+    def with_alpha: (Numeric value) -> Color
     def premultiplied: () -> [Numeric, Numeric, Numeric, Numeric]
     def to_a: () -> [Numeric, Numeric, Numeric, Numeric]
     def mix: (color other, Numeric amount) -> Color
+    def lighten: (Numeric amount) -> Color
+    def darken: (Numeric amount) -> Color
+    def contrast_ratio: (color other) -> Numeric
     def to_hsla: () -> HSLA
   end
   class HSLA < Data

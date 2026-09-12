@@ -4,13 +4,17 @@ module Zaniah
     attr_reader scene: Scene
     attr_reader dispatcher: Input::Dispatcher
     attr_reader text_system: TextSystem::_System?
+    attr_reader interactivity: Interactivity
     def initialize: (Platform::Headless::Window window) -> void
     def state: [T] (Object key) { () -> T } -> T
+    def theme: () -> Theme
   end
 
   class Element
     include LengthUnits
     attr_reader layout_node: Layout::Node?
+    attr_reader parent: Element?
+    attr_reader resolved_style: Layout::Style?
     # Child constructors forward their render blocks through super(); ignored here.
     def initialize: () ?{ (*untyped) -> void } -> void
     def child: (Element? element) -> self
@@ -25,6 +29,8 @@ module Zaniah
     def bg: (color color) -> self
     def border_color: (color color) -> self
     def rounded: (radius radius) -> self
+    def opacity: (Numeric value) -> self
+    def ring: (Numeric width, color color, ?Numeric offset) -> self
     def tooltip: (String text) -> self
     def context_menu: (menu items) -> self
     def flex: () -> self
@@ -36,6 +42,14 @@ module Zaniah
     def h_full: () -> self
     def flex_1: () -> self
     def overflow_hidden: () -> self
+    def hover: (**Layout::style_value properties) ?{ (StyleBuilder) -> void } -> self
+    def active: (**Layout::style_value properties) ?{ (StyleBuilder) -> void } -> self
+    def focus: (**Layout::style_value properties) ?{ (StyleBuilder) -> void } -> self
+    def focus_visible: (**Layout::style_value properties) ?{ (StyleBuilder) -> void } -> self
+    def disabled: (?bool value) -> self
+                | (**Layout::style_value properties) { (StyleBuilder) -> void } -> self
+    def selected: (?bool value) -> self
+                | (**Layout::style_value properties) { (StyleBuilder) -> void } -> self
     def w: (dimension value) -> self
     def h: (dimension value) -> self
     def min_w: (dimension value) -> self

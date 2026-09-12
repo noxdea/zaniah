@@ -1,0 +1,81 @@
+module Zaniah
+  class Gradient < Data
+    attr_reader kind: :linear | :radial | :conic
+    attr_reader stops: Array[[Float, Color]]
+    attr_reader angle: Float?
+    attr_reader center: Array[Float]?
+    attr_reader radius: Float?
+    def self.linear: (?angle: Numeric, stops: Array[[Numeric, color]]) -> Gradient
+    def self.radial: (?center: Array[Numeric], ?radius: Numeric, stops: Array[[Numeric, color]]) -> Gradient
+    def self.conic: (?angle: Numeric, ?center: Array[Numeric], stops: Array[[Numeric, color]]) -> Gradient
+  end
+
+  class Transform < Data
+    attr_reader a: Numeric
+    attr_reader b: Numeric
+    attr_reader c: Numeric
+    attr_reader d: Numeric
+    attr_reader tx: Numeric
+    attr_reader ty: Numeric
+    def self.new: (Numeric a, Numeric b, Numeric c, Numeric d, Numeric tx, Numeric ty) -> Transform
+                | (a: Numeric, b: Numeric, c: Numeric, d: Numeric, tx: Numeric, ty: Numeric) -> Transform
+    def self.identity: () -> Transform
+    def self.translate: (Numeric x, ?Numeric y) -> Transform
+    def self.scale: (Numeric x, ?Numeric y) -> Transform
+    def self.rotate: (Numeric degrees) -> Transform
+    def self.skew: (?x: Numeric, ?y: Numeric) -> Transform
+    def compose: (Transform other) -> Transform
+    def then: (Transform other) -> Transform
+    def translate: (Numeric x, ?Numeric y) -> Transform
+    def scale: (Numeric x, ?Numeric y) -> Transform
+    def rotate: (Numeric degrees) -> Transform
+    def skew: (?x: Numeric, ?y: Numeric) -> Transform
+    def apply: (Point point) -> Point
+    def inverse: () -> Transform
+  end
+
+  class Shadow < Data
+    attr_reader x: Float
+    attr_reader y: Float
+    attr_reader blur: Float
+    attr_reader spread: Float
+    attr_reader color: Color
+    attr_reader inset: bool
+    def self.new: (?x: Numeric, ?y: Numeric, ?blur: Numeric, ?spread: Numeric, ?color: color, ?inset: bool) -> Shadow
+  end
+
+  class Ring < Data
+    attr_reader width: Float
+    attr_reader color: Color
+    attr_reader offset: Float
+    def self.new: (Numeric width, color color, ?Numeric offset) -> Ring
+  end
+
+  class StyleBuilder
+    attr_reader properties: Hash[Symbol, Layout::style_value]
+    def initialize: (?Hash[Symbol, Layout::style_value] properties) -> void
+    def style: (**Layout::style_value properties) -> self
+    def bg: (color color) -> self
+    def border_color: (color color) -> self
+    def rounded: (radius radius) -> self
+    def opacity: (Numeric value) -> self
+    def ring: (Numeric width, color color, ?Numeric offset) -> self
+  end
+
+  class StyleSet
+    ORDER: Array[Symbol]
+    attr_reader base: Layout::Style
+    attr_reader states: Hash[Symbol, Hash[Symbol, Layout::style_value]]
+    def initialize: (?Layout::Style base) -> void
+    def merge: (**Layout::style_value properties) -> self
+    def on: (Symbol state, **Layout::style_value properties) -> self
+    def resolve: (Enumerable[Symbol] flags) -> Layout::Style
+    def interactive?: () -> bool
+  end
+
+  class Interactivity
+    def initialize: () -> void
+    def resolve: (Input::Dispatcher dispatcher, Point? pointer_position, bool pointer_down) -> self
+    def for: (untyped owner, ?Enumerable[Symbol]? static) -> Enumerable[Symbol]
+  end
+end

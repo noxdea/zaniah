@@ -10,7 +10,7 @@ module Zaniah
     attr_reader :windows, :executor
 
     def initialize(clock: MONOTONIC_CLOCK)
-      @slots, @generations, @free, @windows, @globals = [], [], [], [], {}
+      @slots, @generations, @free, @windows, @globals = [], [], [], [], {theme: Theme.dark}
       @listeners, @effects, @updating, @flushing = {}, [], 0, false
       @clock = clock
       @executor = TaskExecutor.new(clock: clock)
@@ -106,7 +106,13 @@ module Zaniah
     def open_window(**options, &render)
       options[:clock] ||= @clock
       window = Platform.open_window(**options)
+      window.app = self
       @windows << window
+      @globals[:theme] = Theme.for(window.appearance)
+      window.on_appearance do |appearance|
+        @globals[:theme] = Theme.for(appearance)
+        @windows.each(&:request_frame)
+      end
       window.draw(&render) if render
       window
     end

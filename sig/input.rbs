@@ -96,18 +96,22 @@ module Zaniah
       attr_reader parent: FocusHandle?
       attr_reader children: Array[FocusHandle]
       attr_reader context: context
+      attr_reader owner: untyped
       attr_accessor on_action: (^(action) -> bool)?
       attr_accessor on_focus: (^(bool) -> void)?
-      def initialize: (?parent: FocusHandle?, ?context: context) -> void
+      def initialize: (?parent: FocusHandle?, ?context: context, ?owner: untyped) -> void
       def ancestors: () -> Array[FocusHandle]
     end
     class Dispatcher
       attr_reader focused: FocusHandle?
+      attr_reader focus_origin: Symbol?
       def initialize: (?keymap: Keymap) -> void
-      def focus: (FocusHandle? handle) -> void
+      def focus: (FocusHandle? handle, ?origin: Symbol) -> void
+      def focus_visible?: () -> bool
       def key: (String key) -> (action | :pending | nil)
       def clear_hits: () -> void
       def hits: () -> Array[Hit]
+      def hover_chain: (Point? position) -> Array[untyped]
       def hit: (Bounds bounds, ?clip: Bounds?, ?owner: Element?) { (mouse_event | FileDrop) -> (bool | :capture | nil) } -> void
       def clip: [T] (Bounds bounds) { () -> T } -> T
       def mouse: (mouse_event | FileDrop event) -> bool

@@ -4,15 +4,18 @@ module Zaniah
   class Element
     include LengthUnits
 
-    attr_reader :layout_node
+    attr_reader :layout_node, :parent, :resolved_style
 
     def initialize
       @style, @children, @handlers = Layout::Style.new, [], {}
-      @background, @border_color, @radius = "#0000", "#0000", 0
+      @style_set, @static_flags = StyleSet.new(@style), Set.new
     end
 
     def child(element)
-      @children << element if element
+      if element
+        element.send(:parent=, self) if element.respond_to?(:parent=, true)
+        @children << element
+      end
       self
     end
 
@@ -24,6 +27,7 @@ module Zaniah
 
     def style(**properties)
       @style = @style.merge(**properties)
+      @style_set.merge(**properties)
       self
     end
 
@@ -31,9 +35,11 @@ module Zaniah
     def test_id(value = (getter = true)) = getter ? @test_id : (@test_id = value.to_s.freeze; self)
     def handlers = @handlers.keys.freeze
     def with_state(&initial) = (@state_initializer = initial; self)
-    def bg(color) = (@background = color; self)
-    def border_color(color) = (@border_color = color; self)
-    def rounded(radius) = (@radius = radius; self)
+    def bg(color) = style(background: color)
+    def border_color(color) = style(border_color: color)
+    def rounded(radius) = style(corner_radii: radius)
+    def opacity(value) = style(opacity: value)
+    def ring(width, color, offset = 0) = style(ring: Ring.new(width, color, offset))
     def tooltip(text) = (@tooltip = text.to_s; self)
     def context_menu(items) = (@context_menu = items; self)
     def flex = style(display: :flex)
@@ -45,6 +51,21 @@ module Zaniah
     def h_full = style(height: percent(100))
     def flex_1 = style(flex_grow: 1, flex_basis: 0)
     def overflow_hidden = style(overflow: :hidden)
+
+    %i[hover active focus focus_visible].each do |state|
+      define_method(state) { |**properties, &block| state_style(state, properties, &block) }
+    end
+
+    %i[disabled selected].each do |state|
+      define_method(state) do |value = true, **properties, &block|
+        if block || !properties.empty?
+          state_style(state, properties, &block)
+        else
+          value ? @static_flags.add(state) : @static_flags.delete(state)
+          self
+        end
+      end
+    end
 
     {w: :width, h: :height, min_w: :min_width, min_h: :min_height,
      max_w: :max_width, max_h: :max_height, p: :padding, m: :margin,
@@ -63,7 +84,7 @@ module Zaniah
     end
 
     def prepaint(bounds, _state, cx)
-      unless @handlers.empty? && !@tooltip && !@context_menu
+      unless @handlers.empty? && !@tooltip && !@context_menu && !@style_set.interactive?
         cx.dispatcher.hit(bounds, owner: self) do |event|
           if event.is_a?(Input::MouseDown) && event.button == :right && @context_menu
             cx.window.context_menu(@context_menu, position: event.position)
@@ -88,11 +109,30 @@ module Zaniah
     end
 
     def paint(bounds, _state, _prepaint, cx)
-      border = @style[:border].is_a?(Numeric) ? @style[:border] : 0
+      @resolved_style = @style_set.resolve(cx.interactivity.for(self, @static_flags))
+      border = @resolved_style[:border_widths] || @resolved_style[:border]
+      border = 0 unless border.is_a?(Numeric)
+      background = @resolved_style[:background] || "#0000"
+      background = Color.parse(background).opacity(@resolved_style[:opacity]) unless background.is_a?(Gradient)
       cx.scene.quad(bounds.x, bounds.y, bounds.width, bounds.height,
-        color: @background, radius: @radius, border_width: border, border_color: @border_color)
+        color: background.is_a?(Gradient) ? "#0000" : background,
+        radius: @resolved_style[:corner_radii] || 0, border_width: border,
+        border_color: @resolved_style[:border_color] || "#0000")
       paint_children = -> { @children.each { |child| child.paint(child.layout_node.bounds, nil, nil, cx) unless child.layout_node.style[:display] == :none } }
       @style[:overflow] == :visible ? paint_children.call : cx.scene.clip(bounds, &paint_children)
+    end
+
+    protected
+
+    attr_writer :parent
+
+    private
+
+    def state_style(state, properties)
+      builder = StyleBuilder.new(properties)
+      yield(builder) if block_given?
+      @style_set.on(state, **builder.properties)
+      self
     end
   end
 end

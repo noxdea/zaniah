@@ -1,0 +1,64 @@
+module Zaniah
+  class Theme < Data
+    class Colors < Data
+      attr_reader background: Color
+      attr_reader surface: Color
+      attr_reader surface_hover: Color
+      attr_reader surface_pressed: Color
+      attr_reader border: Color
+      attr_reader border_focus: Color
+      attr_reader text: Color
+      attr_reader text_muted: Color
+      attr_reader text_inverse: Color
+      attr_reader accent: Color
+      attr_reader accent_hover: Color
+      attr_reader accent_text: Color
+      attr_reader success: Color
+      attr_reader warning: Color
+      attr_reader danger: Color
+      attr_reader info: Color
+      attr_reader overlay_scrim: Color
+      attr_reader selection: Color
+      attr_reader ring: Color
+    end
+    class Typography < Data
+      attr_reader font_sans: String
+      attr_reader font_mono: String
+      attr_reader size_xs: Numeric
+      attr_reader size_sm: Numeric
+      attr_reader size_md: Numeric
+      attr_reader size_lg: Numeric
+      attr_reader size_xl: Numeric
+      attr_reader size_2xl: Numeric
+      attr_reader weight_normal: Integer
+      attr_reader weight_medium: Integer
+      attr_reader weight_semibold: Integer
+      attr_reader weight_bold: Integer
+      attr_reader line_height_tight: Numeric
+      attr_reader line_height_normal: Numeric
+      attr_reader line_height_relaxed: Numeric
+    end
+    class Motion < Data
+      attr_reader duration_fast: Numeric
+      attr_reader duration_base: Numeric
+      attr_reader duration_slow: Numeric
+      attr_reader easing_standard: Symbol
+      attr_reader easing_decelerate: Symbol
+      attr_reader easing_accelerate: Symbol
+      attr_reader reduced: bool
+      def reduced?: () -> bool
+    end
+    attr_reader name: Symbol
+    attr_reader appearance: :light | :dark
+    attr_reader colors: Colors
+    attr_reader spacing: Hash[Integer, Numeric]
+    attr_reader radii: Hash[Symbol, Numeric]
+    attr_reader shadows: Hash[Symbol, Shadow]
+    attr_reader typography: Typography
+    attr_reader motion: Motion
+    def self.dark: () -> Theme
+    def self.light: () -> Theme
+    def self.high_contrast: () -> Theme
+    def self.for: (:light | :dark appearance) -> Theme
+  end
+end

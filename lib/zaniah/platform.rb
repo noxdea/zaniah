@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "platform/display"
+require_relative "platform/appearance"
 require_relative "platform/headless/window"
 require_relative "platform/tui/window"
 

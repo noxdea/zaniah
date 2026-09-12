@@ -6,10 +6,11 @@ module Zaniah
       Popup = Data.define(:labels, :enabled, :selected_index, :bounds)
 
       class Window
+        include Appearance
         DEFAULT_CLEAR = "#181b20"
 
-        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs
-        attr_accessor :text_system, :ime_state, :title
+        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position
+        attr_accessor :text_system, :ime_state, :title, :app
 
         def initialize(width: 800, height: 600, title: "Zaniah UI", scale_factor: 1,
                        keymap: nil, clock: MONOTONIC_CLOCK)
@@ -19,7 +20,7 @@ module Zaniah
           @dispatcher = Input::Dispatcher.new(keymap: keymap || Input::Keymap.new(clock: clock))
           @clock = clock
           @state, @used_state, @text_runs = {}, {}, []
-          @dirty, @closed = true, false
+          @dirty, @closed, @pointer_down = true, false, false
         end
 
         def on_input(&block) = @on_input = block
@@ -32,6 +33,7 @@ module Zaniah
         def request_frame = @dirty = true
         def dirty? = @dirty
         def closed? = @closed
+        def pointer_down? = @pointer_down
         def displays = [Display.new(0, "Headless", Bounds.new(0, 0, @content_size.width, @content_size.height), @scale_factor, true)]
 
         def popup
@@ -51,6 +53,9 @@ module Zaniah
 
         def input(event)
           return if popup_input(event)
+          @pointer_position = event.position if event.respond_to?(:position)
+          @pointer_down = true if event.is_a?(Input::MouseDown)
+          @pointer_down = false if event.is_a?(Input::MouseUp)
           @tooltip_offered = false if event.is_a?(Input::MouseMove)
           @tooltip = nil if event.is_a?(Input::MouseDown) || event.is_a?(Input::KeyDown)
           @on_input&.call(event)
@@ -109,6 +114,7 @@ module Zaniah
           root = element.request_layout(cx)
           Layout::Engine.new.compute(root, width: @content_size.width, height: @content_size.height)
           element.prepaint(root.bounds, nil, cx)
+          cx.interactivity.resolve(@dispatcher, @pointer_position, @pointer_down)
           element.paint(root.bounds, nil, nil, cx)
           paint_popups
           @state.delete_if { |key, _| !@used_state[key] }

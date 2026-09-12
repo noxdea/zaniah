@@ -4,6 +4,10 @@ module Zaniah
     type cursor = :arrow | :text | :pointer | :crosshair | :resize_horizontal | :resize_vertical
     type text_run = [Numeric, Numeric, String, color]
     type native_window = Mac::Window | Linux::Window | Linux::WaylandWindow | Windows::Window
+    module Appearance
+      def appearance: () -> (:light | :dark)
+      def on_appearance: () ?{ (:light | :dark) -> void } -> void
+    end
     class Display < Data
       attr_reader id: Integer
       attr_reader name: String
@@ -44,6 +48,7 @@ module Zaniah
                     | (labels: Array[String], enabled: Array[bool], selected_index: Integer, bounds: Bounds) -> Popup
       end
       class Window
+        include Appearance
         DEFAULT_CLEAR: String
         attr_reader content_size: Size
         attr_reader scene: Scene
@@ -51,9 +56,11 @@ module Zaniah
         attr_reader dispatcher: Input::Dispatcher
         attr_reader scale_factor: Numeric
         attr_reader text_runs: Array[text_run]
+        attr_reader pointer_position: Point?
         attr_accessor text_system: TextSystem::_System?
         attr_accessor ime_state: Bounds?
         attr_accessor title: String
+        attr_accessor app: App?
         def initialize: (?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> void
         def on_input: () { (Input::event) -> void } -> void
         def on_resize: () { (Size) -> void } -> void
@@ -65,6 +72,7 @@ module Zaniah
         def request_frame: () -> bool
         def dirty?: () -> bool
         def closed?: () -> bool
+        def pointer_down?: () -> bool
         def displays: () -> Array[Display]
         def popup: () -> Popup?
         def resize: (Numeric width, Numeric height) -> void

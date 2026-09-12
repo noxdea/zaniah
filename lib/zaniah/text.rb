@@ -21,8 +21,9 @@ module Zaniah
 
     def paint(bounds, state, prepaint, cx)
       super
-      cx.text_system&.paint_line(cx.scene, @line, x: bounds.x, y: bounds.y + @line.ascent, color: @color) if @line
-      cx.window.text_runs << [bounds.x, bounds.y, @text, @color] if cx.window.respond_to?(:text_runs)
+      color = @resolved_style[:text_color] || @color
+      cx.text_system&.paint_line(cx.scene, @line, x: bounds.x, y: bounds.y + @line.ascent, color: color) if @line
+      cx.window.text_runs << [bounds.x, bounds.y, @text, color] if cx.window.respond_to?(:text_runs)
     end
   end
 end

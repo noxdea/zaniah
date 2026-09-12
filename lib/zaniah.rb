@@ -16,11 +16,18 @@ module Zaniah
 end
 
 require_relative "zaniah/geometry"
+require_relative "zaniah/style/gradient"
+require_relative "zaniah/style/transform"
+require_relative "zaniah/style/shadow"
+require_relative "zaniah/style/ring"
 require_relative "zaniah/unicode"
 require_relative "zaniah/scene"
 require_relative "zaniah/png"
 require_relative "zaniah/gpu"
 require_relative "zaniah/layout"
+require_relative "zaniah/style/style_set"
+require_relative "zaniah/interactivity"
+require_relative "zaniah/theme"
 require_relative "zaniah/app"
 require_relative "zaniah/process_pool"
 require_relative "zaniah/input"
