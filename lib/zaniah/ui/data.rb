@@ -35,7 +35,10 @@ module Zaniah
       end
 
       def build(cx)
-        @cx, @display_rows = cx, sorted_rows
+        @cx = cx
+        entries = sorted_rows
+        @display_rows, @display_identities = entries.map(&:first), entries.map(&:last)
+        @active_index = @display_identities.index { |identity| @selection.include?(identity) } if !@selection.empty?
         @active_index = @active_index.to_i.clamp(0, [@display_rows.length - 1, 0].max)
         header = Div.new.flex_row.h(@row_height).bg(cx.theme.colors.surface)
           .border_b(1).border_color(cx.theme.colors.border).children(@columns.map { |column| header_cell(column, cx) })
@@ -59,7 +62,7 @@ module Zaniah
         end)
         rows = visible_indices.map do |index|
           row = @display_rows[index]
-          Accessibility.node(role: :row, states: {selected: @selection.include?(row_identity(row, index))},
+          Accessibility.node(role: :row, states: {selected: @selection.include?(identity_at(index))},
             children: @columns.map { |column| Accessibility.node(role: :cell, label: column.label, value: cell_value(row, column.key)) })
         end
         node(:table, states: {sort_key: @sort_key, sort_direction: @sort_direction}, children: [header, *rows])
@@ -79,9 +82,16 @@ module Zaniah
       end
 
       def sorted_rows
-        return @rows.dup unless @sort_key
-        result = @rows.each_with_index.sort_by { |(row, index)| [sortable_value(cell_value(row, @sort_key)), index] }.map(&:first)
-        @sort_direction == :desc ? result.reverse : result
+        entries = @rows.each_with_index.map { |row, index| [row, index, row_identity(row, index)] }
+        unless @sort_key
+          return entries.map { |row, _index, identity| [row, identity] }
+        end
+        entries.sort! do |(left, left_index, _), (right, right_index, _)|
+          order = sortable_value(cell_value(left, @sort_key)) <=> sortable_value(cell_value(right, @sort_key))
+          order = -order if @sort_direction == :desc
+          order.zero? ? left_index <=> right_index : order
+        end
+        entries.map { |row, _index, identity| [row, identity] }
       end
 
       def sortable_value(value) = [value.nil? ? 1 : 0, value.is_a?(Numeric) ? 0 : 1, value.is_a?(Numeric) ? value : value.to_s]
@@ -121,7 +131,7 @@ module Zaniah
 
       def row(index, cx)
         value = @display_rows.fetch(index)
-        identity = row_identity(value, index)
+        identity = identity_at(index)
         Div.new.key(identity).flex_row.h(@row_height).bg(@selection.include?(identity) ? cx.theme.colors.selection : "#0000")
           .border_b(1).border_color(cx.theme.colors.border).cursor(:pointer)
           .on_click { |event, context| select_row(identity, index, event, context) }
@@ -130,7 +140,7 @@ module Zaniah
 
       def cell(row, identity, index, column, cx)
         value = cell_value(row, column.key)
-        content = if @editing == [index, column.key]
+        content = if @editing == [identity, column.key]
           TextField.new(value.to_s).on_change { |text, context| edit(row, index, column, text, context) }
         elsif column.render
           column.render.call(value, row, index)
@@ -141,14 +151,14 @@ module Zaniah
         if column.editable
           cell.on_click do |event, context|
             select_row(identity, index, event, context)
-            begin_edit(index, column, context) if event.click_count >= 2
+            begin_edit(identity, column, context) if event.click_count >= 2
           end
         end
         cell
       end
 
-      def begin_edit(index, column, cx)
-        @editing = [index, column.key]
+      def begin_edit(identity, column, cx)
+        @editing = [identity, column.key]
         cx.window.request_frame
       end
 
@@ -168,11 +178,12 @@ module Zaniah
       end
 
       def select_index(identity, index, modifiers, event, cx)
+        @active_index = index
         if @selection_mode == :single
           @selection.replace([identity])
         elsif modifiers.include?("shift") && @selection_anchor
           range = [@selection_anchor, index].min..[@selection_anchor, index].max
-          @selection.merge(range.map { |item| row_identity(@display_rows[item], item) })
+          @selection.merge(range.map { |item| identity_at(item) })
         elsif (modifiers & %w[cmd ctrl]).any?
           @selection.include?(identity) ? @selection.delete(identity) : @selection.add(identity)
         else
@@ -195,14 +206,15 @@ module Zaniah
         when :activate then @active_index
         when :select_all
           return false unless @selection_mode == :multiple
-          @selection.replace(@display_rows.map.with_index { |row, row_index| row_identity(row, row_index) })
+          @selection.replace(@display_identities)
           @on_select&.call(@selection.dup.freeze, nil, @cx)
           @cx.window.request_frame
           return true
         else return false
         end
         @active_index = index
-        identity = row_identity(@display_rows[index], index)
+        identity = identity_at(index)
+        begin_edit(identity, @columns.find(&:editable), @cx) if action == :activate && @columns.any?(&:editable)
         modifiers = action.to_s.start_with?("extend_") ? ["shift"] : []
         select_index(identity, index, modifiers, nil, @cx) unless @selection_mode == :none
         @body.scroll_to(index, align: :nearest)
@@ -211,6 +223,7 @@ module Zaniah
       end
 
       def row_identity(row, index) = @row_key.arity == 1 ? @row_key.call(row) : @row_key.call(row, index)
+      def identity_at(index) = @display_identities.fetch(index)
       def cell_value(row, key) = row.is_a?(Hash) ? row.fetch(key, row[key.to_s]) : row.respond_to?(key) ? row.public_send(key) : nil
       def visible_indices = @body&.visible_range || (0...[@display_rows&.length || 0, 20].min)
     end
@@ -296,7 +309,7 @@ module Zaniah
         Div.new.key(item.id).h(@row_height).flex_row.items_center.gap(4).p([2, 6])
           .bg(item.id == @selected_id ? cx.theme.colors.selection : "#0000").cursor(:pointer)
           .on_click { |event, context| select(item, index, event, context) }
-          .child(Div.new.w(item.depth * 16))
+          .children(Array.new(item.depth) { Div.new.w(16).h_full.style(border_widths: Edges.new(0, 1, 0, 0), border_color: cx.theme.colors.border) })
           .child(Button.new(branch(item), size: :sm, variant: :ghost).on_click { |_event, _context| toggle(item.id) })
           .child(Label.new(item.label, size: :sm))
       end

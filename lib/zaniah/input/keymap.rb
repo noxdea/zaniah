@@ -77,6 +77,10 @@ module Zaniah
             .bind("end", :last, context: "in_combobox")
             .bind("enter", :choose_option, context: "in_combobox")
             .bind("esc", :dismiss, context: "in_combobox")
+            .bind("left", :previous_option, context: "in_chart")
+            .bind("right", :next_option, context: "in_chart")
+            .bind("home", :first, context: "in_chart")
+            .bind("end", :last, context: "in_chart")
         end
       end
 

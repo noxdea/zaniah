@@ -13,14 +13,16 @@ module Zaniah
 
       def build(cx)
         color = @color || cx.theme.colors.accent
-        Canvas.new do |bounds, context|
+        @canvas = Canvas.new do |bounds, context|
           @plot_bounds = bounds
           paint_line(context.scene, bounds, @series.values.first, color)
         end.w(@width).h(@height).on_hover { |event, context| show_tooltip(event, context) }
+          .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
       end
 
       def tui_cells(*) = spark(@series.values.first)
-      def accessibility_node(_cx) = node(:image, label: @label, value: summary)
+      def focus_handle = @canvas&.focus_handle
+      def accessibility_node(_cx) = node(:image, label: @label, value: summary.merge(selected: selected_summary))
 
       protected
 
@@ -50,6 +52,26 @@ module Zaniah
         cx.window.offer_tooltip("#{@series.keys.first}: #{values[index]}", position: event.position, delay: 0)
       end
 
+      def chart_action(action, cx)
+        count = @series.values.map(&:length).max
+        return false unless count&.positive?
+        @selected_index ||= 0
+        @selected_index = case action
+        when :previous_option then [@selected_index - 1, 0].max
+        when :next_option then [@selected_index + 1, count - 1].min
+        when :first then 0
+        when :last then count - 1
+        else return false
+        end
+        position = @plot_bounds ? Point.new(@plot_bounds.x + @plot_bounds.width * @selected_index / [count - 1, 1].max, @plot_bounds.y) : Point.new(0, 0)
+        cx.window.offer_tooltip(tooltip_at(@selected_index), position: position, delay: 0)
+        cx.window.request_frame
+        true
+      end
+
+      def tooltip_at(index) = @series.map { |name, values| "#{name}: #{values[[index, values.length - 1].min]}" }.join(" · ")
+      def selected_summary = @selected_index && tooltip_at(@selected_index)
+
       def summary
         values = @series.values.flatten
         {minimum: values.min, maximum: values.max, latest: values.last}.freeze
@@ -75,11 +97,12 @@ module Zaniah
 
       def build(cx)
         palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
-        canvas = Canvas.new do |bounds, context|
+        canvas = @canvas = Canvas.new do |bounds, context|
           @plot_bounds = bounds.inset(Edges.new(12, 8, 20, 28))
           axes(context.scene, @plot_bounds, cx.theme.colors.border)
           @series.each_with_index { |(_name, values), index| paint_line(context.scene, @plot_bounds, values, palette[index % palette.length]) }
         end.w(@width).h(@height).on_hover { |event, context| show_line_tooltip(event, context) }
+          .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
         legend = Div.new.flex_row.gap(10).children(@series.keys.each_with_index.map do |name, index|
           Div.new.flex_row.items_center.gap(4).child(Div.new.w(8).h(8).bg(palette[index % palette.length])).child(Label.new(name, size: :xs))
         end)
@@ -109,11 +132,12 @@ module Zaniah
 
       def build(cx)
         palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
-        canvas = Canvas.new do |bounds, context|
+        canvas = @canvas = Canvas.new do |bounds, context|
           @plot_bounds = bounds.inset(Edges.new(12, 8, 20, 28))
           axes(context.scene, @plot_bounds, cx.theme.colors.border)
           paint_bars(context.scene, @plot_bounds, palette)
         end.w(@width).h(@height).on_hover { |event, context| show_line_tooltip(event, context) }
+          .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
         Div.new.gap(4).child(canvas).child(Label.new(@series.keys.join(" · "), size: :xs))
       end
 

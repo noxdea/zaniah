@@ -39,7 +39,7 @@ class DataComponentsTest < Minitest::Test
     assert_includes table.selection, 9_999
     @window.input(T::Input::MouseDown.new(T::Point.new(100, 45), :left, [], 2))
     render(table)
-    assert_equal [0, :name], table.instance_variable_get(:@editing)
+    assert_equal [9_999, :name], table.instance_variable_get(:@editing)
 
     before = table.instance_variable_get(:@widths)[:id]
     @window.input(T::Input::MouseDown.new(T::Point.new(70, 10), :left, [], 1))
@@ -56,6 +56,18 @@ class DataComponentsTest < Minitest::Test
     primary = RUBY_PLATFORM.include?("darwin") ? "cmd" : "ctrl"
     @window.input(T::Input::KeyDown.new("#{primary}-a", false))
     assert_equal rows.length, table.selection.length
+
+    table = render(T::UI::DataGrid.new([{id: 2, name: "B"}, {id: 1, name: "A"}],
+      columns: [{key: :id}, {key: :name, editable: true}], height: 120))
+    @window.input(T::Input::MouseDown.new(T::Point.new(20, 45), :left, [], 1))
+    table.sort_by(:id, direction: :asc)
+    render(table)
+    assert_equal Set[0], table.selection
+    selected_index = table.instance_variable_get(:@display_identities).index(table.selection.first)
+    assert_equal 2, table.instance_variable_get(:@display_rows)[selected_index][:id]
+    @window.dispatcher.focus(table.focus_handle)
+    @window.input(T::Input::KeyDown.new("enter", false))
+    assert_equal [0, :name], table.instance_variable_get(:@editing)
   end
 
   def test_tree_lazy_load_and_keyboard_navigation
@@ -76,6 +88,9 @@ class DataComponentsTest < Minitest::Test
     assert_operator @window.scene.sprites.length, :>, 0
     assert_equal :image, chart.accessibility_node(nil).role
     assert_includes chart.tui_cells, "█"
+    @window.dispatcher.focus(chart.focus_handle)
+    @window.input(T::Input::KeyDown.new("right", false))
+    assert_includes chart.accessibility_node(nil).value[:selected], "Requests"
 
     render(T::UI::BarChart.new([1, 2, 3], width: 240, height: 120))
     assert_operator @window.scene.sprites.length, :>, 0
