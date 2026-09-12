@@ -3,6 +3,7 @@
 require_relative "layout/available_space"
 require_relative "layout/style"
 require_relative "layout/node"
+require_relative "layout/grid"
 require_relative "layout/engine"
 require_relative "layout/tree"
 

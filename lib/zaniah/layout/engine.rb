@@ -3,6 +3,8 @@
 module Zaniah
   module Layout
     class Engine
+      include GridLayout
+
       def initialize(rem: 16) = @rem = rem
 
       def compute(root, width:, height:, x: 0, y: 0)
@@ -29,10 +31,17 @@ module Zaniah
         when 4 then input
         else raise ArgumentError, "invalid #{name}"
         end
-        %i[top right bottom left].each_with_index.map do |side, i|
+        values = %i[top right bottom left].each_with_index.map do |side, i|
           val = style["#{name}_#{side}".to_sym] || input[i]
           val == :auto ? :auto : resolve_length(val, available, 0)
         end
+        direction = style[:direction]
+        raise ArgumentError, "direction must be ltr or rtl" unless %i[ltr rtl].include?(direction)
+        start, finish = style["#{name}_start".to_sym], style["#{name}_end".to_sym]
+        left, right = direction == :ltr ? [start, finish] : [finish, start]
+        values[3] = left == :auto ? :auto : resolve_length(left, available, 0) unless left.nil?
+        values[1] = right == :auto ? :auto : resolve_length(right, available, 0) unless right.nil?
+        values
       end
 
       def clamp_size(node, dimension, size, available)
@@ -49,6 +58,12 @@ module Zaniah
         padding_w, padding_h = p[1] + p[3] + b[1] + b[3], p[0] + p[2] + b[0] + b[2]
         w = resolve_length(s[:width], available_w)
         h = resolve_length(s[:height], available_h)
+        if s[:aspect_ratio]
+          ratio = Float(s[:aspect_ratio])
+          raise ArgumentError, "aspect ratio must be positive and finite" unless ratio.positive? && ratio.finite?
+          h = w / ratio if w && !h
+          w = h * ratio if h && !w
+        end
         if node.measure
           measured = node.measure.call([available_w - padding_w, 0].max, [available_h - padding_h, 0].max)
           w ||= measured[0] + padding_w
@@ -77,7 +92,8 @@ module Zaniah
         node.bounds = Bounds.new(x, y, width, height)
         content = content_bounds(node)
         flow, absolute = node.children.partition { |child| child.style[:position] != :absolute }
-        layout_flow_children(node, content, flow)
+        s = node.style
+        s[:display] == :grid ? layout_grid_children(node, content, flow) : layout_flow_children(node, content, flow)
         layout_absolute_children(absolute, content)
         node.cache.shift if node.cache.length >= 5
         node.cache[key] = true

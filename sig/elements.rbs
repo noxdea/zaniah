@@ -94,7 +94,37 @@ module Zaniah
   class UniformList < Element
     attr_accessor scroll_y: Numeric
     attr_reader visible_range: Range[Integer]?
+    attr_reader scroll_state: ScrollState
     def initialize: (count: Integer, row_height: Numeric) { (Integer) -> Element } -> void
+  end
+
+  class ScrollState
+    attr_reader offset: Point
+    attr_reader content_size: Size
+    attr_reader viewport_size: Size
+    attr_reader axis: :vertical | :horizontal | :both
+    def initialize: (?axis: :vertical | :horizontal | :both) -> void
+    def update: (content_size: Size | [Numeric, Numeric], viewport_size: Size | [Numeric, Numeric]) -> Point
+    def offset=: (Point | Numeric value) -> (Point | Numeric)
+    def scroll_by: (Point | Numeric delta) -> (Point | Numeric)
+    def scroll_to: (Point | Numeric position, ?animate: bool) -> (Point | Numeric)
+    def preserve_anchor: (Numeric delta) -> (Point | Numeric)
+    def at_top?: () -> bool
+    def at_bottom?: () -> bool
+    def at_left?: () -> bool
+    def at_right?: () -> bool
+    def max_offset: () -> Point
+    def clamp!: () -> Point
+    def scroll_rect: (Bounds bounds, ?align: :start | :center | :end | :nearest) -> (Point | Numeric)
+  end
+
+  class ScrollView < Element
+    attr_reader scroll_state: ScrollState
+    attr_reader axis: :vertical | :horizontal | :both
+    def initialize: (?axis: :vertical | :horizontal | :both, ?scrollbar: :overlay | :always | :hidden) -> void
+    def request_layout: (FrameContext context) -> Layout::Node
+    def prepaint: (Bounds bounds, Object? state, FrameContext context) -> void
+    def scroll_to: (Bounds | Point | Numeric target, ?align: :start | :center | :end | :nearest, ?animate: bool) -> self
   end
 
   class SVG < Element
@@ -122,6 +152,7 @@ module Zaniah
     attr_reader scroll_y: Float
     attr_reader visible_range: Range[Integer]
     attr_reader heights: HeightIndex
+    attr_reader scroll_state: ScrollState
     def initialize: (count: Integer, ?estimated_height: Numeric, ?overscan: Integer) { (Integer) -> Element } -> void
     def scroll_y=: (Numeric value) -> Numeric
     def total_height: () -> Float
@@ -135,6 +166,12 @@ module Zaniah
       def prefix: (Integer index) -> Float
       def total: () -> Float
       def index_at: (Numeric y) -> Integer
+    end
+  end
+
+  module UI
+    class Scrollbar < Element
+      def initialize: (ScrollState scroll_state, ?axis: :vertical | :horizontal, ?mode: :overlay | :always | :hidden) -> void
     end
   end
 

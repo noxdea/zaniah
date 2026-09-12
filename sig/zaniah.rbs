@@ -67,10 +67,16 @@ module Zaniah
   end
   class Length < Data
     attr_reader value: Numeric
-    attr_reader unit: :px | :rem | :percent
-    def self.new: (Numeric value, :px | :rem | :percent unit) -> Length
-                | (value: Numeric, unit: :px | :rem | :percent) -> Length
+    attr_reader unit: :px | :rem | :percent | :fr
+    def self.new: (Numeric value, :px | :rem | :percent | :fr unit) -> Length
+                | (value: Numeric, unit: :px | :rem | :percent | :fr) -> Length
     def resolve: (Numeric available, ?rem: Numeric) -> Numeric
+  end
+  class MinMax < Data
+    attr_reader min: dimension | :auto
+    attr_reader max: dimension | :auto
+    def self.new: (dimension | :auto min, dimension | :auto max) -> MinMax
+                | (min: dimension | :auto, max: dimension | :auto) -> MinMax
   end
   class DevicePixels < Data
     attr_reader value: Numeric
@@ -82,6 +88,9 @@ module Zaniah
     def px: (Numeric value) -> Length
     def rems: (Numeric value) -> Length
     def percent: (Numeric value) -> Length
+    def fr: (Numeric value) -> Length
+    def minmax: (dimension | :auto min, dimension | :auto max) -> MinMax
+    def repeat: [T] (Integer count, T track) -> Array[T]
   end
   extend LengthUnits
 

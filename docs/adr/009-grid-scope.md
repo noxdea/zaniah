@@ -1,6 +1,6 @@
 # ADR 009: Implement a bounded grid layout subset
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-12
 - Decision deadline: before M2 implementation
 

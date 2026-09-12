@@ -1,6 +1,6 @@
 module Zaniah
   module Layout
-    type style_value = dimension | Edges | Corners | color | Gradient | Transform | Shadow | Ring | Array[untyped] | Range[Integer] | Symbol | bool | nil
+    type style_value = dimension | MinMax | Edges | Corners | color | Gradient | Transform | Shadow | Ring | Array[untyped] | Range[Integer] | Symbol | bool | nil
     type properties = Hash[Symbol, style_value]
     type measurement = [Numeric, Numeric] | [Numeric, Numeric, Numeric]
     type measure = ^(Numeric width, Numeric height) -> measurement
