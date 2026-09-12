@@ -33,11 +33,15 @@ the drawing surface beneath the editor.
 
 ## Features
 
-- Flex, constraint, absolute, wrapping, and baseline-aware layouts
-- Rounded rectangles, images, static SVG, shadows, clipping, and glyph atlases
+- Flex, Grid, sticky, absolute, wrapping, and baseline-aware layouts
+- Gradients, transforms, paths, SVG, shadows, clipping, and GPU glyph atlases
 - Retained element state, subscriptions, and non-blocking background tasks
-- Uniform and variable-height virtual lists
-- OpenType ligatures and horizontal positioning with configurable text providers
+- Scroll views, inertial input, and uniform or variable-height virtual lists
+- OpenType shaping, font fallback, Japanese wrapping, selection, editing, and IME
+- Themes, state styles, keyed animation, springs, and reduced-motion support
+- Opt-in controls, overlays, tables, trees, charts, forms, and terminal fallbacks
+- Spatial keyboard focus and a diffed cross-platform accessibility tree
+- F12 inspector, frame statistics, hot reload, and headless golden-image tests
 - Native input, IME, clipboard, file-drop, display, and filesystem events
 - RBS declarations for the public API
 
@@ -110,6 +114,12 @@ Native backends use the operating system libraries through Ruby's Fiddle. See
 - [Native backends](docs/native.md) — windows, displays, file watching, and terminals
 - [Text system](docs/text.md) — font discovery, shaping, rasterization, and caching
 - [SVG and lists](docs/vector_and_list.md) — static vector icons and virtual lists
+- [Layout and scrolling](docs/layout.md) — Grid, ScrollView, sticky positioning, and RTL foundations
+- [Themes](docs/theme.md) — semantic tokens and state styles
+- [Components](docs/components.md) — controls, overlays, data views, charts, and forms
+- [Animation](docs/animation.md) — easing, springs, transitions, and reduced motion
+- [Accessibility](docs/accessibility.md) — semantic trees, diffs, and native bridges
+- [Terminal UI](docs/tui.md) — deterministic component degradation
 - [CPU process workers](docs/process_pool.md) — portable background CPU work
 - [Architecture decisions](docs/adr) — design records and rationale
 - [RBS declarations](sig) — public API signatures

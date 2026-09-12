@@ -70,7 +70,26 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L3 | `Drawer` | Modal plus `side:` | left/right | dialog/modal |
 | L3 | `Toast` | `(message, variant:, queue:)`; `dismiss` | info/success/warning/danger | live status |
 | L3 | `CommandPalette` | `(commands, open:, placeholder:)` | searchable modal | dialog/list |
+| L4 | `Table`, `DataGrid` | `(rows, columns:, height:, selection:, row_key:)`; `on_sort`, `on_select`, `on_edit` | virtual rows, sorting, resizing, editing | table/row/cell |
+| L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, lazy `children` proc | arrows/Home/End | tree/treeitem |
+| L5 | `Sparkline` | `(values, width:, height:, color:, label:)` | line + tooltip | image |
+| L5 | `LineChart`, `BarChart` | `(series, width:, height:, colors:, label:)` | axes, legend, tooltip | image |
+| L5 | `Validation` | `required`, `format`, `length`, `number`, `rule` | composable rules | n/a |
+| L5 | `FormField` | `(name, value:, label:, control:, validation:, hint:)` | errors + describedby | group/control/alert |
+| L5 | `Form` | `field`, `on_change`, `on_submit`, `values`, `valid?` | validates before submit | form |
 
 All input components are keyboard operable. Disabled controls remain visible but are
 removed from focus traversal. Overlay components close on Esc; modal overlays restore
 the previous focus. See [TUI](tui.md) for terminal representations.
+
+Table columns are hashes with `key`, and optional `label`, `width`, `sortable`,
+`resizable`, `editable`, and `render`. Tree items accept hashes containing `id`,
+`label`, and either an array or lazy proc in `children`.
+
+In a table, Up/Down/Home/End/Page keys move and select rows, Shift+Up/Down extends
+a range, and Cmd/Ctrl+A selects every row in multiple-selection mode. Sortable
+headers and resize handles are separate Tab stops; Enter sorts and arrow/Page keys
+resize. Tree views use Up/Down to select and Left/Right to collapse or expand.
+
+Run `bundle exec ruby tools/generate_component_gallery.rb` to rebuild the dark,
+light, and high-contrast component sheets plus the two-theme overlay variants.

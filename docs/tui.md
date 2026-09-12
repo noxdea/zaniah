@@ -19,6 +19,10 @@ tests and non-window integrations.
 | Breadcrumb, Pagination, bars | slash-separated path, page status, space-separated content |
 | Modal, Dialog, Drawer, CommandPalette | box-drawing overlay; focus stays inside until dismissed |
 | Toast | live status text |
+| Table, DataGrid | header and visible rows separated with `|` |
+| TreeView | indentation with `▸`/`▾` expansion markers |
+| Sparkline, LineChart, BarChart | eight-level Unicode sparkline summary |
+| Form, FormField | labeled values, `!` errors, and a submit button |
 
 Rounded corners, shadows, gradients, and alpha scrims reduce to solid cells. Focus is
 reported by the terminal cursor/reverse-video capability; motion introduced in M7 is

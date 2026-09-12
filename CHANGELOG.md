@@ -2,11 +2,14 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-09-12
+
 - Add semantic themes, state-aware styles, and same-frame interaction styling.
 - Add Grid, ScrollView/ScrollState, spatial focus navigation, and modern scene primitives.
 - Add paragraph layout, Japanese kinsoku, selection, Unicode-safe editing, and IME composition.
 - Add the opt-in `zaniah/ui` component library with keyboard, TUI, and accessibility contracts.
 - Add clock-driven animation, keyed transitions, inertial scrolling, and reduced-motion support.
+- Add virtual data views, charts, validated forms, native accessibility notifications, DevTools, and the generated component gallery.
 
 ## 0.2.0 — 2026-09-11
 

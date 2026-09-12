@@ -24,3 +24,27 @@ Zaniah::Div.new
 Create a custom theme by constructing `Theme` with the same token value objects.
 Public token names are semantic; applications should not depend on the built-in
 themes' raw color values.
+
+## Token groups
+
+- `colors`: background/surface states, border/focus, text, accent, status,
+  overlay, selection, and ring colors.
+- `spacing`: a compact 4-pixel scale indexed by token number.
+- `radii` and `shadows`: semantic `none`, `sm`, `md`, `lg`, and `full` values.
+- `typography`: sans/mono families, six sizes, four weights, and three line heights.
+- `motion`: fast/base/slow durations, easing names, and `reduced?`.
+
+Records support `with`, so a local override does not mutate the shared theme:
+
+```ruby
+base = Zaniah::Theme.light
+quiet = base.with(
+  colors: base.colors.with(accent: Zaniah::Color.parse("#245b9b")),
+  motion: base.motion.with(reduced: true)
+)
+app.global(:theme, quiet)
+```
+
+Native windows select dark or light initially and refresh the application theme
+when system appearance changes. A system reduced-motion preference sets
+`theme.motion.reduced?` and collapses animation durations to zero.
