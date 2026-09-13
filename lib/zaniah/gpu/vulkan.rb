@@ -60,7 +60,10 @@ module Zaniah
 
       def initialize(width: 128, height: 128)
         raise ArgumentError, "invalid Vulkan image dimensions" unless [width, height].all? { |n| n.is_a?(Integer) && n.positive? } && width * height <= 16_777_216
-        @width, @height, @arena, @resources, @memories, @native_textures = width, height, [], [], [], {}
+        @width, @height, @arena, @resources, @memories = width, height, [], [], []
+        @native_textures, @scene_pipelines = {}, {}
+        @instance_buffer = @instance_memory = @instance_capacity = nil
+        @pixels = @draw_calls = nil
         @lib = FFI::Library.new("libvulkan.so.1", "vulkan-1.dll", "libvulkan.1.dylib", "libMoltenVK.dylib")
         output = keep("\0".b * 8)
         check(call(:vkCreateInstance, [P, P, P], I, build(Types::Instance, s_type: 1), 0, output), "vkCreateInstance")
@@ -89,6 +92,7 @@ module Zaniah
         @memory_properties = keep("\0".b * 1024)
         call(:vkGetPhysicalDeviceMemoryProperties, [P, P], V, @physical, @memory_properties)
         create_target
+        @arena.clear
       rescue StandardError, LoadError
         release
         raise
@@ -218,8 +222,10 @@ module Zaniah
 
       def render(scene, clear: "#0000")
         raise IOError, "Vulkan device released" unless @device
+        arena_start = @arena.length
         bytes, batches = InstancePacking.pack(scene)
         command = begin_command
+        submitted = false
         transients = []
         descriptors = batches.map { |(_kind, texture, _clip), _first, _count| prepare_texture(texture || @white, command, transients) }
         upload_instances(bytes) unless bytes.empty?
@@ -246,13 +252,17 @@ module Zaniah
         end
         call(:vkCmdEndRenderPass, [P], V, command)
         copy_target(command)
+        submitted = true
         @pixels = submit(command, read: true)
       ensure
+        free_command(command) if command && !submitted
         transients&.each { |buffer, memory| destroy_buffer_memory(buffer, memory) }
+        @arena&.slice!(arena_start, @arena.length - arena_start) if arena_start
       end
 
       def resize(width, height)
         width, height = Integer(width), Integer(height)
+        raise ArgumentError, "invalid Vulkan image dimensions" unless [width, height].all?(&:positive?) && width * height <= 16_777_216
         return if width == @width && height == @height
         release
         initialize(width: width, height: height)
@@ -386,6 +396,10 @@ module Zaniah
         read ? read_target : nil
       ensure
         destroy_resource(:vkDestroyFence, fence) if fence
+        free_command(command)
+      end
+
+      def free_command(command)
         call(:vkFreeCommandBuffers, [P, Q, U, P], V,
           @device, @pool, 1, [command].pack("J")) if command && @device
       end
@@ -422,15 +436,22 @@ module Zaniah
 
       def render_triangle(vertex_spirv:, fragment_spirv:)
         raise IOError, "Vulkan device released" unless @device
+        arena_start = @arena.length
         pipeline_handle = pipeline(vertex_spirv, fragment_spirv)
         command = begin_command
+        submitted = false
         render_pass(command, "#000f")
         call(:vkCmdSetScissor, [P, U, U, P], V, command, 0, 1, keep(scissor_bytes(nil)))
         call(:vkCmdBindPipeline, [P, I, Q], V, command, 0, pipeline_handle)
         call(:vkCmdDraw, [P, U, U, U, U], V, command, 3, 1, 0, 0)
         call(:vkCmdEndRenderPass, [P], V, command)
         copy_target(command)
+        submitted = true
         @pixels = submit(command, read: true)
+      ensure
+        free_command(command) if command && !submitted
+        destroy_resource(:vkDestroyPipeline, pipeline_handle) if pipeline_handle
+        @arena&.slice!(arena_start, @arena.length - arena_start) if arena_start
       end
       def write_png(path)
         raise Error, "render a Vulkan frame before capture" unless @pixels
@@ -449,6 +470,9 @@ module Zaniah
         @resources&.clear
         @memories&.clear
         @arena&.clear
+        @native_textures&.clear
+        @scene_pipelines&.clear
+        @instance_buffer = @instance_memory = @instance_capacity = nil
       end
     end
   end

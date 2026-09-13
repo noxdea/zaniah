@@ -32,6 +32,7 @@ software = Zaniah::GPU::Software.new(64, 64)
 expected = software.render(scene, clear: "#111")
 vulkan = Zaniah::GPU.create(backend: :vulkan, width: 64, height: 64)
 begin
+  raise "Vulkan retained initialization temporaries" unless vulkan.instance_variable_get(:@arena).empty?
   actual = vulkan.render(scene, clear: "#111")
   samples = [[20, 16], [40, 8], [41, 9], [46, 9], [53, 9], [58, 9],
     [9, 40], [12, 40], [22, 40], [50, 44]]
@@ -44,6 +45,17 @@ begin
   first = actual.dup
   rgba.upload(0, 0, 1, 1, [0, 255, 255, 255].pack("C*"))
   raise "Vulkan texture revision was ignored" if vulkan.render(scene, clear: "#111") == first
+  raise "Vulkan retained frame temporaries" unless vulkan.instance_variable_get(:@arena).empty?
+  begin
+    vulkan.resize(-1, 32)
+  rescue ArgumentError
+    raise "invalid resize released the Vulkan device" unless vulkan.render(scene, clear: "#111").bytesize == 64 * 64 * 4
+  else
+    raise "invalid Vulkan resize was accepted"
+  end
+  vulkan.resize(32, 32)
+  raise "Vulkan resize did not rebuild frame resources" unless vulkan.render(scene, clear: "#111").bytesize == 32 * 32 * 4
+  raise "Vulkan retained resize temporaries" unless vulkan.instance_variable_get(:@arena).empty?
   raise "Vulkan produced no draw calls" unless vulkan.draw_calls&.positive?
   puts "Vulkan Scene: #{vulkan.device_name}, #{vulkan.draw_calls} draw calls"
 ensure
