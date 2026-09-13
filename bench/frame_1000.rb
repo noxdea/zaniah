@@ -11,11 +11,15 @@ root = nil
 
 Bench.budget("layout request for 1000 elements", 3.0) { root = element.request_layout(context) }
 engine = Zaniah::Layout::Engine.new
-Bench.budget("layout compute for 1000 elements", 3.0) { engine.compute(root, width: 800, height: 600) }
-Bench.budget("prepaint and paint for 1000 elements", 5.0) do
+Bench.budget("layout compute for 1000 elements", 3.0,
+  setup: -> { root = element.request_layout(context) }) { engine.compute(root, width: 800, height: 600) }
+Bench.budget("prepaint for 1000 elements", 3.0) do
   window.scene.clear
   window.dispatcher.clear_hits
   element.prepaint(root.bounds, nil, context)
+end
+Bench.budget("paint for 1000 elements", 3.0) do
+  window.scene.clear
   element.paint(root.bounds, nil, nil, context)
 end
 

@@ -7,9 +7,10 @@ module Bench
   RESULTS = File.expand_path("../results.json", __dir__)
   module_function
 
-  def budget(name, limit_ms, warmup: 2, samples: 11, &block)
-    warmup.times(&block)
+  def budget(name, limit_ms, warmup: 2, samples: 11, setup: nil, &block)
+    warmup.times { setup&.call; block.call }
     timings = samples.times.map do
+      setup&.call
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       block.call
       (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000
