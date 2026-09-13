@@ -166,6 +166,10 @@ module Zaniah
         main_dimension, cross_dimension = row ? [:width, :height] : [:height, :width]
         gap = resolve_length(s[:gap], main_size, 0)
         flow = flow.reject { |child| child.style.to_h[:display] == :none && hide(child, node.bounds.x, node.bounds.y) }
+        if s[:flex_wrap] == :nowrap && s[:justify_content] == :start && s[:align_items] == :stretch &&
+            layout_simple_flow(flow, content, row, reverse, main_size, cross_size, cross_dimension, gap)
+          return
+        end
         items = flow.map do |child|
           style = child.style.to_h
           nw, nh = natural_size(child, content.width, content.height)
@@ -253,6 +257,54 @@ module Zaniah
           end
           cross_cursor += line_cross + gap
         end
+      end
+
+      def layout_simple_flow(flow, content, row, reverse, main_size, cross_size, cross_dimension, gap)
+        styles = flow.map { |child| child.style.to_h }
+        return false unless styles.all? do |style|
+          margin = style[:margin]
+          margin.is_a?(Numeric) && margin.zero? && style[:position] == :relative && style[:flex_basis] == :auto &&
+            (style[:align_self] == :auto || style[:align_self] == :stretch) && style[:min_width] == 0 && style[:min_height] == 0 &&
+            style[:max_width] == Float::INFINITY && style[:max_height] == Float::INFINITY &&
+            style[:margin_top].nil? && style[:margin_right].nil? && style[:margin_bottom].nil? && style[:margin_left].nil? &&
+            style[:margin_start].nil? && style[:margin_end].nil? && style[:left].nil? && style[:right].nil? &&
+            style[:top].nil? && style[:bottom].nil? && style[:flex_grow].is_a?(Numeric) && style[:flex_shrink].is_a?(Numeric)
+        end
+
+        bases, crosses = flow.map do |child|
+          width, height = natural_size(child, content.width, content.height)
+          row ? [width, height] : [height, width]
+        end.transpose
+        bases ||= []
+        crosses ||= []
+        available = main_size - gap * [flow.length - 1, 0].max
+        total = bases.sum
+        growing = total < available
+        factor = styles.each_with_index.sum do |style, index|
+          growing ? style[:flex_grow] : style[:flex_shrink] * bases[index]
+        end
+        free = available - total
+        divisor = growing ? [factor, 1].max : factor
+        sizes = bases.each_index.map do |index|
+          weight = growing ? styles[index][:flex_grow] : styles[index][:flex_shrink] * bases[index]
+          bases[index] + (factor.positive? ? free * weight / divisor : 0)
+        end
+        return false if sizes.any?(&:negative?)
+
+        cursor = 0
+        flow.each_with_index do |child, index|
+          style = styles[index]
+          size = sizes[index]
+          cross = style[cross_dimension] == :auto ? cross_size : crosses[index]
+          main_position = reverse ? main_size - cursor - size : cursor
+          if row
+            layout(child, content.x + main_position, content.y, size, cross, content.width, content.height, false)
+          else
+            layout(child, content.x, content.y + main_position, cross, size, content.width, content.height, false)
+          end
+          cursor += size + gap
+        end
+        true
       end
 
       def layout_absolute_children(children, content)

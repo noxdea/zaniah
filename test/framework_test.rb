@@ -79,6 +79,38 @@ class FrameworkTest < Minitest::Test
     assert_equal 120, last.bounds.width
   end
 
+  def test_default_flex_fast_path_matches_general_layout
+    %i[row column row_reverse column_reverse].each do |direction|
+      build = lambda do |margin|
+        children = [
+          T::Layout::Node.new(style: {width: 10, height: 20, flex_grow: 1, margin: margin}),
+          T::Layout::Node.new(style: {width: 20, height: 10, flex_grow: 2, margin: margin})
+        ]
+        T::Layout::Node.new(style: {flex_direction: direction, gap: 3}, children: children)
+      end
+      fast, general = build.call(0), build.call(T.px(0))
+      engine = T::Layout::Engine.new
+      simple_flow = engine.method(:layout_simple_flow)
+      fast_path_used = false
+      engine.define_singleton_method(:layout_simple_flow) { |*args| fast_path_used = true; simple_flow.call(*args) }
+      engine.compute(fast, width: 40, height: 25)
+      T::Layout::Engine.new.compute(general, width: 40, height: 25)
+      assert fast_path_used, direction
+      assert_equal general.children.map(&:bounds), fast.children.map(&:bounds), direction
+    end
+  end
+
+  def test_default_flex_shrink_never_crosses_minimum
+    children = [
+      T::Layout::Node.new(style: {width: 7, height: 24, flex_grow: 1, flex_shrink: 0}),
+      T::Layout::Node.new(style: {width: 42, height: 5, flex_grow: 3, flex_shrink: 3}),
+      T::Layout::Node.new(style: {width: 34, height: 31, flex_grow: 3, flex_shrink: 2})
+    ]
+    root = T::Layout::Node.new(style: {flex_direction: :column_reverse, gap: 1}, children: children)
+    T::Layout::Engine.new.compute(root, width: 138, height: 7)
+    assert_equal [24, 0, 0], children.map { |child| child.bounds.height }
+  end
+
   def test_nested_entities_observation_and_disposal
     app = T::App.new
     source = app.new_entity { [] }
