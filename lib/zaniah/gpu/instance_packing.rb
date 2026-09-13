@@ -6,6 +6,9 @@ module Zaniah
     module InstancePacking
       STRIDE = 40
       def self.pack(scene)
+        packed = pack_quads(scene)
+        return packed if packed
+
         data, batches, bytes = [], [], "".b
         scene.each_command do |kind, offset, clip|
           texture = nil
@@ -55,6 +58,23 @@ module Zaniah
         bytes << data.pack("f*") unless data.empty?
         [bytes, batches]
       end
+
+      def self.pack_quads(scene)
+        batches = []
+        expected = 0
+        scene.each_command do |kind, offset, clip|
+          return unless kind == :quad && offset == expected
+          if batches.empty? || batches.last[0][2] != clip
+            batches << [[:quad, nil, clip], expected / STRIDE, 1]
+          else
+            batches.last[2] += 1
+          end
+          expected += STRIDE
+        end
+        return unless expected == scene.quads.length
+        [scene.quads.pack("f*"), batches]
+      end
+      private_class_method :pack_quads
     end
   end
 end

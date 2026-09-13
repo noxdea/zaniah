@@ -9,6 +9,8 @@ class SceneBudgetTest < Minitest::Test
     scene.quad(0, 0, 1, 1, color: "#fff")
     scene.layer(10) { scene.quad(11, 0, 1, 1, color: "#fff") }
     assert_equal [40, 0, 80], scene.each_command.map { |_, offset, _| offset }
+    packed = Zaniah::GPU::InstancePacking.pack(scene).first.unpack("f*")
+    assert_equal [0, 10, 11], packed.each_slice(Zaniah::GPU::InstancePacking::STRIDE).map(&:first)
     scene.clear
     scene.quad(0, 0, 1, 1, color: "#fff")
     assert_equal [0], scene.each_command.map { |_, offset, _| offset }
@@ -34,6 +36,20 @@ class SceneBudgetTest < Minitest::Test
     before = texture.revision
     texture.upload(0, 0, 1, 1, "\xff".b * 4)
     assert_equal before + 1, texture.revision
+  end
+
+  def test_quad_only_instance_packing_preserves_clip_batches
+    scene = Zaniah::Scene.new
+    scene.quad(0, 0, 1, 1, color: "#fff")
+    clip = Zaniah::Bounds.new(1, 1, 2, 2)
+    scene.clip(clip) do
+      scene.quad(1, 0, 1, 1, color: "#fff")
+      scene.quad(2, 0, 1, 1, color: "#fff")
+    end
+    bytes, batches = Zaniah::GPU::InstancePacking.pack(scene)
+    assert_equal scene.quads.pack("f*"), bytes
+    assert_equal [1, 2], batches.map(&:last)
+    assert_equal [nil, clip], batches.map { |batch| batch[0][2] }
   end
 
 
