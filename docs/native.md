@@ -66,5 +66,6 @@ ruby examples/linux_smoke.rb --wayland
 ruby examples/native_watch.rb
 ```
 
-Native input, IME, dialogs, and terminal integration also require manual checks
-on the target operating system.
+Linux XIM composition is exercised in CI with Xvfb and IBus/Mozc. Native input,
+IME on macOS and Windows, dialogs, and terminal integration also require manual
+checks on the target operating system.

@@ -34,11 +34,12 @@ jobs:
           ruby-version: '3.3'
       - run: bundle install
       - run: bundle exec rake test:golden
-      - name: Verify Vulkan Scene rendering
+      - name: Verify Vulkan Scene rendering and native IME
         run: |
           sudo apt-get update
-          sudo apt-get install -y libvulkan1 mesa-vulkan-drivers
+          sudo apt-get install -y libvulkan1 mesa-vulkan-drivers xvfb xdotool dbus-x11 ibus ibus-mozc
           ruby test/support/vulkan_scene_smoke.rb
+          dbus-run-session -- test/support/linux_ime_smoke.sh
       - name: Verify AT-SPI provider queries
         run: dbus-run-session -- ruby test/support/linux_atspi_smoke.rb
       - run: bundle exec rake bench BUDGET=1
