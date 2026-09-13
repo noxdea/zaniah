@@ -403,6 +403,8 @@ module Zaniah
     end
 
     class Spinner < Component
+      FRAMES = ["|", "/", "-", "\\"].freeze
+
       def initialize(label: "Loading", size: 16)
         super()
         @label, @size = label.to_s, size
@@ -419,7 +421,7 @@ module Zaniah
           end
           angle = cx.animator.value(animation_key, 0.0)
         end
-        Text.new(%w[◴ ◷ ◶ ◵][(angle / 90).floor % 4], size: @size, color: cx.theme.colors.accent)
+        Text.new(FRAMES[(angle / 90).floor % FRAMES.length], size: @size, color: cx.theme.colors.accent)
       end
       def tui_cells(*) = "◌ #{@label}"
       def accessibility_node(_cx) = node(:progressbar, label: @label, states: {busy: true})

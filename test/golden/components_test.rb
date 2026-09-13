@@ -56,7 +56,9 @@ class ComponentGoldenTest < Zaniah::UITest
   %i[dark light].each do |appearance|
     TUIComponentsTest.new(:unused).cases.each_key do |name|
       define_method("test_#{name.to_s.downcase}_#{appearance}") do
-        assert_golden("components/#{name.to_s.gsub(/([a-z\d])([A-Z])/, '\\1-\\2').downcase}-#{appearance}", theme: appearance) do
+        theme = Zaniah::Theme.public_send(appearance)
+        theme = theme.with(motion: theme.motion.with(reduced: true))
+        assert_golden("components/#{name.to_s.gsub(/([a-z\d])([A-Z])/, '\\1-\\2').downcase}-#{appearance}", theme: theme) do
           theme = @app.global(:theme)
           Zaniah::Div.new.w_full.h_full.p(20).bg(theme.colors.background).child(component_examples.fetch(name))
         end
