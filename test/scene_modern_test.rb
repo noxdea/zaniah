@@ -82,6 +82,17 @@ class SceneModernTest < Minitest::Test
     assert_equal [10, 10], scene.commands.each_slice(4).map { |command| command[2] }
   end
 
+  def test_software_renders_transformed_triangle
+    scene = T::Scene.new
+    scene.push_transform(T::Transform.translate(2, 1)) do
+      scene.triangle([0, 0, 8, 0, 4, 8], color: "#f0f")
+    end
+
+    pixels = T::GPU::Software.new(12, 12).render(scene)
+    assert_equal [255, 0, 255, 255], pixel(pixels, 12, 6, 4)
+    assert_equal [0, 0, 0, 0], pixel(pixels, 12, 0, 0)
+  end
+
   private
 
   def pixel(data, width, x, y) = data.byteslice((y * width + x) * 4, 4).bytes

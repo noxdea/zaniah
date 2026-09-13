@@ -227,7 +227,7 @@ module Zaniah
           when "GetAccessibleAtPoint"
             point = Point.new(parameter(parameters, 0, :int32), parameter(parameters, 1, :int32))
             reference(@tree.hit(point))
-          when "GetExtents" then tuple(*bounds.to_a.map { |value| int32(value.round) })
+          when "GetExtents" then tuple(*[bounds.x, bounds.y, bounds.width, bounds.height].map { |value| int32(value.round) })
           when "GetPosition" then [int32(bounds.x.round), int32(bounds.y.round)]
           when "GetSize" then [int32(bounds.width.round), int32(bounds.height.round)]
           when "GetLayer" then uint32(3)

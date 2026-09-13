@@ -201,7 +201,8 @@ module Zaniah
         x0, y0, x1, y1, x2, y2, red, green, blue, alpha, *transform = data.slice(offset, 16)
         matrix = Transform.new(*transform)
         x0, y0, x1, y1, x2, y2 = [[x0, y0], [x1, y1], [x2, y2]].flat_map do |x, y|
-          matrix.apply(Point.new(x, y)).to_a
+          point = matrix.apply(Point.new(x, y))
+          [point.x, point.y]
         end
         area = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)
         return if area.zero?
