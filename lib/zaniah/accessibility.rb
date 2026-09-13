@@ -3,12 +3,13 @@
 require_relative "accessibility/node"
 require_relative "accessibility/tree"
 require_relative "accessibility/native_tree"
-require_relative "accessibility/mac"
-require_relative "accessibility/windows"
-require_relative "accessibility/linux"
 
 module Zaniah
   module Accessibility
+    autoload :Mac, File.expand_path("accessibility/mac", __dir__)
+    autoload :Windows, File.expand_path("accessibility/windows", __dir__)
+    autoload :Linux, File.expand_path("accessibility/linux", __dir__)
+
     module_function
 
     def publish(window, root, changes)

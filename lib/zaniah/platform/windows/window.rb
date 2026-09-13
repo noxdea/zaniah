@@ -9,7 +9,7 @@ module Zaniah
     module Windows
       def self.displays
         user, scale = FFI::Library.new("user32.dll"), FFI::Library.new("shcore.dll")
-        ptype, int, uint = Fiddle::TYPE_VOIDP, Fiddle::TYPE_INT, Fiddle::TYPE_UINT
+        ptype, int = Fiddle::TYPE_VOIDP, Fiddle::TYPE_INT
         result, error = [], nil
         callback = Fiddle::Closure::BlockCaller.new(int, [ptype, ptype, ptype, Fiddle::TYPE_INTPTR_T]) do |monitor, _dc, _rect, _data|
           begin

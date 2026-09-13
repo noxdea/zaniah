@@ -286,7 +286,7 @@ module Zaniah
             next if line.start_with?("#")
             uri = URI.parse(line.strip) rescue nil
             next unless uri&.scheme == "file" && [nil, "", "localhost"].include?(uri.host)
-            path = URI::DEFAULT_PARSER.unescape(uri.path).force_encoding("UTF-8")
+            path = URI::RFC2396_PARSER.unescape(uri.path).force_encoding("UTF-8")
             path if path.start_with?("/") && !path.include?("\0") && path.valid_encoding?
           end
         end

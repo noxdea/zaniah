@@ -139,7 +139,7 @@ module Zaniah
     end
 
     class ListView < Component
-      attr_reader :selected_index, :selected_value
+      attr_reader :selected_index
 
       def initialize(items, height: 320, row_height: 30, selected: nil, &render_item)
         super()
