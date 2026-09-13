@@ -4,14 +4,14 @@
 
 ## 0.3.0 — 2026-09-13
 
-- Add deterministic golden and interaction tests, performance budgets, ADRs, RBS validation, and expanded CI gates.
-- Add semantic dark, light, and high-contrast themes with state-aware same-frame interaction styling.
+- Improve large flex layouts, GPU scene submission, and software-rendered gradients for smoother frames.
+- Add dark, light, and high-contrast themes with immediate hover, active, focus, and disabled styling.
 - Add Grid, ScrollView/ScrollState, sticky and logical layout, spatial focus navigation, and platform cursors.
 - Add gradients, transforms, paths, layered effects, and matching Software, OpenGL, Metal, and Vulkan scene rendering.
 - Add paragraph layout, Japanese kinsoku, font fallback, selection, Unicode-safe editing, and native IME composition.
-- Add the opt-in `zaniah/ui` component library with keyboard, TUI, golden-image, and accessibility contracts.
+- Add the opt-in `zaniah/ui` component library with keyboard and TUI support.
 - Add clock-driven animation, keyed transitions, inertial scrolling, and reduced-motion support.
-- Add virtual data views, charts, validated forms, native NSAccessibility/UIA/AT-SPI providers, DevTools, and the generated three-theme gallery.
+- Add virtual data views, charts, validated forms, native screen-reader support on macOS, Windows, and Linux, DevTools, and a three-theme component gallery.
 
 ## 0.2.0 — 2026-09-11
 
