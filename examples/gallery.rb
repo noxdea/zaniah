@@ -144,6 +144,9 @@ if $PROGRAM_NAME == __FILE__
     output = ARGV.find { |argument| argument.end_with?(".png") }
     window.write_png(output) if output && backend != :tui
     raise "gallery did not render" if window.scene.commands.empty?
+    if !%i[headless tui].include?(backend) && (!window.device.respond_to?(:draw_calls) || !window.device.draw_calls&.positive?)
+      raise "gallery produced no native GPU draw calls"
+    end
     puts "gallery: #{backend} rendered #{window.scene.commands.length} scene commands"
     window.close
   else

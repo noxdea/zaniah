@@ -18,6 +18,7 @@ tests and non-window integrations.
 | DatePicker, TimePicker, ColorPicker | labeled ISO date, 24-hour time, or hex color in brackets |
 | Tooltip, Popover, Menu, Dropdown | status text or a box/menu with `>` selection marker |
 | Tabs, Accordion, Collapsible | selected tab in brackets and `[+]`/`[-]` disclosure markers |
+| ScrollView, Scrollbar | clipped child content and `│`/`─` track |
 | Breadcrumb, Pagination, bars | slash-separated path, page status, space-separated content |
 | Modal, Dialog, Drawer, CommandPalette | box-drawing overlay; focus stays inside until dismissed |
 | SplitPane, Resizable, DockPanel | `│`/`─` separators, resize corner, or ordered dock regions |

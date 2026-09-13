@@ -47,6 +47,8 @@ module Zaniah
           bounds: @bounds, states: {minimum: 0, maximum: maximum, viewport: viewport}, actions: %i[increment decrement])
       end
 
+      def tui_cells(*) = @mode == :hidden ? "" : @axis == :vertical ? "│" : "─"
+
       private
 
       def start_drag(event, cx)

@@ -14,7 +14,7 @@ class AccessibilityComponentsTest < Minitest::Test
     TextField: :textbox, TextArea: :textbox, SearchInput: :searchbox, PasswordInput: :textbox,
     NumberInput: :textbox, TagInput: :textbox, Select: :combobox, Combobox: :combobox,
     MultiSelect: :listbox, DatePicker: :combobox, TimePicker: :combobox, ColorPicker: :combobox,
-    Tabs: :group, Accordion: :group, Collapsible: :button, Breadcrumb: :navigation,
+    Tabs: :group, Scrollbar: :scrollbar, Accordion: :group, Collapsible: :button, Breadcrumb: :navigation,
     Pagination: :navigation, Toolbar: :toolbar, StatusBar: :status, Sidebar: :navigation,
     Modal: :dialog, Dialog: :dialog, Drawer: :dialog, Toast: :status, CommandPalette: :dialog,
     SplitPane: :group, Resizable: :group, DockPanel: :group, ListView: :list, Table: :table,

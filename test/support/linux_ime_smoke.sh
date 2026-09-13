@@ -18,3 +18,4 @@ ibus-daemon --daemonize --xim --desktop=none --panel=disable --emoji-extension=d
 sleep 3
 
 ruby examples/native_ime.rb
+ruby examples/gallery.rb --backend=native --check

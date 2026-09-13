@@ -11,6 +11,7 @@ class TUIComponentsTest < Minitest::Test
 
   def cases
     label = ->(text) { Zaniah::UI::Label.new(text) }
+    scroll = Zaniah::ScrollState.new.tap { |state| state.update(content_size: Zaniah::Size.new(100, 200), viewport_size: Zaniah::Size.new(100, 100)) }
     {
       Label: [label["Hello"], "Hello"], Icon: [Zaniah::UI::Icon.new(:check), "✓"],
       Divider: [Zaniah::UI::Divider.new, "─"], Spacer: [Zaniah::UI::Spacer.new, ""],
@@ -45,6 +46,7 @@ class TUIComponentsTest < Minitest::Test
       TimePicker: [Zaniah::UI::TimePicker.new("14:30"), "Time: [14:30]"],
       ColorPicker: [Zaniah::UI::ColorPicker.new("#2563eb"), "Color: [#2563eb]"],
       Tabs: [Zaniah::UI::Tabs.new([["One", label["Panel"]], ["Two", label["Other"]]]), "[One] Two\nPanel"],
+      Scrollbar: [Zaniah::UI::Scrollbar.new(scroll, mode: :always).h(200), "│"],
       Accordion: [Zaniah::UI::Accordion.new([["One", label["Panel"]], ["Two", label["Other"]]]), "[-] One\n[+] Two"],
       Collapsible: [Zaniah::UI::Collapsible.new("Details", label["Panel"], open: true), "[-] Details\nPanel"],
       Breadcrumb: [Zaniah::UI::Breadcrumb.new(["Home", "Page"]), "Home / Page"],

@@ -65,6 +65,8 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L2 | `TimePicker` | `(value, step:, label:, disabled:)`; `on_change` | 24-hour time, minute/hour keyboard steps | combobox |
 | L2 | `ColorPicker` | `(value, label:, swatches:, disabled:)`; `on_change` | hex input and swatches | combobox |
 | L3 | `Tabs` | `(items, selected:)`; `on_change` | arrows/Home/End | tab/tabpanel |
+| L3 | `ScrollView` | `(axis:, scrollbar:)`; `scroll_to` | vertical/horizontal/both; overlay/always/hidden | child tree |
+| L3 | `Scrollbar` | `(scroll_state, axis:, mode:)` | drag, track paging, arrows/Home/End/Page keys | scrollbar |
 | L3 | `Accordion` | `(items, multiple:, open:)` | single/multiple | group |
 | L3 | `Collapsible` | `(label, content, open:)`; `on_change` | open/closed | button/expanded |
 | L3 | `Breadcrumb` | `(items)` | labels or label/callback pairs | navigation/link |
