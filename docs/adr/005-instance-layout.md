@@ -31,10 +31,10 @@ and radial gradients use exactly two stops; a future multi-stop implementation
 may use a 1D texture without another stride change. Shadows are expanded into
 ordinary quad instances, so the reserved shadow fields remain available.
 
-Metal and OpenGL consume the layout directly, Software consumes the equivalent
-40-float quad layout, and cached text sprite batches use the same stride.
-`GPU::Vulkan` remains the repository's offscreen user-supplied SPIR-V probe; it
-publishes the shared stride but does not yet present general `Scene` commands.
+Metal, OpenGL, and Vulkan consume the layout directly, Software consumes the
+equivalent 40-float quad layout, and cached text sprite batches use the same
+stride. Vulkan's bundled SPIR-V shaders render `Scene` quads, sprites, and path
+triangles offscreen; its user-supplied SPIR-V triangle probe remains available.
 
 ## Consequences
 

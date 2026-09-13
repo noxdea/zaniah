@@ -15,7 +15,7 @@ module Zaniah
       def write_png: (String path) -> Integer
       def release: () -> void
     end
-    def self.create: (?Platform::Headless::Window? window, ?backend: :software | :metal | :opengl, ?width: Numeric?, ?height: Numeric?) -> _Device
+    def self.create: (?Platform::Headless::Window? window, ?backend: :software | :metal | :opengl | :vulkan, ?width: Numeric?, ?height: Numeric?) -> _Device
 
     class Buffer
       attr_reader size: Integer
@@ -93,14 +93,20 @@ module Zaniah
       def write_png: (String path) -> Integer
       def release: () -> void
     end
-    # Optional offscreen triangle probe, not a full window-renderer interface.
     class Vulkan
       INSTANCE_STRIDE: Integer
       attr_reader width: Integer
       attr_reader height: Integer
       attr_reader pixels: String
       attr_reader device_name: String
+      attr_reader draw_calls: Integer?
       def initialize: (?width: Integer, ?height: Integer) -> void
+      def resize: (Numeric width, Numeric height) -> void
+      def create_texture: (Integer width, Integer height, ?format: format, ?data: String?) -> Texture
+      def create_buffer: (Integer size, ?usage: Symbol, ?mutable: bool) -> Buffer
+      def create_pipeline: (shader: shader, ?blend: Symbol) -> Pipeline
+      def begin_frame: (?clear: color) -> FrameEncoder
+      def render: (Scene scene, ?clear: color) -> String
       def render_triangle: (vertex_spirv: String, fragment_spirv: String) -> void
       def write_png: (String path) -> Integer
       def release: () -> void

@@ -9,10 +9,15 @@ require_relative "gpu/software"
 module Zaniah
   module GPU
     def self.create(window = nil, backend: :software, width: nil, height: nil)
-      return window.create_device(backend) if window && backend != :software
-      raise ArgumentError, "backend requires a native window" unless backend == :software
       size = window&.content_size
-      Software.new(width || size&.width || 800, height || size&.height || 600)
+      return window.create_device(backend) if window && !%i[software vulkan].include?(backend)
+      dimensions = [(width || size&.width || 800).to_i, (height || size&.height || 600).to_i]
+      return Software.new(*dimensions) if backend == :software
+      if backend == :vulkan
+        require_relative "gpu/vulkan"
+        return Vulkan.new(width: dimensions[0], height: dimensions[1])
+      end
+      raise ArgumentError, "backend requires a native window"
     end
   end
 end

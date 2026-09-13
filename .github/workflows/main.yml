@@ -34,8 +34,13 @@ jobs:
           ruby-version: '3.3'
       - run: bundle install
       - run: bundle exec rake test:golden
+      - name: Verify Vulkan Scene rendering
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvulkan1 mesa-vulkan-drivers
+          ruby test/support/vulkan_scene_smoke.rb
       - name: Verify AT-SPI provider queries
-        run: dbus-run-session -- sh -c 'AT_SPI_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" ruby test/support/linux_atspi_smoke.rb'
+        run: dbus-run-session -- ruby test/support/linux_atspi_smoke.rb
       - run: bundle exec rake bench BUDGET=1
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

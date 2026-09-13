@@ -28,6 +28,10 @@ window.run
 On Linux, pass `display_server: :wayland` or `:x11` to require one display
 server. On macOS, pass `gpu: :opengl` to use OpenGL instead of Metal.
 
+For offscreen Vulkan rendering, use `GPU.create(backend: :vulkan, width:, height:)`.
+It accepts the same `Scene` instance layout as Metal, OpenGL, and Software and
+supports capture through `pixels` or `write_png`.
+
 Native backends require Ruby's Fiddle library and the platform graphics
 libraries. Fiddle is not a default gem on Ruby 4, so applications using native
 windows must install it. Linux file dialogs and URL opening use `zenity` and

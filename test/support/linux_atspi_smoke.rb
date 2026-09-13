@@ -9,6 +9,8 @@ require "zaniah/accessibility/node"
 require "zaniah/accessibility/native_tree"
 require "zaniah/accessibility/linux/service"
 
+ENV["AT_SPI_BUS_ADDRESS"] ||= ENV.fetch("DBUS_SESSION_BUS_ADDRESS")
+
 module Zaniah
   module Accessibility
     def self.perform(*) = false
