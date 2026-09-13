@@ -155,6 +155,24 @@ class NativeTest < Minitest::Test
     provider&.close
   end
 
+  def test_core_text_can_precede_appkit_font_use
+    skip "CoreText is macOS only" unless RUBY_PLATFORM.include?("darwin")
+    require "zaniah/platform/mac/core_text"
+    require "alhena"
+    font = Alhena::Font.open(File.expand_path("../assets/fonts/Abel-Regular.ttf", __dir__))
+    provider = Zaniah::Platform::Mac::CoreText.new
+    provider.rasterize(font, font.glyph_id("A"), size: 12)
+    provider.close
+    provider = nil
+    GC.start
+
+    require "zaniah/platform/mac"
+    objc = Zaniah::Platform::Mac::O
+    refute_equal 0, objc.send(objc.klass("NSFont"), "systemFontOfSize:", 12.0, args: [:double])
+  ensure
+    provider&.close
+  end
+
   def test_vulkan_rejects_invalid_dimensions_and_shader_bytes
     require "zaniah/gpu/vulkan"
     assert_raises(ArgumentError) { Zaniah::GPU::Vulkan.new(width: 0, height: 10) }

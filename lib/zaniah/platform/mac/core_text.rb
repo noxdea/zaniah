@@ -7,6 +7,9 @@ module Zaniah
     module Mac
       class CoreText
         P, L, D, V = Fiddle::TYPE_VOIDP, Fiddle::TYPE_LONG, Fiddle::TYPE_DOUBLE, Fiddle::TYPE_VOID
+        # Initializing CoreText first can leave AppKit's later NSFont cache invalid.
+        APPKIT = FFI::Library.new("/System/Library/Frameworks/AppKit.framework/AppKit")
+
         def initialize
           require "alhena"
           @cf = FFI::Library.new("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
