@@ -14,17 +14,18 @@ module Zaniah
     LAYER_POPUP = 1_000_000
     LAYER_TOOLTIP = 1_100_000
     LAYER_DEBUG = 2_000_000
-    attr_reader :quads, :paths, :commands, :textures, :sprite_batches
+    attr_reader :paths, :commands, :textures, :sprite_batches
 
     def initialize
       @quads, @sprites, @sprite_transforms, @paths, @commands, @textures = [], [], [], [], [], []
+      @quad_bytes, @quad_bytes_trusted = +"".b, true
       @sprite_batches, @expanded_batches = [], {}
       @clips, @layers, @transforms, @opacities = [], [LAYER_CONTENT], [Transform.identity], [1.0]
       @colors, @last_layer, @ordered = {}, -Float::INFINITY, true
     end
 
     def clear
-      [@quads, @sprites, @sprite_transforms, @paths, @commands, @textures, @clips].each(&:clear)
+      [@quads, @quad_bytes, @sprites, @sprite_transforms, @paths, @commands, @textures, @clips].each(&:clear)
       @sprite_batches.clear
       @expanded_batches.clear
       @layers.replace([LAYER_CONTENT])
@@ -48,11 +49,18 @@ module Zaniah
       raise ArgumentError, "border widths must be nonnegative" unless borders.all? { |value| value.is_a?(Numeric) && value >= 0 }
       primary, secondary, gradient = paint_values(color, opacity)
       matrix = effective_transform(transform)
-      @quads.push(x, y, width, height, *primary, *secondary, *corners,
+      values = [x, y, width, height, *primary, *secondary, *corners,
         *opacity_values(border_color, opacity), *borders, *gradient,
-        0, *matrix.to_a, 0, border_style == :dashed ? 1 : 0)
+        0, *matrix.to_a, 0, border_style == :dashed ? 1 : 0]
+      values.pack("f*", buffer: @quad_bytes) if @quad_bytes_trusted
+      @quads.concat(values)
       command(:quad, offset)
       self
+    end
+
+    def quads
+      @quad_bytes_trusted = false
+      @quads
     end
 
     def push_quad(x, y, width, height, bg, radius, border_width, border_color, order = 0)
@@ -206,6 +214,10 @@ module Zaniah
     end
 
     private
+
+    def packed_quad_bytes
+      @quad_bytes.dup if @quad_bytes_trusted
+    end
 
     def effective_transform(transform)
       return @transforms.last unless transform

@@ -47,9 +47,15 @@ class SceneBudgetTest < Minitest::Test
       scene.quad(2, 0, 1, 1, color: "#fff")
     end
     bytes, batches = Zaniah::GPU::InstancePacking.pack(scene)
-    assert_equal scene.quads.pack("f*"), bytes
     assert_equal [1, 2], batches.map(&:last)
     assert_equal [nil, clip], batches.map { |batch| batch[0][2] }
+    scene.quad(3, 0, 1, 1, color: "#fff")
+    assert_equal 3 * Zaniah::Scene::SPRITE_INSTANCE_BYTES, bytes.bytesize
+    bytes = Zaniah::GPU::InstancePacking.pack(scene).first
+    quads = scene.quads
+    assert_equal quads.pack("f*"), bytes
+    quads[0] = 9
+    assert_equal 9, Zaniah::GPU::InstancePacking.pack(scene).first.unpack1("f")
   end
 
 

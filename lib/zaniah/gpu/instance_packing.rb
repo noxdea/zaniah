@@ -71,8 +71,9 @@ module Zaniah
           end
           expected += STRIDE
         end
-        return unless expected == scene.quads.length
-        [scene.quads.pack("f*"), batches]
+        bytes = scene.__send__(:packed_quad_bytes)
+        return unless bytes && expected * 4 == bytes.bytesize
+        [bytes, batches]
       end
       private_class_method :pack_quads
     end
