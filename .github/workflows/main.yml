@@ -37,7 +37,7 @@ jobs:
       - name: Verify Vulkan Scene rendering and native IME
         run: |
           sudo apt-get update
-          sudo apt-get install -y libvulkan1 mesa-vulkan-drivers xvfb xdotool dbus-x11 ibus ibus-mozc
+          sudo apt-get install -y libvulkan1 mesa-vulkan-drivers xvfb xdotool dbus-x11 ibus ibus-kkc
           ruby test/support/vulkan_scene_smoke.rb
           dbus-run-session -- test/support/linux_ime_smoke.sh
       - name: Verify AT-SPI provider queries

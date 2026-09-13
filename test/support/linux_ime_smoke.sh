@@ -2,6 +2,8 @@
 set -eu
 
 export DISPLAY=:99
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
 export XMODIFIERS=@im=ibus
 export GTK_IM_MODULE=ibus
 export QT_IM_MODULE=ibus
@@ -11,8 +13,8 @@ xvfb_pid=$!
 trap 'kill "$xvfb_pid" 2>/dev/null || true' EXIT
 sleep 2
 
-gsettings set org.freedesktop.ibus.general preload-engines "['mozc-on']"
-gsettings set org.freedesktop.ibus.general engines-order "['mozc-on']"
+gsettings set org.freedesktop.ibus.general preload-engines "['kkc']"
+gsettings set org.freedesktop.ibus.general engines-order "['kkc']"
 gsettings set org.freedesktop.ibus.general enable-by-default true
 ibus-daemon --daemonize --xim --desktop=none --panel=disable --emoji-extension=disable
 sleep 3
