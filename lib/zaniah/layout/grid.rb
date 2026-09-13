@@ -57,7 +57,7 @@ module Zaniah
       def place_grid_items(items, columns)
         occupied = {}
         cursor = [0, 0]
-        items.sort_by { |item| item[:row] && item[:column] ? 0 : item[:row] || item[:column] ? 1 : 2 }.each do |item|
+        items.each_with_index.sort_by { |item, index| [item[:row] && item[:column] ? 0 : item[:row] || item[:column] ? 1 : 2, index] }.each do |item, _index|
           explicit = item[:row] || item[:column]
           row, column = next_grid_cell(occupied, columns, item, cursor)
           item[:row], item[:column] = row, column
