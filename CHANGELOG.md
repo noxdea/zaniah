@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 0.3.0 — 2026-09-13
+## 0.3.0 — 2026-09-14
 
 - Improve large flex layouts, GPU scene submission, and software-rendered gradients for smoother frames.
 - Add dark, light, and high-contrast themes with immediate hover, active, focus, and disabled styling.
