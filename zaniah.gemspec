@@ -5,7 +5,7 @@ require_relative "lib/zaniah/version"
 Gem::Specification.new do |spec|
   spec.name = "zaniah"
   spec.version = Zaniah::VERSION
-  spec.authors = ["ydah"]
+  spec.authors = ["Yudai Takada"]
   spec.email = ["t.yudai92@gmail.com"]
   spec.summary = "A pure Ruby UI framework with native and headless rendering"
   spec.homepage = "https://github.com/noxdea/zaniah"
