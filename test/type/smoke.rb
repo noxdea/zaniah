@@ -54,6 +54,14 @@ module PublicAPISmoke
     check(line.x_for_index(4) == line.width, "byte caret failed")
     paragraph = window.text_system.layout_paragraph("Ruby wraps", width: line.width, size: 12)
     check(paragraph.lines.length > 1, "paragraph layout failed")
+    hint = Zaniah::Div.new.w(8).h(8)
+    overlay_text = Zaniah::Text.new("Ruby", size: 12, wrap: :anywhere)
+      .inline_overlay(offset: 2, element: hint)
+      .block_overlay(line: 0, element: Zaniah::Div.new, position: :below, height: 4)
+    window.draw { overlay_text }
+    window.tick
+    check(overlay_text.hit_test(overlay_text.offset_to_point(2)) == 2, "text overlay coordinates failed")
+    overlay_text.remove_overlay(hint)
     text_buffer = Zaniah::TextBuffer.new("Ruby")
     text_buffer.insert(4, " UI").undo.redo
     check(text_buffer.to_s == "Ruby UI", "text buffer history failed")

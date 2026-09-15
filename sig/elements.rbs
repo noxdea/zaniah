@@ -88,6 +88,21 @@ module Zaniah
   class Div < Element
   end
   class Text < Element
+    class InlineOverlay < Data
+      attr_reader element: _Renderable
+      attr_reader offset: Integer
+      attr_reader align: :before | :after
+      def self.new: (_Renderable element, Integer offset, :before | :after align) -> InlineOverlay
+                  | (element: _Renderable, offset: Integer, align: :before | :after) -> InlineOverlay
+    end
+    class BlockOverlay < Data
+      attr_reader element: _Renderable
+      attr_reader line: Integer
+      attr_reader position: :above | :below
+      attr_reader height: Float
+      def self.new: (_Renderable element, Integer line, :above | :below position, Float height) -> BlockOverlay
+                  | (element: _Renderable, line: Integer, position: :above | :below, height: Float) -> BlockOverlay
+    end
     attr_reader text: String
     attr_reader font_size: Numeric
     attr_reader text_color: color
@@ -99,6 +114,11 @@ module Zaniah
     def on_change: () { (String value) -> void } -> self
     def placeholder: (String text, ?color: color?) -> self
     def secure: (?bool value) -> self
+    def inline_overlay: (offset: Integer, element: _Renderable, ?align: :before | :after) -> self
+    def block_overlay: (line: Integer, element: _Renderable, ?position: :above | :below, height: Numeric) -> self
+    def remove_overlay: (_Renderable element) -> self
+    def hit_test: (Point point) -> Integer
+    def offset_to_point: (Integer offset) -> Point
     def wrap: (?:none | :word | :anywhere mode, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none) -> self
     def selectable: (?bool value) -> self
     def editable: (?TextBuffer? buffer) -> self

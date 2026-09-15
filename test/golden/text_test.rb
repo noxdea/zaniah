@@ -25,6 +25,20 @@ class GoldenTextTest < Zaniah::UITest
     end
   end
 
+  def test_inline_and_block_overlays
+    assert_golden("text/overlays") do
+      hint = Zaniah::Div.new.w(58).h(20).items_center.justify_center
+        .bg("#1d4ed8").rounded(4).child(Zaniah::Text.new(": String", size: 11, color: "#dbeafe"))
+      lens = Zaniah::Div.new.h(22).items_center.justify_center
+        .bg("#29364a").child(Zaniah::Text.new("3 references", size: 12, color: "#93c5fd"))
+      text = Zaniah::Text.new("result = compute_value(input)\nputs result", size: 18,
+        wrap: :anywhere, line_height: 26, color: "#e2e8f0").w(250)
+        .inline_overlay(offset: 6, element: hint)
+        .block_overlay(line: 1, element: lens, position: :above, height: 22)
+      Zaniah::Div.new.p(24).bg("#111827").child(text)
+    end
+  end
+
   private
 
   def paragraph(text, mode)

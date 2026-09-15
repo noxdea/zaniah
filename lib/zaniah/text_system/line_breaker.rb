@@ -10,6 +10,10 @@ module Zaniah
       end
 
       def ranges(width, &measure)
+        ranges_with_offsets(width) { |value, _first, _finish| measure.call(value) }
+      end
+
+      def ranges_with_offsets(width, &measure)
         width = Float(width)
         raise ArgumentError, "width must be nonnegative" if width.nan? || width.negative?
         result, offset = [], 0
@@ -34,7 +38,7 @@ module Zaniah
           fit, last_word, index = first, nil, first
           while index < clusters.length
             candidate = segment.byteslice(bytes[first]...bytes[index + 1])
-            break if index > first && measure.call(candidate) > width
+            break if index > first && measure.call(candidate, base + bytes[first], base + bytes[index + 1]) > width
             fit = index + 1
             last_word = fit if break_after?(clusters[index])
             index += 1
