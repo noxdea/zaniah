@@ -28,8 +28,9 @@ module Zaniah
         y, @inline_placements = 0.0, []
         @lines = ranges.each_with_index.map do |range, index|
           source = @text.byteslice(range) || ""
-          source = ellipsize(source, range.begin) if @ellipsis && wrap == :none
-          overlays = overlays_for(range.begin, range.end).select { |overlay| overlay.offset - range.begin <= source.bytesize }
+          visible = source.bytesize
+          source, visible = ellipsize(source, range.begin) if @ellipsis && wrap == :none
+          overlays = overlays_for(range.begin, range.end).select { |overlay| overlay.offset - range.begin <= visible }
           line = spaced(layout_with_overlays(source, range.begin, overlays))
           line = justified(line) if @align == :justify && index < ranges.length - 1
           height = [@line_height, overlays.map(&:height).max || 0].max
@@ -167,11 +168,12 @@ module Zaniah
 
       def ellipsize(value, start)
         overlays = overlays_for(start, start + value.bytesize)
-        return value if @limit.infinite? || layout_with_overlays(value, start, overlays).width <= @limit
+        return [value, value.bytesize] if @limit.infinite? || layout_with_overlays(value, start, overlays).width <= @limit
         clusters = value.grapheme_clusters
         clusters.pop while !clusters.empty? && layout_with_overlays(clusters.join + "…", start,
           overlays.select { |overlay| overlay.offset - start <= clusters.join.bytesize }).width > @limit
-        clusters.join + "…"
+        visible = clusters.join
+        [visible + "…", visible.bytesize]
       end
     end
 
@@ -182,7 +184,7 @@ module Zaniah
       attr_reader :text, :lines, :width, :height, :inline_placements, :block_placements
 
       def initialize(text, rows:, blocks:, width:)
-        @text, @lines, @inline_placements, @block_placements = text, [], [], []
+        @text, @lines, @inline_placements, @block_placements = text.dup.freeze, [], [], []
         y = 0.0
         rows.each_with_index do |row, row_index|
           y = append_blocks(blocks, row_index, :above, y)

@@ -58,14 +58,16 @@ module Zaniah
     def hit_test(point)
       raise Error, "text must be laid out before coordinate conversion" unless @paragraph || @line
       offset = @paragraph ? @paragraph.hit_test(point) : @line.index_for_x(point.x)
-      [offset, @text.bytesize].min
+      display_to_logical_offset(offset)
     end
 
     def offset_to_point(offset)
       raise Error, "text must be laid out before coordinate conversion" unless @paragraph || @line
       offset = Integer(offset)
       raise RangeError, "offset is outside the text" unless offset.between?(0, @text.bytesize)
-      @paragraph ? @paragraph.offset_to_point(offset) : Point.new(@line.x_for_index(offset), 0)
+      raise ArgumentError, "offset splits a grapheme cluster" unless Unicode.grapheme_boundary?(@text, offset)
+      display_offset = logical_to_display_offset(offset)
+      @paragraph ? @paragraph.offset_to_point(display_offset) : Point.new(@line.x_for_index(display_offset), 0)
     end
 
     def selection=(value)
@@ -121,15 +123,16 @@ module Zaniah
         raise Error, "overlay element must return a layout node" unless node.is_a?(Layout::Node)
         [element.object_id, node]
       end
+      overlay_styles = overlay_nodes.transform_values(&:style)
       if overlays
-        @paragraph = overlay_paragraph(value, available, cx.text_system, overlay_nodes)
-        position_overlay_nodes(overlay_nodes)
+        @paragraph = overlay_paragraph(value, available, cx.text_system, overlay_nodes, overlay_styles)
+        position_overlay_nodes(overlay_nodes, overlay_styles)
       end
       measurement = if @measure
         lambda do |width, height|
           if overlays
-            @paragraph = overlay_paragraph(value, effective_width(width), cx.text_system, overlay_nodes)
-            position_overlay_nodes(overlay_nodes)
+            @paragraph = overlay_paragraph(value, effective_width(width), cx.text_system, overlay_nodes, overlay_styles)
+            position_overlay_nodes(overlay_nodes, overlay_styles)
           end
           @measure.call(width, height)
         end
@@ -139,11 +142,11 @@ module Zaniah
         lambda do |width, _height|
           limit = effective_width(width)
           @paragraph = if overlays
-            overlay_paragraph(value, limit, cx.text_system, overlay_nodes)
+            overlay_paragraph(value, limit, cx.text_system, overlay_nodes, overlay_styles)
           else
             paragraph(value, limit, cx.text_system)
           end
-          position_overlay_nodes(overlay_nodes) if overlays
+          position_overlay_nodes(overlay_nodes, overlay_styles) if overlays
           [@paragraph.width, @paragraph.height, @paragraph.lines.first&.layout&.ascent || @font_size]
         end
       end
@@ -197,8 +200,8 @@ module Zaniah
       return if overlay_at(local_point(event.position))
       offset = offset_at(event.position)
       @selection = if event.click_count >= 3 && @paragraph
-        range = @paragraph.line_range_at(offset)
-        TextSelection.new(range.begin, range.end)
+        range = @paragraph.line_range_at(logical_to_display_offset(offset))
+        TextSelection.new(display_to_logical_offset(range.begin), display_to_logical_offset(range.end))
       elsif event.click_count == 2
         range = Unicode.word_range_at(@text, [offset, @text.bytesize].min)
         TextSelection.new(range.begin, range.end)
@@ -403,37 +406,46 @@ module Zaniah
       end
     end
 
-    def overlay_paragraph(value, width, typesetter, nodes)
+    def overlay_paragraph(value, width, typesetter, nodes, styles)
       engine = Layout::Engine.new
       rows = source_rows(value)
+      logical_rows = source_rows(@text)
+      logical_boundaries = Unicode.grapheme_boundaries(@text)
       inline = @inline_overlays.filter_map do |overlay|
-        next if overlay.offset > value.bytesize
-        measured = engine.measure(nodes.fetch(overlay.element.object_id), width: width, height: Float::INFINITY)
+        next if logical_boundaries.bsearch { |offset| offset >= overlay.offset } != overlay.offset
+        display_offset = logical_to_display_offset(overlay.offset, after_insertion: overlay.align == :after)
+        node = nodes.fetch(overlay.element.object_id)
+        node.style = styles.fetch(overlay.element.object_id) unless node.style.equal?(styles.fetch(overlay.element.object_id))
+        measured = engine.measure(node, width: width, height: Float::INFINITY)
         unless measured.all? { |size| size.is_a?(Numeric) && size.finite? && !size.negative? }
           raise Error, "inline overlay must have a finite nonnegative size"
         end
-        [row_at(rows, overlay.offset), overlay, measured]
+        [row_at(rows, display_offset), overlay, display_offset, measured]
       end
       inline_by_row = inline.group_by(&:first)
-      blocks = @block_overlays.map do |overlay|
-        start, source = rows.fetch(overlay.line)
-        offset = overlay.position == :above ? start : start + source.bytesize
-        block_width = width.finite? ? width : engine.measure(nodes.fetch(overlay.element.object_id),
-          width: width, height: overlay.height).first
+      blocks = @block_overlays.filter_map do |overlay|
+        next unless (logical_row = logical_rows[overlay.line])
+        start, source = logical_row
+        logical_offset = overlay.position == :above ? start : start + source.bytesize
+        offset = logical_to_display_offset(logical_offset, after_insertion: overlay.position == :below)
+        line = row_at(rows, offset)
+        node = nodes.fetch(overlay.element.object_id)
+        node.style = styles.fetch(overlay.element.object_id) unless node.style.equal?(styles.fetch(overlay.element.object_id))
+        block_width = width.finite? ? width : engine.measure(node, width: width, height: overlay.height).first
         raise Error, "block overlay must have a finite nonnegative width" unless block_width.is_a?(Numeric) && block_width.finite? && !block_width.negative?
-        TextSystem::OverlayParagraph::Block.new(overlay.element.object_id, overlay.line,
+        TextSystem::OverlayParagraph::Block.new(overlay.element.object_id, line,
           offset, block_width, overlay.height, overlay.position)
       end
-      layout_key = [value, width, @font_size, @font&.object_id, @wrap, @line_height,
+      layout_key = [value.dup.freeze, width, @font_size, @font&.object_id, @wrap, @line_height,
         @letter_spacing, @text_align, @ellipsis, @kinsoku, typesetter&.object_id,
-        inline.map { |row, overlay, size| [row, overlay.element.object_id, overlay.offset, overlay.align, *size] },
+        inline.map { |row, overlay, offset, size| [row, overlay.element.object_id, offset, overlay.align, *size] },
         blocks.map { |block| [block.key, block.line, block.width, block.height, block.position] }]
       return @overlay_layout_cache.last if @overlay_layout_cache&.first == layout_key
 
       composed = rows.each_with_index.map do |(start, source), row|
-        row_overlays = (inline_by_row[row] || []).map do |_target, overlay, (overlay_width, overlay_height)|
+        row_overlays = (inline_by_row[row] || []).map do |_target, overlay, offset, (overlay_width, overlay_height)|
           TextSystem::Paragraph::InlineOverlay.new(overlay.element.object_id,
-            overlay.offset - start, overlay_width, overlay_height, overlay.align)
+            offset - start, overlay_width, overlay_height, overlay.align)
         end
         key = [source, width, @font_size, @font&.object_id, @wrap, @line_height,
           @letter_spacing, @text_align, @ellipsis, @kinsoku, typesetter&.object_id,
@@ -459,12 +471,43 @@ module Zaniah
       following ? following - 1 : rows.length - 1
     end
 
-    def position_overlay_nodes(nodes)
-      (@paragraph.inline_placements + @paragraph.block_placements).each do |placement|
+    def position_overlay_nodes(nodes, styles)
+      placements = (@paragraph.inline_placements + @paragraph.block_placements).to_h { |placement| [placement.key, placement] }
+      nodes.each do |key, node|
+        unless (placement = placements[key])
+          node.style = styles.fetch(key).merge(position: :absolute, display: :none)
+          next
+        end
         node = nodes.fetch(placement.key)
-        node.style = node.style.merge(position: :absolute, left: placement.x, top: placement.y,
+        node.style = styles.fetch(key).merge(position: :absolute, left: placement.x, top: placement.y,
           width: placement.width, height: placement.height)
       end
+    end
+
+    def logical_to_display_offset(offset, after_insertion: false)
+      return 0 if @placeholder && @text.empty? && !@buffer&.composition
+      composition = @buffer&.composition
+      return offset unless composition
+      insertion = @selection.head
+      offset > insertion || (after_insertion && offset == insertion) ? offset + composition.text.bytesize : offset
+    end
+
+    def display_to_logical_offset(offset)
+      return 0 if @placeholder && @text.empty? && !@buffer&.composition
+      if (composition = @buffer&.composition)
+        insertion = @selection.head
+        offset = if offset <= insertion
+          offset
+        elsif offset <= insertion + composition.text.bytesize
+          insertion
+        else
+          offset - composition.text.bytesize
+        end
+      end
+      offset = offset.clamp(0, @text.bytesize)
+      return offset if Unicode.grapheme_boundary?(@text, offset)
+      before, after = Unicode.previous_boundary(@text, offset), Unicode.next_boundary(@text, offset)
+      offset - before <= after - offset ? before : after
     end
 
     def overlay_at(point)

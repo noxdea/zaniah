@@ -126,6 +126,72 @@ class TextOverlayTest < Minitest::Test
     window&.close
   end
 
+  def test_composition_translates_overlay_and_public_offsets
+    system = CellTypesetter.new
+    window = Zaniah::Platform::Headless::Window.new(width: 10, height: 10)
+    window.text_system = system
+    buffer = Zaniah::TextBuffer.new("ab")
+    hint = Zaniah::Div.new.w(1).h(1)
+    text = Zaniah::Text.new("ab", size: 1, wrap: :anywhere).editable(buffer)
+      .inline_overlay(offset: 2, element: hint)
+    text.selection = Zaniah::TextSelection.new(1)
+    buffer.set_composition("に")
+    layout(text, window)
+
+    assert_equal 5, text.instance_variable_get(:@paragraph).inline_placements.first.offset
+    assert_equal Zaniah::Point.new(3, 0), text.offset_to_point(2)
+    assert_equal 2, text.hit_test(Zaniah::Point.new(3.5, 0.5))
+    assert_equal 1, text.hit_test(Zaniah::Point.new(2, 0.5))
+  ensure
+    window&.close
+  end
+
+  def test_overlay_layout_cache_snapshots_mutable_source
+    window = Zaniah::Platform::Headless::Window.new(width: 10, height: 10)
+    source = String.new("ab")
+    text = Zaniah::Text.new(source, size: 1, wrap: :anywhere)
+      .inline_overlay(offset: 1, element: Zaniah::Div.new.w(1).h(1))
+    layout(text, window)
+    source.replace("xy")
+    layout(text, window)
+
+    assert_equal "xy", text.instance_variable_get(:@paragraph).text
+    assert_equal ["xy"], text.instance_variable_get(:@paragraph).lines.map { |line| line.layout.text }
+  ensure
+    window&.close
+  end
+
+  def test_ellipsis_hides_an_overlay_beyond_visible_text
+    system = CellTypesetter.new
+    window = Zaniah::Platform::Headless::Window.new(width: 3, height: 10)
+    window.text_system = system
+    hint = Zaniah::Div.new.w(2).h(1)
+    text = Zaniah::Text.new("abcdef", size: 1, wrap: :none, ellipsis: true).w(3)
+      .inline_overlay(offset: 5, element: hint)
+    layout(text, window)
+
+    assert_equal :none, hint.layout_node.style[:display]
+    assert_equal Zaniah::Bounds.new(0, 0, 0, 0), hint.layout_node.bounds
+  ensure
+    window&.close
+  end
+
+  def test_responsive_overlay_is_measured_at_the_constrained_width
+    window = Zaniah::Platform::Headless::Window.new(width: 100, height: 20)
+    hint = Zaniah::Div.new.w(Zaniah.percent(100)).h(1)
+    text = Zaniah::Text.new("a", size: 1, wrap: :anywhere)
+      .inline_overlay(offset: 1, element: hint)
+    node = text.request_layout(Zaniah::FrameContext.new(window))
+    engine = Zaniah::Layout::Engine.new
+    width, height = engine.measure(node, width: 10, height: 20)
+    engine.compute(node, width: width, height: height)
+
+    assert_equal 10, text.instance_variable_get(:@paragraph).inline_placements.first.width
+    assert_equal 10, hint.layout_node.bounds.width
+  ensure
+    window&.close
+  end
+
   private
 
   def paragraph(text, **options)
