@@ -123,3 +123,22 @@ Offsets are UTF-8 byte offsets and edits must land on extended grapheme-cluster
 boundaries. The string-backed buffer is intended for ordinary fields and
 documents up to tens of thousands of characters; a piece table is deliberately
 outside the current scope.
+
+## Inline and block overlays
+
+Attach non-editable UI elements to text without inserting bytes into the source:
+
+```ruby
+hint = Zaniah::Div.new.w(72).h(20).bg("#334155").on_click { show_type_help }
+code_lens = Zaniah::Div.new.h(20).child(Zaniah::Text.new("3 references"))
+
+text = Zaniah::Text.new(source, wrap: :word)
+  .inline_overlay(offset: 42, element: hint, align: :after)
+  .block_overlay(line: 10, element: code_lens, position: :above, height: 20)
+```
+
+Inline overlay width participates in wrapping. `align: :after` keeps the logical
+caret before the overlay; `:before` keeps it after the overlay. Block line numbers
+are zero-based. Overlay elements receive pointer events but are never part of text
+selection. Use `hit_test(point)` and `offset_to_point(offset)` for local display ↔
+UTF-8 byte-offset conversion, and `remove_overlay(element)` to detach an overlay.

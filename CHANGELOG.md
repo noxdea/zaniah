@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.4.0 — 2026-09-15
+
+- Add inline and block text overlays with wrapping-aware layout, hit testing, and row-local relayout.
+
 ## 0.3.0 — 2026-09-14
 
 - Improve large flex layouts, GPU scene submission, and software-rendered gradients for smoother frames.

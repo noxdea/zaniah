@@ -37,7 +37,7 @@ the drawing surface beneath the editor.
 - Gradients, transforms, paths, SVG, shadows, clipping, and GPU glyph atlases
 - Retained element state, subscriptions, and non-blocking background tasks
 - Scroll views, inertial input, and uniform or variable-height virtual lists
-- OpenType shaping, font fallback, Japanese wrapping, selection, editing, and IME
+- OpenType shaping, font fallback, Japanese wrapping, text overlays, selection, editing, and IME
 - Themes, state styles, keyed animation, springs, and reduced-motion support
 - Opt-in controls, overlays, tables, trees, charts, forms, and terminal fallbacks
 - Spatial keyboard focus and a diffed cross-platform accessibility tree
