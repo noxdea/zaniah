@@ -31,6 +31,8 @@ class AdvancedComponentsTest < Minitest::Test
       T::UI::MultiSelect.new([["Ruby", :ruby]], value: [:ruby]),
       T::UI::DatePicker.new("2026-09-12"), T::UI::TimePicker.new("12:30"), T::UI::ColorPicker.new,
       T::UI::SplitPane.new(label.call("One"), label.call("Two")), T::UI::Resizable.new(label.call("Resize")),
+      T::UI::PaneGrid.new([[[:one, label.call("One")], [:two, label.call("Two")]]],
+        columns: [T.fr(1), T.fr(1)], rows: [T.fr(1)]),
       T::UI::DockPanel.new(center: label.call("Center"), top: label.call("Top")), T::UI::ListView.new(%w[One Two]),
       T::UI::CodeEditor.new("puts 1"), T::UI::RichText.new([{text: "Ruby", color: "#f00"}])
     ]

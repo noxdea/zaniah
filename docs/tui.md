@@ -21,7 +21,7 @@ tests and non-window integrations.
 | ScrollView, Scrollbar | clipped child content and `│`/`─` track |
 | Breadcrumb, Pagination, bars | slash-separated path, page status, space-separated content |
 | Modal, Dialog, Drawer, CommandPalette | box-drawing overlay; focus stays inside until dismissed |
-| SplitPane, Resizable, DockPanel | `│`/`─` separators, resize corner, or ordered dock regions |
+| SplitPane, PaneGrid, Resizable, DockPanel | `│`/`─` separators, resize corner, or ordered dock regions |
 | ListView | visible rows with `>` on the selected item |
 | Toast | live status text |
 | Table, DataGrid | header and visible rows separated with `|` |

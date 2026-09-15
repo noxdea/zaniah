@@ -17,7 +17,7 @@ class AccessibilityComponentsTest < Minitest::Test
     Tabs: :group, Scrollbar: :scrollbar, Accordion: :group, Collapsible: :button, Breadcrumb: :navigation,
     Pagination: :navigation, Toolbar: :toolbar, StatusBar: :status, Sidebar: :navigation,
     Modal: :dialog, Dialog: :dialog, Drawer: :dialog, Toast: :status, CommandPalette: :dialog,
-    SplitPane: :group, Resizable: :group, DockPanel: :group, ListView: :list, Table: :table,
+    SplitPane: :group, PaneGrid: :group, Resizable: :group, DockPanel: :group, ListView: :list, Table: :table,
     DataGrid: :table, TreeView: :tree, Sparkline: :image, LineChart: :image, BarChart: :image,
     FormField: :group, Form: :form, CodeEditor: :textbox, RichText: :text
   }.freeze

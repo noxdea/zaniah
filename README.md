@@ -38,6 +38,7 @@ the drawing surface beneath the editor.
 - Retained element state, subscriptions, and non-blocking background tasks
 - Scroll views, inertial input, and uniform or variable-height virtual lists
 - Stable-ID pointer and keyboard reordering without materializing virtual collections
+- Stable-ID split-pane grids with fixed, fractional, and minmax tracks
 - OpenType shaping, font fallback, Japanese wrapping, text overlays, low-resolution text caching, selection, editing, and IME
 - Themes, state styles, keyed animation, springs, and reduced-motion support
 - Opt-in controls, overlays, tables, lazy viewport-virtualized trees, charts, forms, and terminal fallbacks
@@ -116,7 +117,7 @@ Native backends use the operating system libraries through Ruby's Fiddle. See
 - [Text system](docs/text.md) — font discovery, shaping, rasterization, and caching
 - [SVG and lists](docs/vector_and_list.md) — static vector icons and virtual lists
 - [Drag-and-drop reordering](docs/drag_drop.md) — stable IDs, virtual targets, and keyboard access
-- [Layout and scrolling](docs/layout.md) — Grid, ScrollView, sticky positioning, and RTL foundations
+- [Layout and scrolling](docs/layout.md) — Grid, resizable pane grids, scrolling, sticky positioning, and RTL foundations
 - [Themes](docs/theme.md) — semantic tokens and state styles
 - [Components](docs/components.md) — controls, overlays, data views, charts, and forms
 - [Animation](docs/animation.md) — easing, springs, transitions, and reduced motion

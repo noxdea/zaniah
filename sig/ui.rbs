@@ -263,6 +263,31 @@ module Zaniah
       def initialize: (_Renderable first, _Renderable second, ?orientation: :horizontal | :vertical, ?ratio: Numeric, ?min: Numeric, ?max: Numeric) -> void
       def on_change: () { (Float, FrameContext?) -> void } -> self
     end
+    class PaneGrid < Component
+      type track = Numeric | Length | MinMax
+      type pane = Pane | { id: Object, content: _Renderable } | [Object, _Renderable] | nil
+      class Pane < Data
+        attr_reader id: Object
+        attr_reader content: _Renderable
+        def self.new: (Object id, _Renderable content) -> Pane
+                    | (id: Object, content: _Renderable) -> Pane
+      end
+      class Resize < Data
+        attr_reader axis: :columns | :rows
+        attr_reader divider: Integer
+        attr_reader before: Float
+        attr_reader after: Float
+        def self.new: (:columns | :rows axis, Integer divider, Float before, Float after) -> Resize
+                    | (axis: :columns | :rows, divider: Integer, before: Float, after: Float) -> Resize
+      end
+      attr_reader pane_ids: Array[Object]
+      def initialize: (Array[Array[pane]] panes, columns: Array[track], rows: Array[track], ?divider_size: Numeric, ?minimum: Numeric, ?keyboard_step: Numeric) -> void
+      def on_resize: () { (Resize, FrameContext?) -> void } -> self
+      def replace: (Array[Array[pane]] panes, ?columns: Array[track]?, ?rows: Array[track]?) -> self
+      def divider_handle: (:columns | :rows axis, Integer index) -> Input::FocusHandle?
+      def track_sizes: (:columns | :rows axis) -> Array[Numeric]
+      def resize: (:columns | :rows axis, Integer divider, Numeric delta) -> bool
+    end
     class Resizable < Component
       attr_reader width: Float
       attr_reader height: Float

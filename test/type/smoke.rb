@@ -99,6 +99,12 @@ module PublicAPISmoke
     window.request_frame
     window.tick
     check(ui_button.layout_node && ui_button.accessibility_node(nil).role == :button, "component pipeline failed")
+    pane_grid = Zaniah::UI::PaneGrid.new([[[:left, Zaniah::Div.new], [:right, Zaniah::Div.new]]],
+      columns: [Zaniah.fr(1), Zaniah.fr(1)], rows: [Zaniah.fr(1)])
+    window.draw { pane_grid }
+    window.request_frame
+    window.tick
+    check(pane_grid.resize(:columns, 0, 4) && pane_grid.pane_ids == %i[left right], "pane grid failed")
     pixels = window.device.pixels
     encoded = Zaniah::PNG.encode(80, 60, pixels)
     check(Zaniah::PNG.decode(encoded) == [80, 60, pixels], "PNG roundtrip failed")

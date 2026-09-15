@@ -59,6 +59,8 @@ class TUIComponentsTest < Minitest::Test
       Toast: [Zaniah::UI::Toast.new("Saved"), "Saved"],
       CommandPalette: [Zaniah::UI::CommandPalette.new(ITEMS, open: true), "> \nOne\nTwo"],
       SplitPane: [Zaniah::UI::SplitPane.new(label["Left"], label["Right"]), "Left │ Right"],
+      PaneGrid: [Zaniah::UI::PaneGrid.new([[[:left, label["Left"]], [:right, label["Right"]]]],
+        columns: [Zaniah.fr(1), Zaniah.fr(1)], rows: [Zaniah.fr(1)]), "Left │ Right"],
       Resizable: [Zaniah::UI::Resizable.new(label["Body"]), "┌────────┐\nBody\n└───────┘↘"],
       DockPanel: [Zaniah::UI::DockPanel.new(center: label["Center"], top: label["Top"], left: label["Left"], bottom: label["Bottom"]), "Top\nLeft | Center\nBottom"],
       ListView: [Zaniah::UI::ListView.new(%w[Alpha Beta], selected: 1), "  Alpha\n> Beta"],

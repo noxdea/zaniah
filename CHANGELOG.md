@@ -5,6 +5,7 @@
 - Make tree views lazy and viewport-virtualized while preserving stable-ID state across source rebuilds.
 - Add bounded, thread-safe low-resolution text textures with per-line invalidation and repeated-shape raster reuse for minimaps.
 - Add stable-ID pointer and keyboard reordering with virtual targets and live accessibility status.
+- Add arbitrary stable-ID pane grids with resizable fixed, fractional, and minmax tracks.
 
 ## 0.4.0 — 2026-09-15
 

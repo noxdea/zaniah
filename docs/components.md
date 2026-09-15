@@ -79,6 +79,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L3 | `Toast` | `(message, variant:, queue:)`; `dismiss` | info/success/warning/danger | live status |
 | L3 | `CommandPalette` | `(commands, open:, placeholder:)` | searchable modal | dialog/list |
 | L3 | `SplitPane` | `(first, second, orientation:, ratio:, min:, max:)`; `on_change` | horizontal/vertical, draggable separator | group/separator |
+| L3 | `PaneGrid` | `(panes, columns:, rows:, divider_size:, minimum:, keyboard_step:)`; `replace`, `on_resize` | arbitrary resizable grid, stable pane IDs | group/separator |
 | L3 | `Resizable` | `(content, width:, height:, min_width:, min_height:, max_width:, max_height:)`; `on_resize` | drag or keyboard resize | group/separator |
 | L3 | `DockPanel` | `(center:, top:, right:, bottom:, left:)` | five-region layout | group |
 | L3 | `ListView` | `(items, height:, row_height:, selected:)`; `on_select` | virtual rows and keyboard selection | list/listitem |
