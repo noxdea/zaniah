@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Make tree views lazy and viewport-virtualized while preserving stable-ID state across source rebuilds.
+
 ## 0.4.0 — 2026-09-15
 
 - Add inline and block text overlays with wrapping-aware layout, hit testing, and row-local relayout.

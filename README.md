@@ -39,7 +39,7 @@ the drawing surface beneath the editor.
 - Scroll views, inertial input, and uniform or variable-height virtual lists
 - OpenType shaping, font fallback, Japanese wrapping, text overlays, selection, editing, and IME
 - Themes, state styles, keyed animation, springs, and reduced-motion support
-- Opt-in controls, overlays, tables, trees, charts, forms, and terminal fallbacks
+- Opt-in controls, overlays, tables, lazy viewport-virtualized trees, charts, forms, and terminal fallbacks
 - Spatial keyboard focus and a diffed cross-platform accessibility tree
 - F12 inspector, frame statistics, hot reload, and headless golden-image tests
 - Native input, IME, clipboard, file-drop, display, and filesystem events

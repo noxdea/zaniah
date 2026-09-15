@@ -330,6 +330,7 @@ module Zaniah
       def on_toggle: () { (untyped, bool) -> void } -> self
       def expand: (untyped id) -> self
       def collapse: (untyped id) -> self
+      def replace: (Array[untyped] items) -> self
     end
     class ListView < Component
       attr_reader selected_index: Integer?

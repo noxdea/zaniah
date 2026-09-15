@@ -83,7 +83,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L3 | `DockPanel` | `(center:, top:, right:, bottom:, left:)` | five-region layout | group |
 | L3 | `ListView` | `(items, height:, row_height:, selected:)`; `on_select` | virtual rows and keyboard selection | list/listitem |
 | L4 | `Table`, `DataGrid` | `(rows, columns:, height:, selection:, row_key:)`; `on_sort`, `on_select`, `on_edit` | virtual rows, sorting, resizing, editing | table/row/cell |
-| L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, lazy `children` proc | arrows/Home/End | tree/treeitem |
+| L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, `replace`, lazy `children` proc | arrows/Home/End | tree/treeitem |
 | L5 | `Sparkline` | `(values, width:, height:, color:, label:)` | line + tooltip | image |
 | L5 | `LineChart`, `BarChart` | `(series, width:, height:, colors:, label:)` | axes, legend, tooltip | image |
 | L5 | `Validation` | `required`, `format`, `length`, `number`, `rule` | composable rules | n/a |
@@ -98,12 +98,19 @@ the previous focus. See [TUI](tui.md) for terminal representations.
 
 Table columns are hashes with `key`, and optional `label`, `width`, `sortable`,
 `resizable`, `editable`, and `render`. Tree items accept hashes containing `id`,
-`label`, and either an array or lazy proc in `children`.
+`label`, and either an array or lazy proc in `children`. A lazy proc receives the
+item value, runs on first expansion, and is cached after it succeeds; a raised
+exception leaves it available for retry. IDs must be unique. Supply explicit,
+stable IDs and call `replace(items)` after changing the hierarchy to preserve
+selection, expansion, and successfully loaded children across a rebuilt source.
+Changing a loader while retaining its ID intentionally retains its cached children.
+Tree rows and accessibility nodes are built only for the current viewport.
 
 In a table, Up/Down/Home/End/Page keys move and select rows, Shift+Up/Down extends
 a range, and Cmd/Ctrl+A selects every row in multiple-selection mode. Sortable
 headers and resize handles are separate Tab stops; Enter sorts and arrow/Page keys
-resize. Tree views use Up/Down to select and Left/Right to collapse or expand.
+resize. Tree views use Up/Down to select, Right to expand or enter the first child,
+and Left to collapse or return to the parent.
 
 Run `bundle exec ruby tools/generate_component_gallery.rb` to rebuild the dark,
 light, and high-contrast component sheets plus overlay variants in all three themes.
