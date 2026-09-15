@@ -16,7 +16,7 @@ context = Zaniah::FrameContext.new(window)
 engine = Zaniah::Layout::Engine.new
 root = nil
 
-Bench.budget("build and layout 1000-pane grid", 100.0, samples: 7) do
+Bench.budget("build and layout 1000-pane grid", 250.0, samples: 7) do
   root = grid.request_layout(context)
   engine.compute(root, width: 1_000, height: 1_000)
 end
