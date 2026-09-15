@@ -115,6 +115,17 @@ class TextOverlayTest < Minitest::Test
     typesetter&.close
   end
 
+  def test_display_hit_testing_never_returns_a_placeholder_offset
+    system = CellTypesetter.new
+    window = Zaniah::Platform::Headless::Window.new(width: 10, height: 10)
+    window.text_system = system
+    text = Zaniah::Text.new("", size: 1).placeholder("hint")
+    layout(text, window)
+    assert_equal 0, text.hit_test(Zaniah::Point.new(9, 0))
+  ensure
+    window&.close
+  end
+
   private
 
   def paragraph(text, **options)

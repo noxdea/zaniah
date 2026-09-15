@@ -57,7 +57,8 @@ module Zaniah
 
     def hit_test(point)
       raise Error, "text must be laid out before coordinate conversion" unless @paragraph || @line
-      @paragraph ? @paragraph.hit_test(point) : @line.index_for_x(point.x)
+      offset = @paragraph ? @paragraph.hit_test(point) : @line.index_for_x(point.x)
+      [offset, @text.bytesize].min
     end
 
     def offset_to_point(offset)
