@@ -41,6 +41,13 @@ module PublicAPISmoke
     check(dispatcher.key("ctrl-s") == :save && actions == [:save], "key dispatch failed")
     dispatcher.hit(bounds) { |_event| true }
     check(dispatcher.mouse(Zaniah::Input::MouseDown.new(point, :left, [], 1)), "mouse dispatch failed")
+    reorder = Zaniah::DragDrop::Reorder.new(locate: ->(_position, _source) {
+      Zaniah::DragDrop::Target.new(:target, :after)
+    }, keyboard: ->(_id, _direction) { Zaniah::DragDrop::Target.new(:target, :after) })
+    reorder.on_drop { |_event| nil }.press(:source, point)
+    check(reorder.move(Zaniah::Point.new(10, 3)) && reorder.release, "pointer reorder failed")
+    check(reorder.keyboard(:source, :next) && reorder.accessibility_node&.role == :status,
+      "keyboard reorder accessibility failed")
 
     window = Zaniah::Platform.open_window(width: 80, height: 60)
     check(window.displays.first.primary, "headless display metadata failed")

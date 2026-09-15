@@ -1,0 +1,40 @@
+module Zaniah
+  module DragDrop
+    class Target < Data
+      attr_reader id: Object
+      attr_reader position: :before | :after | :inside
+      def self.new: (Object id, :before | :after | :inside position) -> Target
+                  | (id: Object, position: :before | :after | :inside) -> Target
+    end
+
+    class Event < Data
+      attr_reader phase: :press | :start | :enter | :over | :leave | :drop | :cancel
+      attr_reader source_id: Object
+      attr_reader target: Target?
+      attr_reader point: Point?
+      attr_reader reason: Symbol?
+      def self.new: (:press | :start | :enter | :over | :leave | :drop | :cancel phase, Object source_id, Target? target, Point? point, Symbol? reason) -> Event
+                  | (phase: :press | :start | :enter | :over | :leave | :drop | :cancel, source_id: Object, target: Target?, point: Point?, reason: Symbol?) -> Event
+    end
+
+    class Reorder
+      POSITIONS: Array[:before | :after | :inside]
+      attr_reader source_id: Object?
+      attr_reader target: Target?
+      attr_reader announcement: String?
+      def initialize: (?threshold: Numeric, locate: ^(Point, Object) -> Target?, ?keyboard: ^(Object, :previous | :next | :inside) -> Target?, ?label: ^(Object) -> String) -> void
+      def on_event: () { (Event) -> void } -> self
+      def on_drop: () { (Event) -> void } -> self
+      def on_announce: () { (String) -> void } -> self
+      def dragging?: () -> bool
+      def press: (Object id, Point point) -> bool
+      def move: (Point point) -> bool
+      def release: (?Point? point) -> bool
+      def keyboard: (Object id, :previous | :next | :inside direction) -> bool
+      def action: (Object id, Input::action action) -> bool
+      def remove: (Object id) -> bool
+      def cancel: (?Symbol reason) -> bool
+      def accessibility_node: (?FrameContext? context) -> Accessibility::Node?
+    end
+  end
+end
