@@ -122,6 +122,11 @@ module Zaniah
         end
       end
 
+      def accessibility_actions(id)
+        validate_id(id)
+        @keyboard ? %i[reorder_before reorder_after reorder_inside cancel_reorder] : [].freeze
+      end
+
       def remove(id)
         guard_reentry
         return cancel(:removed) if @source_id == id
@@ -157,8 +162,8 @@ module Zaniah
 
       def accessibility_node(_context = nil)
         return unless @announcement
-        Accessibility.node(role: :status, label: @announcement,
-          states: {live: true, revision: @announcement_revision})
+        Accessibility.node(role: :status, id: [:reorder_status, object_id].freeze, label: @announcement,
+          states: {live: :polite, atomic: true, revision: @announcement_revision})
       end
 
       private
@@ -191,9 +196,11 @@ module Zaniah
       def move_announcement(source, destination) = "Moved #{label(source)} #{destination.position} #{label(destination.id)}"
 
       def announce(message)
+        return false if @announcement == message
         @announcement = message.freeze
         @announcement_revision = (@announcement_revision || 0) + 1
         callback(@on_announce, @announcement)
+        true
       end
 
       def label(id) = callback(@label, id).to_s

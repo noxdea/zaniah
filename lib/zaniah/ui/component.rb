@@ -64,8 +64,8 @@ module Zaniah
 
       private
 
-      def node(role, label: nil, value: nil, states: {}, children: [], actions: [])
-        Accessibility.node(role: role, label: label, value: value,
+      def node(role, id: @test_id, label: nil, value: nil, states: {}, children: [], actions: [])
+        Accessibility.node(role: role, id: id, label: label, value: value,
           bounds: @layout_node&.bounds, states: states, children: children, actions: actions)
       end
     end

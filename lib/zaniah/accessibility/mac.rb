@@ -28,7 +28,8 @@ module Zaniah
         return unless root && defined?(Platform::Mac::O) && window.respond_to?(:view)
         install
         ELEMENTS.delete_if { |_element, (owner, _node)| owner.equal?(window) }
-        tree = NativeTree.new(root)
+        previous = window.instance_variable_get(:@native_accessibility_tree)
+        tree = NativeTree.new(root, previous: previous)
         children = mutable_array
         append(children, native_element(window, tree, tree.root, window.view))
         object = window.view
@@ -72,8 +73,9 @@ module Zaniah
           o.string(ROLES.fetch(node.role, "AXGroup")), screen_bounds(window, tree.bounds(entry)),
           o.string(node.label || node.value&.to_s || node.role.to_s), parent,
           args: [:pointer, :rect, :pointer, :pointer])
-        ELEMENTS[element] = [window, node, tree.bounds(entry)]
+        ELEMENTS[element] = [window, node, tree.bounds(entry), entry.runtime_id]
         o.send(element, "setAccessibilityFrameInParentSpace:", parent_bounds(tree, entry), args: [:rect], result: :void)
+        o.send(element, "setAccessibilityIdentifier:", o.string(node.id.to_s), args: [:pointer], result: :void) unless node.id.nil?
         o.send(element, "setAccessibilityEnabled:", node.states[:disabled] ? 0 : 1, args: [:bool], result: :void)
         o.send(element, "setAccessibilityValue:", native_value(node.value), args: [:pointer], result: :void) unless node.value.nil?
         set_boolean(element, "setAccessibilitySelected:", node.states[:selected]) if node.states.key?(:selected)
@@ -126,9 +128,22 @@ module Zaniah
       def notify(window, object)
         function = Platform::Mac::APPKIT.fn(:NSAccessibilityPostNotification,
           [Fiddle::TYPE_VOIDP, Fiddle::TYPE_VOIDP], Fiddle::TYPE_VOID)
-        function.call(object, Platform::Mac::O.string("AXLayoutChanged"))
-        if window.accessibility_tree.changes.any? { |change| change.after&.role == :status }
-          function.call(object, Platform::Mac::O.string("AXAnnouncementRequested"))
+        notifications(window.accessibility_tree.events).each do |event, name|
+          runtime_id = window.instance_variable_get(:@native_accessibility_tree)&.[](event.path)&.runtime_id unless %i[structure layout].include?(event.kind)
+          target = ELEMENTS.find { |_element, (owner, _node, _bounds, id)| owner.equal?(window) && id == runtime_id }&.first || object
+          function.call(target, Platform::Mac::O.string(name))
+        end
+      end
+
+      def notifications(events)
+        events.filter_map do |event|
+          name = case event.kind
+          when :structure, :layout then "AXLayoutChanged"
+          when :property then "AXValueChanged"
+          when :focus then "AXFocusedUIElementChanged"
+          when :announcement then "AXAnnouncementRequested"
+          end
+          [event, name] if name
         end
       end
     end

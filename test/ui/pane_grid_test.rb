@@ -144,6 +144,23 @@ class PaneGridTest < Minitest::Test
     end
   end
 
+  def test_accessibility_dividers_keep_identity_focus_and_resize_directly
+    grid = render(grid_with)
+    divider = @window.accessibility_tree.root.children.find { |node| node.role == :separator && node.states[:axis] == :columns }
+    before = grid.track_sizes(:columns).first
+
+    assert_equal [:divider, :columns, 0], divider.id
+    assert_equal :vertical, divider.states[:orientation]
+    assert_operator divider.states[:minimum], :>, 0
+    assert_operator divider.states[:maximum], :<, 1
+    refute T::Accessibility.assign(@window, divider, 0)
+    assert T::Accessibility.perform(@window, divider, :increment)
+    assert_same grid.divider_handle(:columns, 0), @window.dispatcher.focused
+    assert_operator grid.track_sizes(:columns).first, :>, before
+    assert T::Accessibility.assign(@window, @window.accessibility_tree.root.children.find { |node| node.id == divider.id }, 0.25)
+    assert_in_delta grid.track_sizes(:columns).sum * 0.25, grid.track_sizes(:columns).first, 0.001
+  end
+
   private
 
   def label(text) = T::UI::Label.new(text)

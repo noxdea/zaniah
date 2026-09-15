@@ -42,7 +42,7 @@ end
 
 dispatcher = Struct.new(:focused).new(nil)
 window = Struct.new(:title, :dispatcher).new("AT-SPI smoke", dispatcher)
-root = Zaniah::Accessibility.node(role: :button, label: "Save",
+root = Zaniah::Accessibility.node(role: :button, id: :save, label: "Save",
   bounds: Zaniah::Bounds.new(0, 0, 100, 30), actions: [:press])
 service = Zaniah::Accessibility::Linux::Service.new(window)
 service.update(root)
@@ -50,9 +50,11 @@ role = query(service, "org.a11y.atspi.Accessible.GetRoleName")
 name = query(service, "org.freedesktop.DBus.Properties.Get", "org.a11y.atspi.Accessible", "Name")
 extents = query(service, "org.a11y.atspi.Component.GetExtents", "0")
 action = query(service, "org.a11y.atspi.Action.DoAction", "0")
+accessible_id = query(service, "org.freedesktop.DBus.Properties.Get", "org.a11y.atspi.Accessible", "AccessibleId")
 raise "unexpected AT-SPI role: #{role}" unless role == "('button',)\n"
 raise "unexpected AT-SPI name: #{name}" unless name.include?("Save")
 raise "unexpected AT-SPI extents: #{extents}" unless extents == "((0, 0, 100, 30),)\n"
 raise "AT-SPI action failed: #{action}" unless action == "(true,)\n" && Zaniah::Accessibility.performed == :press
+raise "unexpected stable AT-SPI id: #{accessible_id}" unless accessible_id.include?("save")
 puts "AT-SPI provider: role=button, name=Save, extents=0,0,100,30, action=press"
 service.close

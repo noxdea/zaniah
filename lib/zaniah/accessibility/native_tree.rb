@@ -9,9 +9,11 @@ module Zaniah
 
       attr_reader :root
 
-      def initialize(root)
+      def initialize(root, previous: nil)
         @entries = {}
-        @next_runtime_id = 1
+        @identities = {}
+        @previous_ids = previous ? previous.__send__(:runtime_ids).dup : {}
+        @next_runtime_id = (@previous_ids.values.max || 0) + 1
         @root = build(root, nil, []) if root
       end
 
@@ -32,6 +34,8 @@ module Zaniah
       end
 
       def focused(window)
+        semantic = find { |entry| entry.node.states[:focused] }
+        return semantic if semantic
         bounds = window.dispatcher.focused&.bounds
         bounds && hit(Point.new(bounds.x + bounds.width / 2.0, bounds.y + bounds.height / 2.0))
       end
@@ -39,14 +43,20 @@ module Zaniah
       private
 
       def build(node, parent, path)
-        entry = NativeEntry.new(path: path.freeze, node: node, parent: parent, children: [], runtime_id: next_runtime_id)
+        path = path.freeze
+        key = [(parent && identity(parent)), node.id.nil? ? [:index, path.last] : [:id, node.id]].freeze
+        runtime_id = @previous_ids[key] ||= next_runtime_id
+        entry = NativeEntry.new(path: path, node: node, parent: parent, children: [], runtime_id: runtime_id)
         @entries[entry.path] = entry
+        @identities[entry.object_id] = key
         children = node.children.map.with_index { |child, index| build(child, entry, path + [index]) }.freeze
         entry.children.replace(children)
         entry.children.freeze
         entry
       end
 
+      def identity(entry) = @identities.fetch(entry.object_id)
+      def runtime_ids = @previous_ids
       def next_runtime_id = (@next_runtime_id += 1) - 1
     end
   end

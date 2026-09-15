@@ -287,6 +287,8 @@ module Zaniah
       def divider_handle: (:columns | :rows axis, Integer index) -> Input::FocusHandle?
       def track_sizes: (:columns | :rows axis) -> Array[Numeric]
       def resize: (:columns | :rows axis, Integer divider, Numeric delta) -> bool
+      def accessibility_action: (Accessibility::Node node, Symbol action) -> bool?
+      def accessibility_value: (Accessibility::Node node, Numeric value) -> bool?
     end
     class Resizable < Component
       attr_reader width: Float
@@ -356,6 +358,7 @@ module Zaniah
       def expand: (untyped id) -> self
       def collapse: (untyped id) -> self
       def replace: (Array[untyped] items) -> self
+      def accessibility_action: (Accessibility::Node node, Symbol action) -> bool?
     end
     class ListView < Component
       attr_reader selected_index: Integer?

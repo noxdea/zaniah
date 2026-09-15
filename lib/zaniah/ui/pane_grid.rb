@@ -81,7 +81,7 @@ module Zaniah
           row.each_with_index.filter_map do |pane, column_index|
             next unless pane
             child = pane.content.accessibility_node(cx) if pane.content.respond_to?(:accessibility_node)
-            Accessibility.node(role: :group, label: pane.id.to_s,
+            Accessibility.node(role: :group, id: [:pane, pane.id].freeze, label: pane.id.to_s,
               bounds: @cells&.dig(row_index, column_index)&.layout_node&.bounds,
               states: {pane_id: pane.id}, children: [child].compact)
           end
@@ -90,13 +90,38 @@ module Zaniah
           (tracks(axis).length - 1).times.map do |index|
             sizes = @measured&.fetch(axis, nil)
             value = sizes && sizes[index] + sizes[index + 1] > 0 ? sizes[index] / (sizes[index] + sizes[index + 1]) : nil
-            Accessibility.node(role: :separator, label: "Resize #{axis} #{index + 1} and #{index + 2}", value: value,
-              bounds: divider_handle(axis, index)&.bounds,
-              states: {axis: axis, orientation: axis == :columns ? :vertical : :horizontal},
+            handle = divider_handle(axis, index)
+            total = sizes&.values_at(index, index + 1)&.sum
+            range = total&.positive? ? resize_range(axis, index, total).map { |size| size / total } : [0.0, 1.0]
+            Accessibility.node(role: :separator, id: [:divider, axis, index].freeze,
+              label: "Resize #{axis} #{index + 1} and #{index + 2}", value: value,
+              bounds: handle&.bounds,
+              states: {axis: axis, divider: index, orientation: axis == :columns ? :vertical : :horizontal,
+                focused: @cx&.dispatcher&.focused.equal?(handle), minimum: range.first, maximum: range.last,
+                small_change: total&.positive? ? @keyboard_step / total : 0.0,
+                large_change: total&.positive? ? @keyboard_step * 4 / total : 0.0},
               actions: %i[increment decrement minimum maximum])
           end
         end
         node(:group, states: {rows: @rows.length, columns: @columns.length}, children: panes + separators)
+      end
+
+      def accessibility_action(node, action)
+        axis, index = node.states.values_at(:axis, :divider)
+        return unless axis && index
+        @cx&.dispatcher&.focus(divider_handle(axis, index), origin: :programmatic)
+        adjust(axis, index, action)
+      end
+
+      def accessibility_value(node, value)
+        axis, index = node.states.values_at(:axis, :divider)
+        return unless axis && index
+        sizes = measured(axis)
+        total = sizes[index] + sizes[index + 1]
+        ratio = Float(value)
+        range = resize_range(axis, index, total).map { |size| size / total }
+        return false unless ratio.finite? && ratio.between?(*range)
+        change(axis, index, total * ratio, @cx)
       end
 
       private

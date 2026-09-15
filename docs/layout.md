@@ -32,7 +32,9 @@ grid = Zaniah::UI::PaneGrid.new(
 grid.on_resize { |event, _context| save_split(event.axis, event.divider, event.before) }
 ```
 
-Dividers support pointer drag, arrow keys, Page Up/Down, Home, and End. Nested
+Dividers support pointer drag, arrow keys, Page Up/Down, Home, and End. Their
+stable accessibility IDs, focus state, value, orientation, and direct increment,
+decrement, minimum, and maximum actions use the same clamped resize path. Nested
 `PaneGrid` instances compose without owning editor, terminal, or document state.
 
 `ScrollView` accepts one child and clips it to the viewport. Its `axis` is

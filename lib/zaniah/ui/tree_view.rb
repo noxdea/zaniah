@@ -29,7 +29,7 @@ module Zaniah
         @expanded.clear
         reset_index
         restore_expansions(wanted)
-        @selected_id = nil if @selected_id && !visible_index(@selected_id)
+        @selected_id = nil if !@selected_id.nil? && !visible_index(@selected_id)
         @cx&.window&.request_frame
         self
       end
@@ -58,16 +58,37 @@ module Zaniah
       def accessibility_node(_cx)
         range = @list.visible_range if @list&.heights&.count == @visible_count
         range = 0...[@visible_count, (@height / @row_height).ceil + 2].min if !range || range.size.zero?
-        children = range.map do |index|
+        focused = @cx&.dispatcher&.focused.equal?(@list&.focus_handle)
+        children = range.map.with_index do |index, visible_index|
           item = visible_item(index)
           expandable = expandable?(item)
           location = @locations.fetch(item.id)
-          Accessibility.node(role: :treeitem, label: item.label,
+          actions = [:select]
+          actions << (@expanded.include?(item.id) ? :collapse : :expand) if expandable
+          Accessibility.node(role: :treeitem, id: item.id, label: item.label,
+            bounds: @list&.children&.[](visible_index)&.layout_node&.bounds,
             states: {level: item.depth + 1, position: location.index + 1, size: location.items.length,
-              selected: item.id == @selected_id, expanded: expandable ? @expanded.include?(item.id) : nil},
-            actions: expandable ? %i[select expand collapse] : [:select])
+              item_id: item.id, selected: item.id == @selected_id,
+              focused: focused && item.id == @selected_id,
+              expanded: expandable ? @expanded.include?(item.id) : nil}, actions: actions)
         end
         node(:tree, states: {size: @visible_count}, children: children)
+      end
+
+      def accessibility_action(node, action)
+        id = node.states[:item_id]
+        return if id.nil?
+        index = visible_index(id)
+        return false unless index
+        item = visible_item(index)
+        case action
+        when :select
+          @cx&.dispatcher&.focus(@list.focus_handle, origin: :programmatic)
+          select(item, index, nil, @cx)
+        when :expand then toggle(id, true)
+        when :collapse then toggle(id, false)
+        else nil
+        end
       end
 
       private
@@ -235,7 +256,7 @@ module Zaniah
         select_parent_after_collapse(item) unless open
         @cx&.window&.request_frame
         @on_toggle&.call(id, open)
-        open
+        true
       end
 
       def select_parent_after_collapse(item)
@@ -284,7 +305,7 @@ module Zaniah
       def tree_action(action)
         return false if @visible_count.zero?
 
-        index = (@selected_id && visible_index(@selected_id)) || @selected_index || 0
+        index = (!@selected_id.nil? && visible_index(@selected_id)) || @selected_index || 0
         index = index.clamp(0, @visible_count - 1)
         item = visible_item(index)
         case action
@@ -297,7 +318,7 @@ module Zaniah
             child = visible_item(index + 1) if index + 1 < @visible_count
             return child&.depth == item.depth + 1 ? select(child, index + 1, nil, @cx) : false
           end
-          @selected_id ||= item.id
+          @selected_id = item.id if @selected_id.nil?
           return toggle(item.id, true)
         when :collapse
           return toggle(item.id, false) if @expanded.include?(item.id)

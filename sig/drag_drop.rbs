@@ -32,6 +32,7 @@ module Zaniah
       def release: (?Point? point) -> bool
       def keyboard: (Object id, :previous | :next | :inside direction) -> bool
       def action: (Object id, Input::action action) -> bool
+      def accessibility_actions: (Object id) -> Array[Input::action]
       def remove: (Object id) -> bool
       def cancel: (?Symbol reason) -> bool
       def accessibility_node: (?FrameContext? context) -> Accessibility::Node?

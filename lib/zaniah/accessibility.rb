@@ -35,6 +35,8 @@ module Zaniah
 
     def perform(window, node, action, bounds: node&.bounds)
       return false unless node && node.actions.include?(action)
+      direct = window.accessibility_tree.perform(node, action) if window.respond_to?(:accessibility_tree)
+      return !!direct unless direct.nil?
       if action == :dismiss
         window.input(Input::KeyDown.new("esc", false))
         return true
@@ -49,6 +51,11 @@ module Zaniah
         window.input(Input::MouseUp.new(position, :left, []))
       end
       true
+    end
+
+    def assign(window, node, value)
+      return false unless node && window.respond_to?(:accessibility_tree)
+      !!window.accessibility_tree.assign(node, value)
     end
 
     def focus_at(window, position)

@@ -168,4 +168,55 @@ class TreeViewTest < Minitest::Test
 
     assert_equal ["Root"], tree.accessibility_node(nil).children.map(&:label)
   end
+
+  def test_accessibility_items_keep_ids_bounds_focus_and_direct_actions
+    tree = render(T::UI::TreeView.new([
+      {id: :root, label: "Root", children: [{id: :child, label: "Child"}]}
+    ], selected: :root))
+    @window.dispatcher.focus(tree.focus_handle)
+    render(tree)
+    root = @window.accessibility_tree.root.children.first
+
+    assert_equal :root, root.id
+    assert_instance_of T::Bounds, root.bounds
+    assert_equal true, root.states[:focused]
+    assert_equal %i[select expand], root.actions
+    assert T::Accessibility.perform(@window, root, :expand)
+    render(tree)
+
+    child = @window.accessibility_tree.root.children.last
+    assert_equal :child, child.id
+    assert T::Accessibility.perform(@window, child, :select)
+    assert_equal :child, tree.selected_id
+  end
+
+  def test_accessibility_actions_support_false_ids_and_report_collapse_success
+    tree = render(T::UI::TreeView.new([
+      {id: false, label: "Root", children: [{id: :child, label: "Child"}]}
+    ]))
+    node = @window.accessibility_tree.root.children.first
+
+    assert_equal false, node.id
+    assert T::Accessibility.perform(@window, node, :expand)
+    render(tree)
+    node = @window.accessibility_tree.root.children.first
+    assert T::Accessibility.perform(@window, node, :collapse)
+  end
+
+  def test_virtual_scroll_moves_overlapping_accessibility_items_by_id
+    tree = render(T::UI::TreeView.new(Array.new(100) { |index| {id: index, label: "Row #{index}"} }, height: 84))
+    before = T::Accessibility::NativeTree.new(@window.accessibility_tree.root)
+    before_ids = before.to_h { |entry| [entry.node.id, entry.runtime_id] }
+
+    tree.instance_variable_get(:@list).scroll_to(3)
+    render(tree)
+    after = T::Accessibility::NativeTree.new(@window.accessibility_tree.root, previous: before)
+    overlapping = before_ids.keys.compact & after.map { |entry| entry.node.id }.compact
+
+    refute_empty overlapping
+    assert @window.accessibility_tree.changes.any? { |change| change.kind == :moved }
+    overlapping.each do |id|
+      assert_equal before_ids[id], after.find { |entry| entry.node.id == id }.runtime_id
+    end
+  end
 end

@@ -8,27 +8,56 @@ module Zaniah
       attr_reader states: Hash[Symbol, untyped]
       attr_reader children: Array[Node]
       attr_reader actions: Array[Symbol]
+      def id: () -> untyped
       def self.new: (Symbol role, String? label, untyped value, Bounds? bounds, Hash[Symbol, untyped] states, Array[Node] children, Array[Symbol] actions) -> Node
                   | (role: Symbol, label: String?, value: untyped, bounds: Bounds?, states: Hash[Symbol, untyped], children: Array[Node], actions: Array[Symbol]) -> Node
     end
-    def self.node: (role: Symbol, ?label: String?, ?value: untyped, ?bounds: Bounds?, ?states: Hash[Symbol, untyped], ?children: Array[Node], ?actions: Array[Symbol]) -> Node
+    def self.node: (role: Symbol, ?id: untyped, ?label: String?, ?value: untyped, ?bounds: Bounds?, ?states: Hash[Symbol, untyped], ?children: Array[Node], ?actions: Array[Symbol]) -> Node
 
     class Change < Data
-      attr_reader kind: :added | :removed | :updated
+      attr_reader kind: :added | :removed | :updated | :moved
       attr_reader path: Array[Integer]
       attr_reader before: Node?
       attr_reader after: Node?
     end
+    class Event < Data
+      attr_reader kind: :structure | :property | :layout | :focus | :announcement
+      attr_reader id: untyped
+      attr_reader path: Array[Integer]
+      attr_reader node: Node
+    end
     class Tree
       attr_reader root: Node?
       attr_reader changes: Array[Change]
+      attr_reader events: Array[Event]
       attr_reader revision: Integer
       def initialize: () -> void
       def update: (_Renderable renderable, FrameContext context, ?overlays: Array[_Renderable]) -> bool
       def each: () { (Node, Array[Integer]) -> void } -> void
               | () -> Enumerator[[Node, Array[Integer]], void]
       def find: () { (Node) -> bool } -> Node?
+      def perform: (Node node, Symbol action) -> untyped
+      def assign: (Node node, Numeric value) -> untyped
+    end
+    class NativeEntry < Data
+      attr_reader path: Array[Integer]
+      attr_reader node: Node
+      attr_reader parent: NativeEntry?
+      attr_reader children: Array[NativeEntry]
+      attr_reader runtime_id: Integer
+    end
+    class NativeTree
+      include Enumerable[NativeEntry]
+      attr_reader root: NativeEntry?
+      def initialize: (Node? root, ?previous: NativeTree?) -> void
+      def each: () { (NativeEntry) -> void } -> void
+              | () -> Enumerator[NativeEntry, void]
+      def []: (Array[Integer] path) -> NativeEntry?
+      def bounds: (NativeEntry entry) -> Bounds
+      def hit: (Point point) -> NativeEntry?
+      def focused: (Platform::Headless::Window window) -> NativeEntry?
     end
     def self.publish: (Platform::Headless::Window window, Node? root, Array[Change] changes) -> untyped
+    def self.assign: (Platform::Headless::Window window, Node? node, Numeric value) -> bool
   end
 end

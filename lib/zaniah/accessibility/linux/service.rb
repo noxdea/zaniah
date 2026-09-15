@@ -84,15 +84,15 @@ module Zaniah
           parse_interfaces
         end
 
-        def update(root)
+        def update(root, events: [])
           application = Accessibility.node(role: :application, label: window_title,
             bounds: root.bounds, children: [root])
-          @tree = NativeTree.new(application)
+          @tree = NativeTree.new(application, previous: @tree)
           @entries = @tree.to_h { |entry| [path(entry), entry] }
           (@registrations.keys - @entries.keys).each { |object_path| unregister(object_path) }
           (@entries.keys - @registrations.keys).each { |object_path| register(object_path) }
           embed unless @embedded
-          emit_change
+          emit_changes(events)
           true
         end
 
@@ -179,10 +179,23 @@ module Zaniah
           @embedded = true
         end
 
-        def emit_change
-          parameters = tuple(string(""), int32(0), int32(0), variant(string("")), array("{sv}", []))
-          gio.fn(:g_dbus_connection_emit_signal, [P, P, P, P, P, P, P], I)
-            .call(@connection, 0, ROOT_PATH, "org.a11y.atspi.Event.Object", "VisibleDataChanged", parameters, 0)
+        def emit_changes(events)
+          events = [nil] if events.empty?
+          events.each do |event|
+            member, detail, active = case event&.kind
+            when :structure then ["ChildrenChanged", event.node.id.to_s, 1]
+            when :property then ["PropertyChange", event.node.id.to_s, 0]
+            when :focus then ["StateChanged", "focused", 1]
+            when :announcement then ["Announcement", event.node.label.to_s, 1]
+            else ["VisibleDataChanged", "", 0]
+            end
+            entry = event && @tree[[0, *event.path]] unless %i[structure layout].include?(event&.kind)
+            parameters = tuple(string(detail), int32(active), int32(0),
+              variant(string(event&.node&.label || "")), array("{sv}", []))
+            gio.fn(:g_dbus_connection_emit_signal, [P, P, P, P, P, P, P], I)
+              .call(@connection, 0, entry ? path(entry) : ROOT_PATH,
+                "org.a11y.atspi.Event.Object", member, parameters, 0)
+          end
         end
 
         def method_call(object_path, interface, method, parameters, invocation)
@@ -269,7 +282,9 @@ module Zaniah
           when [ACCESSIBLE, "Parent"] then reference(entry.parent)
           when [ACCESSIBLE, "ChildCount"] then int32(entry.children.length)
           when [ACCESSIBLE, "Locale"] then string(ENV["LANG"] || "C")
-          when [ACCESSIBLE, "AccessibleId"] then string(entry.runtime_id.to_s)
+          when [ACCESSIBLE, "AccessibleId"]
+            id = entry.node.id
+            string((id.nil? ? entry.runtime_id : id).to_s)
           when [ACTION, "NActions"] then int32(entry.node.actions.length)
           when [APPLICATION, "ToolkitName"] then string("Zaniah")
           when [APPLICATION, "Version"], [APPLICATION, "ToolkitVersion"] then string(Zaniah::VERSION)

@@ -20,7 +20,8 @@ module Zaniah
           simple: "d6dd68d1-86fd-4332-8666-9abedea2d24c",
           fragment: "f7063da8-8359-439c-9297-bbc5299a7d87",
           root: "620ce2a5-ab8f-40a9-86cb-de3c75599b58",
-          invoke: "54fcb24b-e18e-47a2-b4d3-eccbe77599a2"
+          invoke: "54fcb24b-e18e-47a2-b4d3-eccbe77599a2",
+          range: "36dc7aef-33e6-4691-afe1-2be7274b3d33"
         }.transform_values { |value| first, second, third, fourth, fifth = value.split("-"); [first.hex, second.hex, third.hex].pack("Vvv") + [fourth + fifth].pack("H*") }.freeze
 
         CONTROL_TYPES = {
@@ -42,15 +43,26 @@ module Zaniah
           end
 
           def update(root)
-            @tree = NativeTree.new(root)
+            @tree = NativeTree.new(root, previous: @tree)
             @tree.each do |entry|
-              (@providers[entry.path] ||= Element.new(self, entry.path)).entry = entry
+              provider = @providers[entry.runtime_id] ||= Element.new(self)
+              provider.entry = entry
             end
-            @root_provider = @providers[@tree.root.path]
+            @root_provider = @providers[@tree.root.runtime_id]
           end
 
-          def provider(entry) = entry && @providers[entry.path]
+          def provider(entry) = entry && @providers[entry.runtime_id]
           def entry(path) = @tree[path]
+
+          def raise_events(events)
+            events.each do |event|
+              provider = %i[structure layout].include?(event.kind) ? @root_provider : provider(@tree[event.path]) || @root_provider
+              id = Windows::AUTOMATION_EVENTS[event.kind]
+              core.fn(:UiaRaiseAutomationEvent, [P, I], I).call(provider.pointer(:simple), id) if id
+            end
+          rescue Fiddle::DLError
+            nil
+          end
 
           def screen_bounds(entry)
             bounds = @tree.bounds(entry)
@@ -127,7 +139,15 @@ module Zaniah
               root = unknown + [closure(I, [P, Fiddle::TYPE_DOUBLE, Fiddle::TYPE_DOUBLE, P]) { |this, x, y, output| interface(this).from_point(x, y, output) },
                 closure(I, [P, P]) { |this, output| interface(this).focus(output) }]
               invoke = unknown + [closure(I, [P]) { |this| interface(this).invoke }]
-              @vtables = {simple: vtable(simple), fragment: vtable(fragment), root: vtable(root), invoke: vtable(invoke)}.freeze
+              range = unknown + [closure(I, [P, Fiddle::TYPE_DOUBLE]) { |this, value| interface(this).set_range_value(value) },
+                closure(I, [P, P]) { |this, output| interface(this).range_property(:value, output) },
+                closure(I, [P, P]) { |this, output| interface(this).range_property(:readonly, output) },
+                closure(I, [P, P]) { |this, output| interface(this).range_property(:maximum, output) },
+                closure(I, [P, P]) { |this, output| interface(this).range_property(:minimum, output) },
+                closure(I, [P, P]) { |this, output| interface(this).range_property(:large_change, output) },
+                closure(I, [P, P]) { |this, output| interface(this).range_property(:small_change, output) }]
+              @vtables = {simple: vtable(simple), fragment: vtable(fragment), root: vtable(root),
+                invoke: vtable(invoke), range: vtable(range)}.freeze
             end
 
             def closure(result, arguments, &block)
@@ -154,10 +174,10 @@ module Zaniah
           attr_accessor :entry
           attr_reader :bridge
 
-          def initialize(bridge, path)
+          def initialize(bridge)
             self.class.install
-            @bridge, @path, @references, @interfaces = bridge, path, 1, {}
-            %i[simple fragment root invoke].each do |kind|
+            @bridge, @references, @interfaces = bridge, 1, {}
+            %i[simple fragment root invoke range].each do |kind|
               pointer = Fiddle::Pointer.malloc(Fiddle::SIZEOF_VOIDP)
               pointer[0, Fiddle::SIZEOF_VOIDP] = [self.class.vtables.fetch(kind).to_i].pack("J")
               @interfaces[kind] = pointer
@@ -170,7 +190,8 @@ module Zaniah
           def query(iid, output)
             requested = GUIDS.key(Fiddle::Pointer.new(iid)[0, 16])
             requested = :simple if requested == :unknown
-            supported = requested && (requested != :root || @entry.parent.nil?) && (requested != :invoke || invokable?)
+            supported = requested && (requested != :root || @entry.parent.nil?) &&
+              (requested != :invoke || invokable?) && (requested != :range || range?)
             return self.class.write_pointer(output, 0) && E_NOINTERFACE unless supported
             add_ref
             self.class.write_pointer(output, pointer(requested))
@@ -180,9 +201,10 @@ module Zaniah
           def release = (@references = [@references - 1, 1].max)
 
           def pattern(pattern, output)
-            return self.class.write_pointer(output, 0) unless pattern == 10_000 && invokable?
+            kind = pattern == 10_000 && invokable? ? :invoke : pattern == 10_003 && range? ? :range : nil
+            return self.class.write_pointer(output, 0) unless kind
             add_ref
-            self.class.write_pointer(output, pointer(:invoke))
+            self.class.write_pointer(output, pointer(kind))
           end
 
           def property(property, output)
@@ -194,6 +216,9 @@ module Zaniah
             when 30_008 then variant_bool(variant, @bridge.focused_provider.equal?(self))
             when 30_009 then variant_bool(variant, focusable?)
             when 30_010 then variant_bool(variant, !@entry.node.states[:disabled])
+            when 30_011
+              id = @entry.node.id
+              variant_bstr(variant, id.nil? ? @entry.runtime_id : id)
             when 30_012 then variant_bstr(variant, "Zaniah")
             when 30_016, 30_017 then variant_bool(variant, true)
             when 30_022 then variant_bool(variant, @bridge.tree.bounds(@entry).empty?)
@@ -254,14 +279,31 @@ module Zaniah
           end
 
           def invoke
-            action = %i[press toggle select sort expand collapse dismiss].find { |candidate| @entry.node.actions.include?(candidate) }
-            Accessibility.perform(@bridge.window, @entry.node, action, bounds: @bridge.tree.bounds(@entry))
+            actions = @entry.node.role == :treeitem ? %i[select collapse expand] : %i[press toggle select sort expand collapse dismiss]
+            action = actions.find { |candidate| @entry.node.actions.include?(candidate) }
+            Accessibility.perform(@bridge.window, @entry.node, action, bounds: @bridge.tree.bounds(@entry)) if action
+            S_OK
+          end
+
+          def set_range_value(value)
+            Accessibility.assign(@bridge.window, @entry.node, value) ? S_OK : E_FAIL
+          end
+
+          def range_property(name, output)
+            values = {value: @entry.node.value, readonly: 0, maximum: @entry.node.states.fetch(:maximum, 1.0),
+              minimum: @entry.node.states.fetch(:minimum, 0.0), large_change: @entry.node.states.fetch(:large_change, 0.1),
+              small_change: @entry.node.states.fetch(:small_change, 0.01)}
+            pointer = Fiddle::Pointer.new(output)
+            name == :readonly ? pointer[0, 4] = [values[name]].pack("l") : pointer[0, 8] = [Float(values[name])].pack("d")
             S_OK
           end
 
           private
 
           def invokable? = @entry.node.actions.any? { |action| %i[press toggle select sort expand collapse dismiss].include?(action) }
+          def range? = @entry.node.value.is_a?(Numeric) &&
+            @entry.node.states.key?(:minimum) && @entry.node.states.key?(:maximum) &&
+            (@entry.node.actions & %i[increment decrement]).any?
           def focusable? = !@entry.node.states[:disabled] && (!@entry.node.actions.empty? || %i[textbox searchbox slider combobox].include?(@entry.node.role))
           def variant_i4(pointer, value) = (pointer[0, 2] = [3].pack("v"); pointer[8, 4] = [value].pack("l"))
           def variant_bool(pointer, value) = (pointer[0, 2] = [11].pack("v"); pointer[8, 2] = [value ? -1 : 0].pack("s"))

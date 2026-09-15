@@ -37,7 +37,9 @@ attempt raises `Zaniah::Error` and cancels the active operation.
 
 For keyboard access, mark the focused element with `reorderable: true`. Alt+Up
 and Alt+Down dispatch `reorder_before` and `reorder_after`; Escape dispatches
-`cancel_reorder`. `accessibility_node` exposes the last result as a live `status`
+`cancel_reorder`. `accessibility_actions(id)` returns the actions a containing
+item should expose, and `action(id, action)` routes them without pointer geometry.
+`accessibility_node` exposes the last result as a stable, atomic polite `status`
 node. Include that node in the containing component's accessibility children, or
 forward `on_announce` to its existing live region. Native file drops are separate
 and are not handled by this primitive. The controller belongs to its UI owner:

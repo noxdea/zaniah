@@ -11,7 +11,7 @@ module Zaniah
       def publish(window, root, _changes)
         return false unless root
         service = services[window.object_id] ||= Service.new(window)
-        service.update(root)
+        service.update(root, events: window.accessibility_tree.events)
       rescue Fiddle::DLError, Errno::ENOENT, Error
         false
       end

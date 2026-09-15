@@ -167,16 +167,30 @@ class DragDropTest < Minitest::Test
     assert_equal 1, reads
     assert_equal "Moved Beta before Alpha", reorder.announcement
     assert_equal [reorder.announcement], announcements
+    assert_equal %i[reorder_before reorder_after reorder_inside cancel_reorder], reorder.accessibility_actions(:beta)
 
     tree = T::Accessibility::Tree.new
     assert tree.update(reorder, nil)
     assert_equal :status, tree.root.role
-    assert_equal true, tree.root.states[:live]
+    assert_equal :polite, tree.root.states[:live]
+    assert_equal true, tree.root.states[:atomic]
+    assert tree.root.id
     first_revision = tree.root.states[:revision]
 
     assert reorder.keyboard(:beta, :next)
     assert tree.update(reorder, nil)
     assert_operator tree.root.states[:revision], :>, first_revision
+  end
+
+  def test_repeated_live_message_is_not_announced_again
+    announcements = []
+    reorder = D::Reorder.new(locate: ->(*) {}, keyboard: ->(*) { D::Target.new(:target, :after) })
+      .on_announce { |message| announcements << message }
+
+    2.times { assert reorder.keyboard(:source, :next) }
+
+    assert_equal ["Moved source after target"], announcements
+    assert_equal 1, reorder.accessibility_node.states[:revision]
   end
 
   def test_invalid_and_self_targets_do_not_drop
