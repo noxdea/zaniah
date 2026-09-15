@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Make tree views lazy and viewport-virtualized while preserving stable-ID state across source rebuilds.
+- Add bounded, thread-safe low-resolution text textures with per-line invalidation for minimaps.
 
 ## 0.4.0 — 2026-09-15
 

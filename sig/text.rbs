@@ -41,6 +41,21 @@ module Zaniah
     interface _LineTypesetter
       def layout_line: (String text, ?font: _Font?, ?size: Numeric) -> LineLayout
     end
+    class LowResolutionTextCache
+      attr_reader width: Integer
+      attr_reader height: Integer
+      attr_reader scale: Float
+      attr_reader capacity: Integer
+      attr_reader max_bytes: Integer
+      def initialize: (width: Integer, ?height: Integer, ?scale: Numeric, ?capacity: Integer, ?max_bytes: Integer) -> void
+      def size: () -> Integer
+      def bytesize: () -> Integer
+      def closed?: () -> bool
+      def texture: (Integer line, outlines: Enumerable[untyped]) -> GPU::Texture
+      def invalidate: (Integer line) -> self
+      def clear: () -> self
+      def close: () -> self
+    end
     module Kinsoku
       HEAD: Array[String]
       TAIL: Array[String]

@@ -79,6 +79,24 @@ A missing, corrupt, or read-only cache does not prevent rendering. Applications
 own cache-directory retention. See [the RBS declarations](../sig/text.rbs) for
 the complete API.
 
+For minimaps and other compact previews, cache Alhena's downsampled outlines as
+one R8 texture per source line:
+
+```ruby
+cache = Zaniah::TextSystem::LowResolutionTextCache.new(
+  width: 100, height: 2, scale: 0.1
+)
+texture = cache.texture(42, outlines: outlines)
+cache.invalidate(42) # regenerate only the edited source line on next access
+cache.close
+```
+
+The cache is thread-safe, count- and byte-bounded, and uses least-recently-used
+eviction. Textures already returned to a scene remain valid after eviction or
+invalidation. A cache has fixed width, height, and scale; invalidate a line when
+its outlines change for any reason, including a font change. Call `close` when
+the cache is no longer needed.
+
 ## Development checks
 
 ```sh

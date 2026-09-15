@@ -52,6 +52,10 @@ module PublicAPISmoke
     line = window.text_system.layout_line("Ruby", size: 12)
     check(line.width.positive? && line.index_for_x(0) == 0, "font/shaper failed")
     check(line.x_for_index(4) == line.width, "byte caret failed")
+    minimap = Zaniah::TextSystem::LowResolutionTextCache.new(width: 4, height: 1, scale: 1)
+    minimap_outline = Alhena::Outline.new.move_to(0, 0).line_to(2, 0).line_to(2, 1).line_to(0, 1).close
+    check(minimap.texture(0, outlines: [minimap_outline]).data.bytes == [255, 255, 0, 0], "low-resolution text failed")
+    minimap.invalidate(0).close
     paragraph = window.text_system.layout_paragraph("Ruby wraps", width: line.width, size: 12)
     check(paragraph.lines.length > 1, "paragraph layout failed")
     hint = Zaniah::Div.new.w(8).h(8)
