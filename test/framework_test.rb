@@ -79,6 +79,19 @@ class FrameworkTest < Minitest::Test
     assert_equal 120, last.bounds.width
   end
 
+  def test_leaf_layout_updates_bounds_without_populating_the_container_cache
+    leaf = T::Layout::Node.new
+    engine = T::Layout::Engine.new
+
+    engine.compute(leaf, width: 20, height: 10)
+    assert_equal T::Bounds.new(0, 0, 20, 10), leaf.bounds
+    assert_empty leaf.cache
+
+    engine.compute(leaf, width: 30, height: 15)
+    assert_equal T::Bounds.new(0, 0, 30, 15), leaf.bounds
+    assert_empty leaf.cache
+  end
+
   def test_default_flex_fast_path_matches_general_layout
     %i[row column row_reverse column_reverse].each do |direction|
       build = lambda do |margin|

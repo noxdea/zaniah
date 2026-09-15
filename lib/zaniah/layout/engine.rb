@@ -125,6 +125,16 @@ module Zaniah
       end
 
       def layout(node, x, y, width, height, available_w, available_h, clamp = true)
+        if node.children.empty?
+          if node.style[:display] == :none
+            node.bounds = Bounds.new(x, y, 0, 0)
+          else
+            width = clamp_size(node, :width, width, available_w) if clamp
+            height = clamp_size(node, :height, height, available_h) if clamp
+            node.bounds = Bounds.new(x, y, width, height)
+          end
+          return
+        end
         key = [node.generation, x, y, width, height, available_w, available_h]
         return if node.cache[key]
         if node.style[:display] == :none
@@ -137,11 +147,6 @@ module Zaniah
           height = clamp_size(node, :height, height, available_h)
         end
         node.bounds = Bounds.new(x, y, width, height)
-        if node.children.empty?
-          node.cache.shift if node.cache.length >= 5
-          node.cache[key] = true
-          return
-        end
         content = content_bounds(node)
         flow, absolute = node.children.partition { |child| child.style[:position] != :absolute }
         s = node.style
