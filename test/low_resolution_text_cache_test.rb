@@ -35,6 +35,10 @@ class LowResolutionTextCacheTest < Minitest::Test
     refute_same first, replacement
     assert_same untouched, cache.texture(1, outlines: [])
     assert_equal [255, 0, 0, 0], first.data.bytes
+    duplicate = cache.texture(2, outlines: [rectangle(0, 0, 2, 1)])
+    refute_same untouched, duplicate
+    duplicate.release
+    assert_equal [255, 255, 0, 0], untouched.data.bytes
     cache.close
     assert_equal [255, 255, 0, 0], untouched.data.bytes
   ensure
@@ -57,9 +61,11 @@ class LowResolutionTextCacheTest < Minitest::Test
     uncached = Zaniah::TextSystem::LowResolutionTextCache.new(
       width: 4, height: 1, scale: 1, capacity: 2, max_bytes: 3
     )
-    refute_same uncached.texture(0, outlines: []), uncached.texture(0, outlines: [])
+    outline = rectangle(0, 0, 1, 1)
+    refute_same uncached.texture(0, outlines: [outline]), uncached.texture(0, outlines: [outline])
     assert_equal 0, uncached.size
     assert_equal 0, uncached.bytesize
+    assert_nil uncached.instance_variable_get(:@last_coverage)
 
     released = cache.texture(3, outlines: [])
     released.release
@@ -102,6 +108,8 @@ class LowResolutionTextCacheTest < Minitest::Test
     assert_raises(ArgumentError) { cache.texture(0, outlines: Object.new) }
     failing = Enumerator.new { |values| values << rectangle(0, 0, 1, 1); raise "broken outlines" }
     assert_raises(RuntimeError) { cache.texture(0, outlines: failing) }
+    malformed = rectangle(0, 0, 1, 1).tap { |outline| outline.coordinates[1] = Float::NAN }
+    2.times { assert_raises(FloatDomainError) { cache.texture(0, outlines: [malformed]) } }
     assert_equal [0, 0], [cache.size, cache.bytesize]
     assert_equal [0, 0], cache.texture(0, outlines: []).data.bytes
   ensure

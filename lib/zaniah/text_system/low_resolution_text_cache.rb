@@ -38,8 +38,21 @@ module Zaniah
           cached = @entries.delete(line)
           return @entries[line] = cached if cached
 
-          bitmap = @rasterizer.fill_downsampled(outlines, scale: @scale, width: @width, height: @height)
-          texture = GPU::Texture.new(@width, @height, format: :r8, data: bitmap.coverage)
+          coverage = if @entry_bytes > @max_bytes
+            @rasterizer.fill_downsampled(outlines,
+              scale: @scale, width: @width, height: @height).coverage
+          else
+            shape = outline_shape(outlines)
+            if shape == @last_shape
+              @last_coverage
+            else
+              generated = @rasterizer.fill_downsampled(outlines_for(shape),
+                scale: @scale, width: @width, height: @height).coverage.freeze
+              @last_shape, @last_coverage = shape, generated
+              generated
+            end
+          end
+          texture = GPU::Texture.new(@width, @height, format: :r8, data: coverage)
           cache(line, texture)
         end
       end
@@ -58,6 +71,7 @@ module Zaniah
           ensure_open
           @entries.clear
           @bytesize = 0
+          @last_shape = @last_coverage = nil
         end
         self
       end
@@ -67,6 +81,7 @@ module Zaniah
           unless @closed
             @entries.clear
             @bytesize = 0
+            @last_shape = @last_coverage = nil
             @closed = true
           end
         end
@@ -81,6 +96,25 @@ module Zaniah
 
       def ensure_open
         raise Error, "low-resolution text cache is closed" if @closed
+      end
+
+      def outline_shape(outlines)
+        raise ArgumentError, "outlines must be enumerable" unless outlines.respond_to?(:each)
+        shape = []
+        outlines.each do |outline|
+          raise ArgumentError, "outlines must contain Outline values" unless outline.is_a?(Alhena::Outline)
+          shape << [outline.commands.dup.freeze, outline.coordinates.dup.freeze].freeze
+        end
+        shape.freeze
+      end
+
+      def outlines_for(shape)
+        shape.map do |commands, coordinates|
+          Alhena::Outline.new.tap do |outline|
+            outline.commands.concat(commands)
+            outline.coordinates.concat(coordinates)
+          end
+        end
       end
 
       def cache(line, texture)
