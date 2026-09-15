@@ -3,6 +3,10 @@
 module Zaniah
   module UI
     class TreeView < Component
+      MAX_COMPLETED_ITEMS = 100_000
+      MAX_DEPTH = 64
+      private_constant :MAX_COMPLETED_ITEMS, :MAX_DEPTH
+
       Item = Data.define(:id, :label, :value, :children, :loader, :parent, :depth)
       Segment = Data.define(:items, :first, :length, :parent, :depth, :path)
       Location = Data.define(:items, :index, :parent, :depth, :path)
@@ -25,13 +29,51 @@ module Zaniah
 
       def replace(items)
         wanted = @expanded.dup
-        @source, @locations = items.to_a, {}
-        @expanded.clear
-        reset_index
-        restore_expansions(wanted)
-        @selected_id = nil if !@selected_id.nil? && !visible_index(@selected_id)
+        @source = items.to_a
+        @loaded.clear
+        reindex(wanted)
+        clear_missing_selection
         @cx&.window&.request_frame
         self
+      end
+
+      def replace_children(id, children)
+        item = find_known_item(id)
+        return false unless item&.loader
+
+        values = validate_children(id, children)
+        discard_descendants(id)
+        @loaded[id] = values
+        rebuild_segments
+        clear_missing_selection
+        @cx&.window&.request_frame
+        true
+      end
+
+      def invalidate(id = nil)
+        item = find_known_item(id) unless id.nil?
+        return false if !id.nil? && (!item&.loader || !@loaded.key?(id))
+
+        if id.nil?
+          return false if @loaded.empty?
+
+          @loaded.clear
+          reindex(@expanded.dup)
+        else
+          selected = @locations[@selected_id]
+          parent = @locations.fetch(id)
+          select_parent = selected && selected.path.length > parent.path.length &&
+            selected.path.first(parent.path.length) == parent.path
+          descendants = descendant_ids(id)
+          discard_descendants(id, descendants)
+          @loaded.delete(id)
+          @expanded.delete(id)
+          rebuild_segments
+          @selected_id = id if select_parent
+        end
+        clear_missing_selection
+        @cx&.window&.request_frame
+        true
       end
 
       def build(cx)
@@ -93,6 +135,74 @@ module Zaniah
 
       private
 
+      def reindex(wanted)
+        @locations = {}
+        @expanded.clear
+        reset_index
+        restore_expansions(wanted)
+      end
+
+      def clear_missing_selection
+        @selected_id = nil if !@selected_id.nil? && !visible_index(@selected_id)
+      end
+
+      def validate_children(id, children)
+        raise TypeError, "tree children must be an Array" unless children.is_a?(Array)
+
+        ids = {}
+        validate_collection(@source, [], ids, skip: id)
+        location = @locations.fetch(id)
+        validate_collection(children, location.path, ids, location.depth + 1, count: [0])
+        children
+      end
+
+      def validate_collection(items, path, ids, depth = 0, active = {}, skip: nil, count: nil)
+        raise ArgumentError, "tree children are too deeply nested" if depth > MAX_DEPTH
+        raise ArgumentError, "tree children must not contain cycles" if active[items.object_id]
+
+        active[items.object_id] = true
+        items.each_with_index do |source, index|
+          if count
+            count[0] += 1
+            raise ArgumentError, "tree children exceed #{MAX_COMPLETED_ITEMS} items" if count[0] > MAX_COMPLETED_ITEMS
+          end
+          pair = source.is_a?(Array) && source.length == 2 && source.last.is_a?(Array)
+          explicit_id = source.is_a?(Hash) ? source.key?(:id) : !pair && source.respond_to?(:id)
+          item_path = path + [index] unless explicit_id
+          item_id = source_id(source, item_path)
+          raise ArgumentError, "duplicate tree item id #{item_id.inspect}" if ids.key?(item_id)
+
+          ids[item_id] = true
+          next if item_id == skip
+          next if source.is_a?(Hash) ? !source.key?(:children) && !source.key?(:load) :
+            !(source.respond_to?(:children) || pair)
+
+          nested, loader = source_children(source)
+          raise TypeError, "tree item loader must respond to call" if loader && !loader.respond_to?(:call)
+
+          nested = @loaded.fetch(item_id, nested)
+          unless nested.empty?
+            item_path ||= path + [index]
+            validate_collection(nested, item_path, ids, depth + 1, active, skip: skip, count: count)
+          end
+        end
+      ensure
+        active.delete(items.object_id)
+      end
+
+      def descendant_ids(id)
+        location = @locations.fetch(id)
+        @locations.filter_map do |target, child|
+          target if child.path.length > location.path.length && child.path.first(location.path.length) == location.path
+        end
+      end
+
+      def discard_descendants(id, descendants = descendant_ids(id))
+        descendants.each { |target| @locations.delete(target) }
+        descendants.each { |target| @loaded.delete(target) }
+        @expanded.subtract(descendants)
+      end
+
       def reset_index
         @segments, @visible_count = [], 0
         append_segment(@source, 0, @source.length, nil, 0, [].freeze)
@@ -149,21 +259,18 @@ module Zaniah
 
       def normalize_item(source, parent, depth, path, items)
         path = path.freeze
+        children, loader = source_children(source)
         if source.is_a?(Hash)
-          children = source[:children]
-          loader = children.respond_to?(:call) ? children : source[:load]
           item = Item.new(id: source.fetch(:id, path), label: source.fetch(:label, source[:value]).to_s,
-            value: source.fetch(:value, source), children: loader.equal?(children) ? [] : Array(children),
+            value: source.fetch(:value, source), children: children,
             loader: loader, parent: parent, depth: depth)
         elsif source.is_a?(Array) && source.length == 2 && source.last.is_a?(Array)
           item = Item.new(id: path, label: source.first.to_s, value: source.first,
-            children: source.last, loader: nil, parent: parent, depth: depth)
+            children: children, loader: nil, parent: parent, depth: depth)
         else
-          children = source.children if source.respond_to?(:children)
-          loader = children if children.respond_to?(:call)
           item = Item.new(id: source.respond_to?(:id) ? source.id : path,
             label: source.respond_to?(:label) ? source.label.to_s : source.to_s,
-            value: source, children: loader ? [] : Array(children), loader: loader,
+            value: source, children: children, loader: loader,
             parent: parent, depth: depth)
         end
         raise ArgumentError, "tree item id must not be nil" if item.id.nil?
@@ -193,6 +300,19 @@ module Zaniah
         raise ArgumentError, "tree item id must not be nil" if id.nil?
 
         id
+      end
+
+      def source_children(source)
+        if source.is_a?(Hash)
+          children = source[:children]
+          loader = children.respond_to?(:call) ? children : source[:load]
+        elsif source.is_a?(Array) && source.length == 2 && source.last.is_a?(Array)
+          return [source.last, nil]
+        else
+          children = source.children if source.respond_to?(:children)
+          loader = children if children.respond_to?(:call)
+        end
+        [loader.equal?(children) ? [] : Array(children), loader]
       end
 
       def children_for(item) = @loaded.fetch(item.id, item.children)
@@ -244,13 +364,22 @@ module Zaniah
         index && visible_item(index)
       end
 
+      def find_known_item(id)
+        location = @locations[id]
+        return find_item(id) unless location_valid?(id, location)
+
+        normalize_item(location.items[location.index], location.parent, location.depth, location.path, location.items)
+      end
+
       def toggle(id, value = nil)
         item = find_item(id)
         return false unless item && expandable?(item)
 
         open = value.nil? ? !@expanded.include?(id) : !!value
         return false if open == @expanded.include?(id)
-        @loaded[id] = Array(item.loader.call(item.value)) if open && item.loader && !@loaded.key?(id)
+        if open && item.loader && !@loaded.key?(id)
+          @loaded[id] = Array(item.loader.call(item.value))
+        end
         open ? @expanded.add(id) : @expanded.delete(id)
         rebuild_segments
         select_parent_after_collapse(item) unless open

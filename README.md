@@ -41,7 +41,7 @@ the drawing surface beneath the editor.
 - Stable-ID split-pane grids with fixed, fractional, and minmax tracks
 - OpenType shaping, font fallback, Japanese wrapping, text overlays, low-resolution text caching, selection, editing, and IME
 - Themes, state styles, keyed animation, springs, and reduced-motion support
-- Opt-in controls, overlays, tables, lazy viewport-virtualized trees, charts, forms, and terminal fallbacks
+- Opt-in controls, overlays, tables, externally completable lazy virtual trees, charts, forms, and terminal fallbacks
 - Spatial keyboard focus and a stable-ID, event-diffed cross-platform accessibility tree
 - F12 inspector, frame statistics, hot reload, and headless golden-image tests
 - Native input, IME, clipboard, file-drop, display, and filesystem events

@@ -84,7 +84,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L3 | `DockPanel` | `(center:, top:, right:, bottom:, left:)` | five-region layout | group |
 | L3 | `ListView` | `(items, height:, row_height:, selected:)`; `on_select` | virtual rows and keyboard selection | list/listitem |
 | L4 | `Table`, `DataGrid` | `(rows, columns:, height:, selection:, row_key:)`; `on_sort`, `on_select`, `on_edit` | virtual rows, sorting, resizing, editing | table/row/cell |
-| L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, `replace`, lazy `children` proc | arrows/Home/End | tree/treeitem |
+| L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, `replace`, `replace_children`, `invalidate`, lazy `children` proc | arrows/Home/End | tree/treeitem |
 | L5 | `Sparkline` | `(values, width:, height:, color:, label:)` | line + tooltip | image |
 | L5 | `LineChart`, `BarChart` | `(series, width:, height:, colors:, label:)` | axes, legend, tooltip | image |
 | L5 | `Validation` | `required`, `format`, `length`, `number`, `rule` | composable rules | n/a |
@@ -101,11 +101,18 @@ Table columns are hashes with `key`, and optional `label`, `width`, `sortable`,
 `resizable`, `editable`, and `render`. Tree items accept hashes containing `id`,
 `label`, and either an array or lazy proc in `children`. A lazy proc receives the
 item value, runs on first expansion, and is cached after it succeeds; a raised
-exception leaves it available for retry. IDs must be unique. Supply explicit,
-stable IDs and call `replace(items)` after changing the hierarchy to preserve
-selection, expansion, and successfully loaded children across a rebuilt source.
-Changing a loader while retaining its ID intentionally retains its cached children.
-Tree rows and accessibility nodes are built only for the current viewport.
+exception leaves it available for retry. A loader can return a placeholder while
+work runs elsewhere; call `replace_children(id, children)` on the UI thread to
+apply the result without changing selection, focus, or expansion. It returns
+`false` when the ID is missing or is not lazy. `invalidate(id)` likewise returns
+`false` for missing or non-lazy items; otherwise it discards that lazy result and
+its loaded descendants so the next expansion calls the loader again. Omit the ID
+to invalidate all loaded results. `replace(items)` starts a
+new source generation, so it never inherits loaded children from the old source.
+Completed children must be an array with unique, non-nil stable IDs, at most 64
+levels deep and 100,000 items total. Invalid results leave the previous children
+unchanged. Tree rows and accessibility nodes are built only for the current
+viewport.
 
 In a table, Up/Down/Home/End/Page keys move and select rows, Shift+Up/Down extends
 a range, and Cmd/Ctrl+A selects every row in multiple-selection mode. Sortable

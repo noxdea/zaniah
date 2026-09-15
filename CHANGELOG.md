@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.1 — 2026-09-16
+
+- Let lazy tree views accept externally loaded children and invalidate cached subtrees without blocking the UI thread.
+- Prevent replacement tree sources from inheriting stale lazy children.
+
 ## 0.5.0 — 2026-09-15
 
 - Make tree views lazy and viewport-virtualized while preserving stable-ID state across source rebuilds.

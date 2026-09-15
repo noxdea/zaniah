@@ -358,6 +358,8 @@ module Zaniah
       def expand: (untyped id) -> self
       def collapse: (untyped id) -> self
       def replace: (Array[untyped] items) -> self
+      def replace_children: (untyped id, Array[untyped] children) -> bool
+      def invalidate: (?untyped id) -> bool
       def accessibility_action: (Accessibility::Node node, Symbol action) -> bool?
     end
     class ListView < Component

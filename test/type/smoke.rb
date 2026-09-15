@@ -105,6 +105,9 @@ module PublicAPISmoke
     window.request_frame
     window.tick
     check(pane_grid.resize(:columns, 0, 4) && pane_grid.pane_ids == %i[left right], "pane grid failed")
+    lazy_tree = Zaniah::UI::TreeView.new([{id: :root, children: ->(_value) { [] }}])
+    check(lazy_tree.replace_children(:root, [{id: :child}]) && lazy_tree.invalidate(:root),
+      "tree child completion failed")
     pixels = window.device.pixels
     encoded = Zaniah::PNG.encode(80, 60, pixels)
     check(Zaniah::PNG.decode(encoded) == [80, 60, pixels], "PNG roundtrip failed")
