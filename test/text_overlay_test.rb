@@ -39,6 +39,18 @@ class TextOverlayTest < Minitest::Test
     assert_equal Zaniah::Point.new(2, 1), before.offset_to_point(1)
   end
 
+  def test_inline_overlays_at_the_same_position_preserve_input_order
+    overlays = [
+      Zaniah::TextSystem::Paragraph::InlineOverlay.new(:second, 1, 2, 1, :after),
+      Zaniah::TextSystem::Paragraph::InlineOverlay.new(:first, 1, 3, 1, :after),
+      Zaniah::TextSystem::Paragraph::InlineOverlay.new(:third, 1, 1, 1, :after)
+    ]
+    placements = paragraph("ab", width: 10, inline_overlays: overlays).inline_placements
+
+    assert_equal %i[second first third], placements.map(&:key)
+    assert_equal [1, 3, 6], placements.map(&:x)
+  end
+
   def test_text_positions_inline_and_block_elements_and_keeps_them_out_of_selection
     system = CellTypesetter.new
     window = Zaniah::Platform::Headless::Window.new(width: 4, height: 30)

@@ -73,14 +73,15 @@ module Zaniah
 
       def validate_overlays(overlays)
         raise ArgumentError, "inline overlays must be an array" unless overlays.is_a?(Array)
-        overlays.map do |overlay|
+        overlays.map.with_index do |overlay, index|
           unless overlay.is_a?(InlineOverlay) && overlay.offset.is_a?(Integer) && overlay.offset.between?(0, @text.bytesize) &&
               Unicode.grapheme_boundary?(@text, overlay.offset) && %i[before after].include?(overlay.align) &&
               [overlay.width, overlay.height].all? { |value| value.is_a?(Numeric) && value.finite? && !value.negative? }
             raise ArgumentError, "invalid inline overlay"
           end
-          overlay
-        end.sort_by { |overlay| [overlay.offset, overlay.align == :before ? 0 : 1] }.freeze
+          [overlay, index]
+        end.sort_by { |overlay, index| [overlay.offset, overlay.align == :before ? 0 : 1, index] }
+          .map!(&:first).freeze
       end
 
       def overlays_for(first, finish)

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.5.2 — 2026-09-16
+
+- Preserve insertion order for inline overlays that share an offset and alignment.
+
 ## 0.5.1 — 2026-09-16
 
 - Let lazy tree views accept externally loaded children and invalidate cached subtrees without blocking the UI thread.
