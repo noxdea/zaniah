@@ -74,7 +74,7 @@ module Zaniah
     end
 
     def self.decode_payload(body)
-      validate_payload(JSON.parse(body, max_nesting: MAX_DEPTH, create_additions: false), freeze: true)
+      validate_payload(JSON.parse(body, max_nesting: MAX_DEPTH), freeze: true)
     end
 
     def self.error_message(error)

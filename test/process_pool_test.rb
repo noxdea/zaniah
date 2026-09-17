@@ -7,6 +7,10 @@ class ProcessPoolTest < Minitest::Test
   T = Zaniah
   HANDLER = File.expand_path("fixtures/process_handler.rb", __dir__)
 
+  class JSONAddition
+    def self.json_create(*) = raise "JSON additions must remain disabled"
+  end
+
   def pool(**options)
     @pool = T::ProcessPool.new(workers: 1, handler: "ProcessFixture", requires: [HANDLER], **options)
   end
@@ -169,7 +173,7 @@ class ProcessPoolTest < Minitest::Test
     assert_nil T::ProcessWire.read_payload(StringIO.new(""), 4096)
     assert_raises(JSON::ParserError) { T::ProcessWire.decode_payload("[") }
     assert_raises(JSON::NestingError) { T::ProcessWire.decode_payload("[" * 100 + "0" + "]" * 100) }
-    value = {"json_class" => "Object", "data" => nil}
+    value = {"json_class" => "ProcessPoolTest::JSONAddition", "data" => nil}
     assert_equal value, T::ProcessWire.decode_payload(JSON.generate(value))
   end
 

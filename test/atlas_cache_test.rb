@@ -12,6 +12,10 @@ class AtlasCacheTest < Minitest::Test
   FONT_PATH = File.expand_path("../assets/fonts/Abel-Regular.ttf", __dir__)
   FONT_ID = "a" * 64
 
+  class JSONAddition
+    def self.json_create(*) = raise "JSON additions must remain disabled"
+  end
+
   class CountingRaster
     attr_reader :calls, :cache_key
     def initialize(version = "fixture-raster-v1")
@@ -167,6 +171,14 @@ class AtlasCacheTest < Minitest::Test
       rewrite_metadata(path, &change)
       refute atlas.load_cache(path, key: "fixture")
     end
+  end
+
+  def test_cache_metadata_does_not_create_json_objects
+    atlas = sample_atlas
+    path = File.join(@directory, "plain-json.atlas")
+    assert atlas.save_cache(path, key: "fixture")
+    rewrite_metadata(path) { |data| data["json_class"] = "AtlasCacheTest::JSONAddition" }
+    assert atlas.load_cache(path, key: "fixture")
   end
 
   def test_file_and_directory_symlinks_are_not_followed_or_replaced

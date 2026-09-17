@@ -72,7 +72,7 @@ module Zaniah
           json, pixels = file.read(json_size), file.read(pixel_size)
           return unless json&.bytesize == json_size && pixels&.bytesize == pixel_size
           return unless Digest::SHA256.new.update(json).update(pixels).digest == header.byteslice(20, 32)
-          metadata = JSON.parse(json, max_nesting: 8, create_additions: false)
+          metadata = JSON.parse(json, max_nesting: 8)
           return unless valid_metadata?(metadata, key: key, width: width, height: height, format: format)
           return unless pixels.bytesize == width * metadata["rows"] * (format == :r8 ? 1 : 4)
           texture = GPU::Texture.new(width, height, format: format)

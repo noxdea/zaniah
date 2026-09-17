@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.5.3 — 2026-09-17
+
+- Restore Ruby 4.0/json 3 compatibility for process messages and atlas caches while keeping JSON object additions disabled.
+
 ## 0.5.2 — 2026-09-16
 
 - Preserve insertion order for inline overlays that share an offset and alignment.
