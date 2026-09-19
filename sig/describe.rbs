@@ -1,0 +1,44 @@
+module Zaniah
+  module Describe
+    type node_input = Node | Hash[Symbol | String, untyped]
+    type patch_input = Patch | Hash[Symbol | String, untyped]
+    type event_callback = ^(untyped id, untyped payload) -> untyped
+
+    class Node < Data
+      attr_reader type: Symbol
+      attr_reader props: Hash[Symbol, untyped]
+      attr_reader children: Array[Node]
+      attr_reader key: untyped
+      def self.new: (Symbol type, Hash[Symbol, untyped] props, Array[Node] children, untyped key) -> Node
+                  | (type: Symbol, props: Hash[Symbol, untyped], children: Array[Node], key: untyped) -> Node
+    end
+
+    class Patch < Data
+      attr_reader op: :replace | :insert | :remove | :update
+      attr_reader path: Array[Integer]
+      attr_reader node: Node?
+      attr_reader props: Hash[Symbol, untyped]?
+      def self.new: (:replace | :insert | :remove | :update op, Array[Integer] path, Node? node, Hash[Symbol, untyped]? props) -> Patch
+                  | (op: :replace | :insert | :remove | :update, path: Array[Integer], node: Node?, props: Hash[Symbol, untyped]?) -> Patch
+    end
+
+    class Vocabulary
+      def self.build: () { (Vocabulary) -> void } -> Vocabulary
+      def initialize: () -> void
+      def node: (Symbol | String type, ?props: Hash[Symbol | String, untyped], ?children: :none | :one | :many | Integer | Range[Integer]) { (Hash[Symbol, untyped] props, Array[_Renderable] children) -> _Renderable } -> self
+      def allow?: (Symbol | String type) -> bool
+      def validate!: (node_input value) -> Node
+    end
+
+    def self.build: (node_input value, vocabulary: Vocabulary, on_event: event_callback) -> _Renderable
+    def self.diff: (node_input? previous, node_input? current) -> Array[Patch]
+
+    class Surface
+      def initialize: (vocabulary: Vocabulary, on_event: event_callback) -> void
+      def replace: (node_input? value) -> self
+      def apply: (Array[patch_input] patches) -> self
+      def element: () -> _Renderable?
+      def empty?: () -> bool
+    end
+  end
+end

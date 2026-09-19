@@ -36,6 +36,7 @@ the editor, providing the native rendering layer for its UI.
 - Flex, Grid, sticky, absolute, wrapping, and baseline-aware layouts
 - Gradients, transforms, paths, SVG, shadows, clipping, and GPU glyph atlases
 - Retained element state, subscriptions, and non-blocking background tasks
+- Validated declarative element trees with event IDs, minimal diffs, and keyed reuse
 - Scroll views, inertial input, and uniform or variable-height virtual lists
 - Stable-ID pointer and keyboard reordering without materializing virtual collections
 - Stable-ID split-pane grids with fixed, fractional, and minmax tracks
@@ -124,6 +125,7 @@ Native backends use the operating system libraries through Ruby's Fiddle. See
 - [Accessibility](docs/accessibility.md) — semantic trees, diffs, and native bridges
 - [Terminal UI](docs/tui.md) — deterministic component degradation
 - [CPU process workers](docs/process_pool.md) — portable background CPU work
+- [Declarative elements](docs/describe.md) — validated vocabularies, event routing, diffs, and surfaces
 - [Architecture decisions](docs/adr) — design records and rationale
 - [RBS declarations](sig) — public API signatures
 

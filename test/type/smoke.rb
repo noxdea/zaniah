@@ -94,6 +94,17 @@ module PublicAPISmoke
     window.draw { root_element }
     window.tick
     check(!window.dirty? && !window.scene.commands.empty?, "element pipeline failed")
+    vocabulary = Zaniah::Describe::Vocabulary.build do
+      node(:box, props: {gap: :integer}) { |props, children| Zaniah::Div.new.gap(props.fetch(:gap)).children(children) }
+      node(:label, props: {value: :string}, children: :none) { |props, _children| Zaniah::Text.new(props.fetch(:value)) }
+    end
+    description = Zaniah::Describe::Node.new(:box, {gap: 2}, [
+      Zaniah::Describe::Node.new(:label, {value: "Remote"}, [], :label)
+    ], nil)
+    described = Zaniah::Describe.build(description, vocabulary: vocabulary, on_event: ->(_id, _payload) {})
+    surface = Zaniah::Describe::Surface.new(vocabulary: vocabulary, on_event: ->(_id, _payload) {}).replace(description)
+    check(described.is_a?(Zaniah::Div) && !surface.empty? && Zaniah::Describe.diff(description, description).empty?,
+      "declarative elements failed")
     ui_button = Zaniah::UI::Button.new("Save", variant: :primary).icon(:check)
     window.draw { ui_button }
     window.request_frame
