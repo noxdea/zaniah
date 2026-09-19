@@ -1,12 +1,9 @@
 # Changelog
 
-## Unreleased
-
-- Add validated declarative element descriptions with event routing, tree diffs, and keyed surface reuse.
-
 ## 0.6.0 — 2026-09-19
 
 - Add the validated declarative Describe layer for remote UI trees.
+- Add validated declarative element descriptions with event routing, tree diffs, and keyed surface reuse.
 
 ## 0.5.3 — 2026-09-17
 
