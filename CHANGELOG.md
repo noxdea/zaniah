@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add a deterministic headless demo image and regeneration task.
+
 ## 0.6.0 — 2026-09-19
 
 - Add the validated declarative Describe layer for remote UI trees, including event routing, tree diffs, keyed surface reuse, and element descriptions.
