@@ -28,8 +28,8 @@ Zaniah is a pure Ruby UI toolkit for building desktop and terminal interfaces.
 It renders through native GPU APIs, a deterministic headless backend, or an ANSI
 terminal without extension compilation or a rendering subprocess.
 
-The name comes from the white ground laid before paint or gold leaf: Zaniah is
-the drawing surface beneath the editor.
+Zaniah is named for a star in Virgo. The toolkit is the drawing surface beneath
+the editor, providing the native rendering layer for its UI.
 
 ## Features
 
