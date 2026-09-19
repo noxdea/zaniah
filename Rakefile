@@ -29,5 +29,5 @@ task default: :test
 
 desc "Regenerate deterministic demo media"
 task :demo do
-  Dir["demo/*.rb"].sort.each { |path| ruby "-Ilib", path }
+  Dir["demo/*.rb"].sort.each { |path| ruby "-Ilib", "-I../wezen/lib", path }
 end
