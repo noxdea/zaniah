@@ -4,6 +4,10 @@
 
 - Add validated declarative element descriptions with event routing, tree diffs, and keyed surface reuse.
 
+## 0.6.0 — 2026-09-19
+
+- Add the validated declarative Describe layer for remote UI trees.
+
 ## 0.5.3 — 2026-09-17
 
 - Restore Ruby 4.0/json 3 compatibility for process messages and atlas caches while keeping JSON object additions disabled.
