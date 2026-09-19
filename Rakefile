@@ -26,3 +26,8 @@ task :bench do
 end
 
 task default: :test
+
+desc "Regenerate deterministic demo media"
+task :demo do
+  Dir["demo/*.rb"].sort.each { |path| ruby "-Ilib", path }
+end
