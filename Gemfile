@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 gemspec
-gem "wezen", github: "noxdea/wezen", branch: "main", require: false
+gem "wezen", "~> 0.1.0", require: false
 
 group :development, :test do
   gem "benchmark", "~> 0.5"
