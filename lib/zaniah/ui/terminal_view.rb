@@ -35,6 +35,7 @@ module Zaniah
       end
 
       def select(range)
+        # The range addresses cells in row-major order.
         @selection = range && Range === range ? range : nil
         self
       end
@@ -74,10 +75,31 @@ module Zaniah
             cx.scene.quad(bounds.x + column * @cell_width, bounds.y + row * @cell_height,
               (run - column) * @cell_width, @cell_height, color: color(cell.background))
           end
+          if @selection&.cover?(row * @grid.columns + column)
+            cx.scene.quad(bounds.x + column * @cell_width, bounds.y + row * @cell_height,
+              @cell_width, @cell_height, color: "#ffffff33")
+          end
           if cell.width != 0 && cell.text != " "
             paint_text(cell.text, cell.foreground || @foreground, bounds, row, column, cx)
           end
+          paint_attributes(cell, bounds, row, column, cx)
           column += 1
+        end
+      end
+
+      def paint_attributes(cell, bounds, row, column, cx)
+        attributes = cell.attributes || {}
+        return unless cx.scene.respond_to?(:underline)
+
+        x = bounds.x + column * @cell_width
+        y = bounds.y + row * @cell_height
+        if attributes[:underline]
+          thickness = attributes[:underline] == 2 ? 2 : 1
+          cx.scene.underline(x, y + @cell_height - 2, @cell_width, color: color(cell.foreground || @foreground), thickness: thickness)
+        end
+        if attributes[:strikethrough]
+          cx.scene.underline(x, y + @cell_height * 0.52, @cell_width,
+            color: color(cell.foreground || @foreground))
         end
       end
 
