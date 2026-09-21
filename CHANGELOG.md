@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.1 — 2026-09-21
 
 - Add a deterministic headless demo image and regeneration task.
 
