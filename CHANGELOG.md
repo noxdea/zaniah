@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2 — 2026-09-21
+
+- Add GIF decoding and a damage-aware terminal grid view.
+
 ## 0.6.1 — 2026-09-21
 
 - Add a deterministic headless demo image and regeneration task.

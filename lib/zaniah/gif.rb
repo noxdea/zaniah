@@ -169,7 +169,10 @@ module Zaniah
     private_class_method :lzw_decode
 
     class Reader
-      def initialize(bytes) = (@bytes, @offset = bytes, 0)
+      def initialize(bytes)
+        @bytes, @offset = bytes, 0
+      end
+
       def eof? = @offset >= @bytes.bytesize
       def byte = bytes(1).getbyte(0)
       def bytes(length)
@@ -178,7 +181,9 @@ module Zaniah
         @offset += length
         value
       end
-      def skip(length) = bytes(length)
+      def skip(length)
+        bytes(length)
+      end
     end
   end
 end

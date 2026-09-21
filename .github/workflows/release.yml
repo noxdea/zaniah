@@ -14,8 +14,8 @@ jobs:
     timeout-minutes: 15
     environment: release
     permissions:
-      contents: write
-      id-token: write
+      contents: write # Required to create the GitHub release.
+      id-token: write # Required for RubyGems trusted publishing.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -30,9 +30,10 @@ jobs:
         run: |
           bundle install
           bundle exec rake
-          gem build zaniah.gemspec --output zaniah.gem
+          gem build --strict zaniah.gemspec --output /tmp/zaniah.gem
+      - uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
       - name: Publish through RubyGems trusted publishing
-        uses: rubygems/release-gem@7f9650160c1a4e7989fdc9855807bdbd421d8b6b # v1.4.1
+        run: gem push /tmp/zaniah.gem
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
