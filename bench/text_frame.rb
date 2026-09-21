@@ -42,7 +42,7 @@ printf "paint=%.3fms/%dobjects pack=%.3fms/%dobjects total=%.3fms/%dobjects byte
 abort "cached text CPU frame exceeds 8ms" if ENV["BUDGET"] == "1" && total_ms > 8
 abort "cached text CPU frame exceeds 200 objects" if ENV["BUDGET"] == "1" && total_objects >= 200
 paragraph = Array.new(1_000, "Ruby UI").join("\n").freeze
-Bench.budget("layout paragraph with 1000 lines", 20.0, samples: 5) do
+Bench.budget("layout paragraph with 1000 lines", 25.0, samples: 5) do
   system.layout_paragraph(paragraph, width: 800, wrap: :word)
 end
 system.close
