@@ -1,0 +1,15 @@
+module Zaniah
+  module UI
+    class TerminalView < Zaniah::Element
+      attr_reader grid: untyped?
+      attr_reader damage: Range[Integer]?
+      attr_reader cell_width: Float
+      attr_reader cell_height: Float
+      attr_reader selection: Range[Integer]?
+      def initialize: (grid: untyped?, cell_width: Numeric, cell_height: Numeric, background: String, foreground: String) -> void
+      def grid=: (untyped value) -> untyped
+      def update: (?untyped value, ?damage: Range[Integer]) -> self
+      def select: (Range[Integer]?) -> self
+    end
+  end
+end
