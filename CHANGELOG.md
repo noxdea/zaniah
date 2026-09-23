@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.3 — 2026-09-23
 
 - Render supplied text grid cells directly as cell surfaces, avoiding an extra wrapper per visible cell.
 - Add a two-axis virtualized UI grid with frozen panes, range selection, variable sizing, resize, and fill callbacks.
