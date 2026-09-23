@@ -7,6 +7,7 @@ require "zaniah/ui"
 
 rows, columns, rendered = 1_000_000, 16_000, 0
 window = Zaniah::Platform::Headless::Window.new(width: 800, height: 600)
+window.text_system = Zaniah::Platform::TUI::TextRenderer.new
 context = Zaniah::FrameContext.new(window)
 engine = Zaniah::Layout::Engine.new
 grid = nil
