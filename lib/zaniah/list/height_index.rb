@@ -21,6 +21,7 @@ module Zaniah
         validate_index(index)
         raise ArgumentError, "height must be finite and nonnegative" unless height.is_a?(Numeric) && height.finite? && height >= 0
         delta = height.to_f - self[index]
+        return 0.0 if delta.zero?
         height == @estimate ? @values.delete(index) : @values[index] = height.to_f
         cursor = index + 1
         while cursor <= @count

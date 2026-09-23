@@ -287,13 +287,13 @@ module Zaniah
 
       def pane(width, height, rows:, columns:, x_offset:, y_offset:, origin_y:, frozen:, left: 0)
         children = []
-        rows.each do |row|
-          row_top = frozen ? @row_index.prefix(row) : @row_index.prefix(row) - y_offset
-          row_height = @row_index[row]
+        row_geometry = rows.map { |row| [row, @row_index.prefix(row), @row_index[row]] }
+        column_geometry = columns.map { |column| [column, @column_index.prefix(column), @column_index[column]] }
+        row_geometry.each do |row, row_origin, row_height|
+          row_top = frozen ? row_origin : row_origin - y_offset
           next unless row_height.positive?
-          columns.each do |column|
-            column_left = frozen ? @column_index.prefix(column) : @column_index.prefix(column) - x_offset
-            column_width = @column_index[column]
+          column_geometry.each do |column, column_origin, column_width|
+            column_left = frozen ? column_origin : column_origin - x_offset
             next unless column_width.positive?
             next if column_left + column_width <= (frozen ? left : 0) || row_top + row_height <= 0
             next if column_left >= left + width || row_top >= height
@@ -307,15 +307,20 @@ module Zaniah
       def cell(row, column, left:, top:, width:, height:, left_clip:, frozen:)
         bounds = Bounds.new(left + left_clip, top, width, height)
         content = @render_cell.call(row, column, bounds, @cx)
-        content = Label.new(content.to_s, size: :sm) if content.is_a?(String) || content.is_a?(Numeric)
+        plain_text = content.is_a?(String) || content.is_a?(Numeric)
+        if plain_text
+          content = Text.new(content.to_s.encode(Encoding::UTF_8),
+            size: @cx.theme.typography.size_sm, color: @cx.theme.colors.text)
+        end
         if content && !renderable?(content)
           raise TypeError, "grid cell renderer must return a renderable element, String, Numeric, or nil"
         end
         selected = @selection.any? { |area| area.rows.cover?(row) && area.columns.cover?(column) }
-        wrapper = Div.new.style(position: :absolute, left: left, top: top, width: width, height: height,
+        direct_text = plain_text && !fill_corner?(row, column)
+        wrapper = (direct_text ? content : Div.new).style(position: :absolute, left: left, top: top, width: width, height: height,
           overflow: :hidden, background: selected ? @cx.theme.colors.selection : @cx.theme.colors.surface,
           border: 1, border_color: @cx.theme.colors.border, cursor: :pointer)
-        wrapper.child(content) if content
+        wrapper.child(content) if content && !direct_text
         wrapper.on_mouse_down { |event, context| begin_cell(row, column, event, context, bounds) }
         wrapper.on_drag { |event, context| drag_cell(row, column, event, context) }
         wrapper.on_mouse_up { @resize = @fill_drag = nil }
