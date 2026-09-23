@@ -151,6 +151,21 @@ module Zaniah
           @on_moved&.call(O.send(@handle, "frame", result: :rect).first(2)) if moved
         end
         def toggle_fullscreen = O.send(@handle, "toggleFullScreen:", 0, args: [:pointer], result: :void)
+        def move_to_display(display)
+          validate_display!(display)
+          screens = O.send(O.klass("NSScreen"), "screens")
+          count = O.send(screens, "count", result: :ulong)
+          screen = Array.new(count) { |index| O.send(screens, "objectAtIndex:", index, args: [:ulong]) }.find do |candidate|
+            description = O.send(candidate, "deviceDescription")
+            identifier = O.send(description, "objectForKey:", O.string("NSScreenNumber"), args: [:pointer])
+            O.send(identifier, "unsignedIntValue", result: :uint) == display.id
+          end
+          raise Error, "display is no longer available" unless screen
+
+          x, y, _width, height = O.send(screen, "frame", result: :rect)
+          O.send(@handle, "setFrameTopLeftPoint:", [x, y + height], args: [:point], result: :void)
+          true
+        end
 
         KEYS = {36 => "enter", 48 => "tab", 49 => "space", 51 => "backspace", 53 => "esc", 117 => "delete", 115 => "home", 119 => "end", 116 => "pageup", 121 => "pagedown", 123 => "left", 124 => "right", 125 => "down", 126 => "up"}.freeze
         def native_input(name, event)

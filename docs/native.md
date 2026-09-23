@@ -49,6 +49,15 @@ and [platform declarations](../sig/platform.rbs) for the exact API.
 call `poll(timeout:)` for events and `close` when finished. Overflow events mean
 the application should rescan the watched paths.
 
+macOS, Windows, and X11 windows support `move_to_display(display)`, using a
+fresh `Display` returned by `Platform.displays` for the matching backend. It
+moves the window frame to that display's top-left; it raises `Zaniah::Error` if
+the display is no longer available. Headless and TUI windows reject placement.
+Wayland has no arbitrary-position request: `move_to_display` raises, while
+`fullscreen_on(display)` sends a best-effort output preference that the
+compositor is free to ignore. Use `Platform.displays(backend: :linux,
+display_server: :wayland)` to select the output.
+
 On Windows, require `zaniah/platform/windows/terminal` to use
 `Zaniah::Platform::Windows::Terminal`, which wraps ConPTY. It supports starting
 a child process, nonblocking reads, writes, resizing, liveness checks, and

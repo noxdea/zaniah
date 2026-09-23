@@ -401,6 +401,18 @@ module Zaniah
           event[56, 24] = [2, atom("_NET_WM_STATE_FULLSCREEN"), 0].pack("L!3")
           x(:XSendEvent, [P, L, I, L, P], I, @display, @root, 0, (1 << 19) | (1 << 20), event)
         end
+        def move_to_display(display)
+          validate_display!(display)
+          target = displays.find { |candidate| candidate.id == display.id }
+          raise Error, "display is no longer available" unless target
+
+          x_position = (target.bounds.x * target.scale_factor).round
+          y_position = (target.bounds.y * target.scale_factor).round
+          moved = x(:XMoveWindow, [P, L, I, I], I, @display, @handle, x_position, y_position)
+          raise Error, "XMoveWindow failed" if moved.zero?
+          x(:XFlush, [P], I, @display)
+          true
+        end
         def close
           return false unless super
           Accessibility.close(self)

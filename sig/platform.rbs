@@ -85,6 +85,8 @@ module Zaniah
         def set_cursor: (cursor style) -> cursor
         def cursor_style=: (cursor style) -> cursor
         def displays: () -> Array[Display]
+        # Raises Error for backends without native physical-display placement.
+        def move_to_display: (Display display) -> bool
         def popup: () -> Popup?
         def resize: (Numeric width, Numeric height) -> void
         def input: (Input::event event) -> void

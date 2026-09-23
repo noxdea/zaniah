@@ -400,6 +400,21 @@ module Zaniah
             @user.fn(:SetWindowPos, [P, P, I, I, I, I, U], I).call(@handle, 0, left, top, right - left, bottom - top, 0x0020)
           end
         end
+        def move_to_display(display)
+          validate_display!(display)
+          target = displays.find { |candidate| candidate.id == display.id }
+          raise Error, "display is no longer available" unless target
+
+          monitor = "\0" * 104
+          monitor[0, 4] = [104].pack("I")
+          raise Error, "GetMonitorInfoW failed" if @user.fn(:GetMonitorInfoW, [P, P], I).call(target.id, monitor).zero?
+          left, top = monitor[4, 8].unpack("l2")
+          flags = 0x0001 | 0x0004 | 0x0010 # SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+          moved = @user.fn(:SetWindowPos, [P, P, I, I, I, I, U], I).call(@handle, 0, left, top, 0, 0, flags)
+          raise Error, "SetWindowPos failed" if moved.zero?
+
+          true
+        end
         def close
           return false unless super
           Accessibility.close(self)

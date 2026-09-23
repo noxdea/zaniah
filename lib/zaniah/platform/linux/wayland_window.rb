@@ -344,6 +344,20 @@ module Zaniah
           @fullscreen = !@fullscreen
           @fullscreen ? @connection.request(@toplevel, 11, 0) : @connection.request(@toplevel, 12)
         end
+        def move_to_display(display)
+          validate_display!(display)
+          raise Error, "Wayland does not support arbitrary window positioning; use fullscreen_on"
+        end
+        # Wayland treats the output as a preference; the compositor decides whether to honor it.
+        def fullscreen_on(display)
+          validate_display!(display)
+          output = @outputs[display.id]&.first
+          raise Error, "display is no longer available" unless output
+
+          @fullscreen = true
+          @connection.request(@toplevel, 11, output)
+          true
+        end
         def close
           return false unless super
           Accessibility.close(self)

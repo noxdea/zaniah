@@ -74,6 +74,14 @@ class NativeTest < Minitest::Test
     assert_equal "日本語\0".encode("UTF-16LE").b, window.wide("日本語")
   end
 
+  def test_headless_display_placement_validates_and_rejects_physical_placement
+    window = Zaniah::Platform.open_window(backend: :headless)
+    assert_raises(ArgumentError) { window.move_to_display(Object.new) }
+    assert_raises(Zaniah::Error) { window.move_to_display(window.displays.first) }
+  ensure
+    window&.close
+  end
+
   def test_objc_scalar_fast_path_preserves_types_nil_and_reentrant_callbacks
     skip "Objective-C runtime is macOS only" unless RUBY_PLATFORM.include?("darwin")
     require "zaniah/ffi/objc"
@@ -269,5 +277,28 @@ class NativeTest < Minitest::Test
     window.instance_variable_set(:@entered_outputs, [10])
     window.output_scale
     assert_equal 1, window.scale_factor
+  end
+
+  def test_wayland_fullscreen_on_output_is_best_effort_and_positioning_is_rejected
+    require "zaniah/platform/linux"
+    require "zaniah/platform/linux/wayland_window"
+    requests = []
+    connection = Object.new
+    connection.define_singleton_method(:request) { |*args| requests << args }
+    window = Zaniah::Platform::Linux::WaylandWindow.allocate
+    window.instance_variable_set(:@connection, connection)
+    window.instance_variable_set(:@toplevel, :toplevel)
+    window.instance_variable_set(:@outputs, {42 => [:second_output, 1]})
+    display = Zaniah::Platform::Display.new(42, "Display 2", Zaniah::Bounds.new(1920, 0, 1920, 1080), 1, false)
+
+    assert window.fullscreen_on(display)
+    assert_equal [[:toplevel, 11, :second_output]], requests
+    assert window.instance_variable_get(:@fullscreen)
+    assert_raises(ArgumentError) { window.fullscreen_on(Object.new) }
+    assert_raises(Zaniah::Error) do
+      window.fullscreen_on(Zaniah::Platform::Display.new(99, "Removed", Zaniah::Bounds.new(0, 0, 1, 1), 1, false))
+    end
+    error = assert_raises(Zaniah::Error) { window.move_to_display(display) }
+    assert_match "does not support arbitrary window positioning", error.message
   end
 end

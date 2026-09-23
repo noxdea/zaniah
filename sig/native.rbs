@@ -19,6 +19,7 @@ module Zaniah
         def cursor_style=: (cursor style) -> void
         def open_url: (String url) -> void
         def toggle_fullscreen: () -> void
+        def move_to_display: (Display display) -> bool
       end
     end
     module Linux
@@ -37,6 +38,7 @@ module Zaniah
         def cursor_style=: (cursor style) -> void
         def open_url: (String url) -> bool
         def toggle_fullscreen: () -> void
+        def move_to_display: (Display display) -> bool
       end
       class WaylandWindow < Headless::Window
         def initialize: (?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
@@ -53,6 +55,10 @@ module Zaniah
         def cursor_style=: (cursor style) -> void
         def open_url: (String url) -> bool
         def toggle_fullscreen: () -> void
+        # Wayland does not support arbitrary client window placement.
+        def move_to_display: (Display display) -> bool
+        # Best-effort output preference; the compositor decides whether to honor it.
+        def fullscreen_on: (Display display) -> bool
       end
     end
     module Windows
@@ -72,6 +78,7 @@ module Zaniah
         def cursor_style=: (cursor style) -> void
         def open_url: (String url) -> void
         def toggle_fullscreen: () -> void
+        def move_to_display: (Display display) -> bool
       end
       class Terminal
         attr_reader pid: Integer

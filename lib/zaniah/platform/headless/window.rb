@@ -48,6 +48,10 @@ module Zaniah
           @cursor_style = style
         end
         def displays = [Display.new(0, "Headless", Bounds.new(0, 0, @content_size.width, @content_size.height), @scale_factor, true)]
+        def move_to_display(display)
+          validate_display!(display)
+          raise Error, "#{self.class} does not support native display placement"
+        end
 
         def popup
           if @popup_component.respond_to?(:popup_data)
@@ -188,6 +192,10 @@ module Zaniah
         def write_png(path) = @device.write_png(path)
 
         private
+
+        def validate_display!(display)
+          raise ArgumentError, "expected a Zaniah::Platform::Display" unless display.is_a?(Display)
+        end
 
         def popup_input(event)
           if @popup_component

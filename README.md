@@ -116,6 +116,12 @@ For an interactive window, choose `backend: :mac`, `:linux`, `:windows`, or
 Native backends use the operating system libraries through Ruby's Fiddle. See
 [Native backends](docs/native.md) for platform requirements and checks.
 
+Native macOS, Windows, and X11 windows can be moved to a display returned by
+`Zaniah::Platform.displays` with `window.move_to_display(display)`. Headless and
+terminal windows cannot be placed on physical displays. Wayland does not permit
+arbitrary client window placement; its `fullscreen_on(display)` asks the
+compositor to fullscreen on that output, but the compositor may choose otherwise.
+
 ## Documentation
 
 - [Native backends](docs/native.md) — windows, displays, file watching, and terminals
