@@ -21,6 +21,8 @@ module Zaniah
         @rows, @columns = rows, columns
         @frozen_rows, @frozen_columns, @overscan = frozen_rows, frozen_columns, overscan
         @row_size, @column_size = size_provider(row_height), size_provider(column_width)
+        @row_overrides, @column_overrides = {}, {}
+        @hidden_rows, @hidden_columns = {}, {}
         @row_index = List::HeightIndex.new(rows, estimate(estimated_row_height, row_height))
         @column_index = List::HeightIndex.new(columns, estimate(estimated_column_width, column_width))
         @render_cell, @selection, @selection_anchor = render_cell, [], nil
@@ -44,15 +46,55 @@ module Zaniah
       end
 
       def set_row_height(index, height)
-        @row_index.update(index, height)
+        validate_axis_index(index, @rows, "row")
+        height = validate_size(height)
+        @row_overrides[index] = height
+        @row_index.update(index, @hidden_rows.key?(index) ? 0 : height)
         @cx&.window&.request_frame
         self
       end
 
       def set_column_width(index, width)
-        @column_index.update(index, width)
+        validate_axis_index(index, @columns, "column")
+        width = validate_size(width)
+        @column_overrides[index] = width
+        @column_index.update(index, @hidden_columns.key?(index) ? 0 : width)
         @cx&.window&.request_frame
         self
+      end
+
+      def hide_row(index)
+        hide_rows([index], hidden: true)
+      end
+
+      def unhide_row(index)
+        hide_rows([index], hidden: false)
+      end
+
+      def hide_column(index)
+        hide_columns([index], hidden: true)
+      end
+
+      def unhide_column(index)
+        hide_columns([index], hidden: false)
+      end
+
+      def hide_rows(indices, hidden:)
+        update_hidden_indices(indices, hidden, @rows, @hidden_rows, @row_index, method(:row_content_size), "row")
+      end
+
+      def hide_columns(indices, hidden:)
+        update_hidden_indices(indices, hidden, @columns, @hidden_columns, @column_index, method(:column_content_size), "column")
+      end
+
+      def row_hidden?(index)
+        validate_axis_index(index, @rows, "row")
+        @hidden_rows.key?(index)
+      end
+
+      def column_hidden?(index)
+        validate_axis_index(index, @columns, "column")
+        @hidden_columns.key?(index)
       end
 
       def freeze_panes(rows:, columns:)
@@ -127,6 +169,49 @@ module Zaniah
         value.to_f
       end
 
+      def validate_axis_index(index, count, axis)
+        raise IndexError, "#{axis} outside grid" unless index.is_a?(Integer) && index.between?(0, count - 1)
+      end
+
+      def update_hidden_indices(indices, hidden, count, state, index, unhidden_size, axis)
+        raise ArgumentError, "hidden must be true or false" unless hidden == true || hidden == false
+        raise ArgumentError, "#{axis} indexes must be an array" unless indices.is_a?(Array)
+        indices.each { |item| validate_axis_index(item, count, axis) }
+
+        items = indices.uniq
+        restored_sizes = {}
+        unless hidden
+          items.each { |item| restored_sizes[item] = unhidden_size.call(item) if state.key?(item) }
+        end
+        changed = false
+        items.each do |item|
+          next if state.key?(item) == hidden
+          if hidden
+            state[item] = true
+            index.update(item, 0)
+          else
+            state.delete(item)
+            index.update(item, restored_sizes.fetch(item))
+          end
+          changed = true
+        end
+        @cx&.window&.request_frame if changed
+        self
+      end
+
+      def row_size(index)
+        return 0 if @hidden_rows.key?(index)
+        row_content_size(index)
+      end
+
+      def column_size(index)
+        return 0 if @hidden_columns.key?(index)
+        column_content_size(index)
+      end
+
+      def row_content_size(index) = @row_overrides.fetch(index) { validate_size(@row_size.call(index)) }
+      def column_content_size(index) = @column_overrides.fetch(index) { validate_size(@column_size.call(index)) }
+
       def dimension(property, available)
         value = @component_style[property]
         value = value.resolve(available) if value.is_a?(Length)
@@ -134,8 +219,8 @@ module Zaniah
       end
 
       def refresh_frozen_sizes
-        @frozen_rows.times { |index| @row_index.update(index, validate_size(@row_size.call(index))) }
-        @frozen_columns.times { |index| @column_index.update(index, validate_size(@column_size.call(index))) }
+        @frozen_rows.times { |index| @row_index.update(index, row_size(index)) }
+        @frozen_columns.times { |index| @column_index.update(index, column_size(index)) }
       end
 
       def sync_scroll(width, height)
@@ -156,8 +241,8 @@ module Zaniah
           last_column = @column_index.index_at(frozen_width + @scroll_state.offset.x + [width - frozen_width, 0].max) + 1
           row_range = ((first_row - @overscan).clamp(@frozen_rows, @rows))...([last_row + @overscan, @rows].min)
           column_range = ((first_column - @overscan).clamp(@frozen_columns, @columns))...([last_column + @overscan, @columns].min)
-          row_range.each { |index| @row_index.update(index, validate_size(@row_size.call(index))) }
-          column_range.each { |index| @column_index.update(index, validate_size(@column_size.call(index))) }
+          row_range.each { |index| @row_index.update(index, row_size(index)) }
+          column_range.each { |index| @column_index.update(index, column_size(index)) }
           sync_scroll(width, height)
         end
       end
@@ -205,9 +290,11 @@ module Zaniah
         rows.each do |row|
           row_top = frozen ? @row_index.prefix(row) : @row_index.prefix(row) - y_offset
           row_height = @row_index[row]
+          next unless row_height.positive?
           columns.each do |column|
             column_left = frozen ? @column_index.prefix(column) : @column_index.prefix(column) - x_offset
             column_width = @column_index[column]
+            next unless column_width.positive?
             next if column_left + column_width <= (frozen ? left : 0) || row_top + row_height <= 0
             next if column_left >= left + width || row_top >= height
             children << cell(row, column, left: column_left, top: row_top + origin_y,
@@ -282,9 +369,8 @@ module Zaniah
         if @resize
           axis, index, origin, size = @resize
           value = validate_size(size + (axis == :row ? event.position.y : event.position.x) - origin)
-          axis == :row ? @row_index.update(index, value) : @column_index.update(index, value)
+          axis == :row ? set_row_height(index, value) : set_column_width(index, value)
           @on_resize&.call(axis, index, value, context)
-          context.window.request_frame
         elsif @selection_anchor
           target_row, target_column = cell_at(event.position)
           set_active_area(@selection_anchor, [target_row || row, target_column || column], additive: false, context: context)

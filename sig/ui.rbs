@@ -309,6 +309,14 @@ module Zaniah
       def on_resize: () { (Symbol, Integer, Numeric, FrameContext?) -> void } -> self
       def set_row_height: (Integer index, Numeric height) -> self
       def set_column_width: (Integer index, Numeric width) -> self
+      def hide_row: (Integer index) -> self
+      def unhide_row: (Integer index) -> self
+      def hide_column: (Integer index) -> self
+      def unhide_column: (Integer index) -> self
+      def hide_rows: (Array[Integer] indices, hidden: bool) -> self
+      def hide_columns: (Array[Integer] indices, hidden: bool) -> self
+      def row_hidden?: (Integer index) -> bool
+      def column_hidden?: (Integer index) -> bool
       def freeze_panes: (rows: Integer, columns: Integer) -> self
       def scroll_to: (row: Integer, column: Integer, ?align: :start | :center | :end | :nearest) -> self
     end

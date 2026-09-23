@@ -69,6 +69,72 @@ class ProductivityComponentsTest < Minitest::Test
     assert_equal [2, 1], [grid.instance_variable_get(:@frozen_rows), grid.instance_variable_get(:@frozen_columns)]
   end
 
+  def test_grid_resize_overrides_survive_virtualized_builds_and_hide_cycles
+    rendered = {}
+    grid = T::UI::Grid.new(rows: 100, columns: 100,
+      row_height: ->(row) { 10 + row }, column_width: ->(column) { 20 + column }) do |row, column, bounds, _cx|
+      rendered[[row, column]] = bounds
+      "#{row},#{column}"
+    end.w(100).h(60)
+
+    grid.set_row_height(1, 40).set_column_width(1, 50)
+    render(grid)
+    assert_equal 40.0, rendered.fetch([1, 0]).height
+    assert_equal 50.0, rendered.fetch([0, 1]).width
+
+    grid.scroll_to(row: 20, column: 20)
+    render(grid)
+    grid.scroll_to(row: 0, column: 0)
+    rendered.clear
+    grid.hide_row(1).hide_column(1)
+    render(grid)
+    refute rendered.keys.any? { |row, _column| row == 1 }
+    refute rendered.keys.any? { |_row, column| column == 1 }
+
+    grid.unhide_row(1).unhide_column(1)
+    rendered.clear
+    render(grid)
+    assert_equal 40.0, rendered.fetch([1, 0]).height
+    assert_equal 50.0, rendered.fetch([0, 1]).width
+
+    assert_same grid, grid.hide_row(1).hide_row(1).unhide_row(1).unhide_row(1)
+  end
+
+  def test_grid_hide_apis_validate_axis_indexes
+    grid = T::UI::Grid.new(rows: 2, columns: 3) { "cell" }
+    [-1, 2, 1.0].each do |index|
+      assert_raises(IndexError) { grid.hide_row(index) }
+      assert_raises(IndexError) { grid.unhide_row(index) }
+    end
+    [-1, 3, 1.0].each do |index|
+      assert_raises(IndexError) { grid.hide_column(index) }
+      assert_raises(IndexError) { grid.unhide_column(index) }
+    end
+    assert_raises(ArgumentError) { grid.set_row_height(0, 0) }
+    assert_raises(ArgumentError) { grid.set_column_width(0, -1) }
+
+    requests = Struct.new(:count) do
+      def request_frame = (self.count += 1)
+    end.new(0)
+    grid.instance_variable_set(:@cx, Struct.new(:window).new(requests))
+    assert_same grid, grid.hide_rows([0, 1, 1], hidden: true)
+    assert_equal 1, requests.count
+    assert grid.row_hidden?(0)
+    assert grid.row_hidden?(1)
+
+    assert_raises(IndexError) { grid.hide_rows([0, 2], hidden: false) }
+    assert grid.row_hidden?(0), "batch validation must finish before changing state"
+    assert_equal 1, requests.count
+    assert_raises(ArgumentError) { grid.hide_rows([0], hidden: :yes) }
+
+    grid.hide_rows([0, 1], hidden: false)
+    assert_equal 2, requests.count
+    refute grid.row_hidden?(0)
+    grid.hide_columns([0, 2], hidden: true)
+    assert_equal 3, requests.count
+    assert grid.column_hidden?(2)
+  end
+
   def test_grid_range_selection_keyboard_navigation_and_resize
     resized = []
     grid = T::UI::Grid.new(rows: 20, columns: 20) { |row, column, _bounds, _cx| "#{row},#{column}" }

@@ -65,14 +65,20 @@ cell. `bounds` is local to the grid viewport. Set `estimated_row_height` or
 `estimated_column_width` when proc-based sizes differ substantially from the
 defaults. `scroll_to(row:, column:)` ensures the target cell is visible.
 Resizing is available by dragging a visible cell's lower/right edge or by
-calling `set_row_height` / `set_column_width`. Fill only reports the source and
+calling `set_row_height` / `set_column_width`; explicit size overrides persist
+when the virtualized viewport is rebuilt. `hide_row` / `unhide_row` and
+`hide_column` / `unhide_column` set or restore an axis entry's size to zero;
+indexes are validated against the grid and zero-sized entries are skipped by
+offset lookup. `hide_rows(indices, hidden:)` and `hide_columns(indices, hidden:)`
+apply a validated batch with a single frame request; `row_hidden?` and
+`column_hidden?` report current state. Fill only reports the source and
 destination areas; the application owns cell values and fill semantics. Shift
 extends a range; Cmd/Ctrl-click toggles an additional cell range.
 
 `bench/grid.rb` measures a headless 800×600 viewport over a 1,000,000×16,000
 grid at 23 sequential scroll positions, including cell construction, layout,
 prepaint, and paint. `BUDGET=1 ruby bench/grid.rb` asserts a 16.67 ms median
-frame limit. A local run on 2026-09-23 measured 14.891 ms and constructed an
+frame limit. A local run on 2026-09-23 measured 12.964 ms and constructed an
 average of 250 cells per frame. This microbenchmark does not include an
 application's backing store, expensive cell renderers, or a native compositor;
 rerun it on target hardware for deployment decisions.

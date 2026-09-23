@@ -99,6 +99,22 @@ class SVGAndListTest < Minitest::Test
     assert_equal 200, heights.index_at(heights.total)
   end
 
+  def test_fenwick_index_search_skips_zero_sized_entries
+    heights = Zaniah::List::HeightIndex.new(5, 10)
+    heights.update(0, 0)
+    heights.update(1, 0)
+    heights.update(3, 0)
+
+    assert_equal 0.0, heights[0]
+    assert_equal 0.0, heights.prefix(2)
+    assert_equal 2, heights.index_at(0)
+    assert_equal 2, heights.index_at(9.99)
+    assert_equal 4, heights.index_at(10)
+    assert_equal 4, heights.index_at(19.99)
+    assert_equal 5, heights.index_at(heights.total)
+    assert_equal 0, heights.index_at(-1)
+  end
+
   def context(width = 300, height = 400)
     window = Struct.new(:content_size).new(Zaniah::Size.new(width, height))
     Struct.new(:window).new(window)

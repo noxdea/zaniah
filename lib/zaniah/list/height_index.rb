@@ -19,7 +19,7 @@ module Zaniah
 
       def update(index, height)
         validate_index(index)
-        raise ArgumentError, "height must be finite and positive" unless height.is_a?(Numeric) && height.finite? && height.positive?
+        raise ArgumentError, "height must be finite and nonnegative" unless height.is_a?(Numeric) && height.finite? && height >= 0
         delta = height.to_f - self[index]
         height == @estimate ? @values.delete(index) : @values[index] = height.to_f
         cursor = index + 1
@@ -45,7 +45,7 @@ module Zaniah
       # Index containing y; count is the sentinel at/beyond the bottom edge.
       def index_at(y)
         raise ArgumentError, "row offset must be finite" unless y.is_a?(Numeric) && y.finite?
-        return 0 if y <= 0
+        return 0 if y.negative?
         index, accumulated = 0, 0.0
         bit = 1 << @count.bit_length
         while bit.positive?
