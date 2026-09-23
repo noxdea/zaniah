@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.4 — 2026-09-24
+
+- Share Cartesian chart scales, axes, grid lines, ticks, and color-keyed legends across chart types.
+
 ## 0.6.3 — 2026-09-23
 
 - Render supplied text grid cells directly as cell surfaces, avoiding an extra wrapper per visible cell.

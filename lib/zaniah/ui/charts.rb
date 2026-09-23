@@ -32,14 +32,14 @@ module Zaniah
         result.freeze
       end
 
-      def paint_line(scene, bounds, values, color)
-        points = chart_points(bounds, values)
+      def paint_line(scene, bounds, values, color, range: nil)
+        points = chart_points(bounds, values, range: range)
         path = points.map.with_index { |(x, y), index| "#{index.zero? ? "M" : "L"}#{x},#{y}" }.join
         scene.path(path, stroke: color, width: 2)
       end
 
-      def chart_points(bounds, values)
-        minimum, maximum = values.minmax
+      def chart_points(bounds, values, range: nil)
+        minimum, maximum = range || values.minmax
         span = maximum == minimum ? 1.0 : maximum - minimum
         step = values.length == 1 ? 0 : bounds.width / (values.length - 1)
         values.map.with_index { |value, index| [bounds.x + index * step, bounds.bottom - (value - minimum) / span * bounds.height] }
@@ -83,6 +83,40 @@ module Zaniah
         span = maximum == minimum ? 1.0 : maximum - minimum
         values.map { |value| levels[((value - minimum) / span * (levels.length - 1)).round] }.join
       end
+
+      def chart_palette(cx)
+        palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
+        raise ArgumentError, "chart colors must not be empty" if palette.empty?
+        palette
+      end
+
+      def chart_legend(entries, palette)
+        Div.new.flex_row.gap(10).children(entries.each_with_index.map do |entry, index|
+          label = block_given? ? yield(entry) : entry.to_s
+          Div.new.flex_row.items_center.gap(4)
+            .child(Div.new.w(8).h(8).bg(palette[index % palette.length]))
+            .child(Label.new(label, size: :xs))
+        end)
+      end
+
+      def cartesian_axes(scene, bounds, color)
+        divisions = 4
+        grid = (1...divisions).flat_map do |index|
+          fraction = index.to_f / divisions
+          x = bounds.x + bounds.width * fraction
+          y = bounds.y + bounds.height * fraction
+          ["M#{x},#{bounds.y}V#{bounds.bottom}", "M#{bounds.x},#{y}H#{bounds.right}"]
+        end.join
+        ticks = (1...divisions).flat_map do |index|
+          fraction = index.to_f / divisions
+          x = bounds.x + bounds.width * fraction
+          y = bounds.y + bounds.height * fraction
+          ["M#{x},#{bounds.bottom}V#{bounds.bottom - 3}", "M#{bounds.x},#{y}H#{bounds.x + 3}"]
+        end.join
+        scene.path(grid, stroke: color, width: 0.5)
+        scene.path("M#{bounds.x},#{bounds.y}V#{bounds.bottom}H#{bounds.right}", stroke: color, width: 1)
+        scene.path(ticks, stroke: color, width: 1)
+      end
     end
 
     class LineChart < Sparkline
@@ -96,24 +130,20 @@ module Zaniah
       end
 
       def build(cx)
-        palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
+        palette = chart_palette(cx)
+        range = @series.values.flatten.minmax
         canvas = @canvas = Canvas.new do |bounds, context|
           @plot_bounds = bounds.inset(Edges.new(12, 8, 20, 28))
-          axes(context.scene, @plot_bounds, cx.theme.colors.border)
-          @series.each_with_index { |(_name, values), index| paint_line(context.scene, @plot_bounds, values, palette[index % palette.length]) }
+          cartesian_axes(context.scene, @plot_bounds, cx.theme.colors.border)
+          @series.each_with_index do |(_name, values), index|
+            paint_line(context.scene, @plot_bounds, values, palette[index % palette.length], range: range)
+          end
         end.w(@width).h(@height).on_hover { |event, context| show_line_tooltip(event, context) }
           .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
-        legend = Div.new.flex_row.gap(10).children(@series.keys.each_with_index.map do |name, index|
-          Div.new.flex_row.items_center.gap(4).child(Div.new.w(8).h(8).bg(palette[index % palette.length])).child(Label.new(name, size: :xs))
-        end)
-        Div.new.gap(4).child(canvas).child(legend)
+        Div.new.gap(4).child(canvas).child(chart_legend(@series.keys, palette))
       end
 
       private
-
-      def axes(scene, bounds, color)
-        scene.path("M#{bounds.x},#{bounds.y}V#{bounds.bottom}H#{bounds.right}", stroke: color, width: 1)
-      end
 
       def show_line_tooltip(event, cx)
         return unless @plot_bounds
@@ -131,14 +161,15 @@ module Zaniah
       end
 
       def build(cx)
-        palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
+        palette = chart_palette(cx)
+        @axis_color = cx.theme.colors.border
         canvas = @canvas = Canvas.new do |bounds, context|
           @plot_bounds = bounds.inset(Edges.new(12, 8, 20, 28))
-          axes(context.scene, @plot_bounds, cx.theme.colors.border)
+          cartesian_axes(context.scene, @plot_bounds, @axis_color)
           paint_bars(context.scene, @plot_bounds, palette)
         end.w(@width).h(@height).on_hover { |event, context| show_line_tooltip(event, context) }
           .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
-        Div.new.gap(4).child(canvas).child(Label.new(@series.keys.join(" · "), size: :xs))
+        Div.new.gap(4).child(canvas).child(chart_legend(@series.keys, palette))
       end
 
       private
@@ -185,20 +216,16 @@ module Zaniah
       end
 
       def build(cx)
-        palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
-        raise ArgumentError, "chart colors must not be empty" if palette.empty?
+        palette = chart_palette(cx)
 
         @canvas = Canvas.new do |bounds, context|
           @plot_bounds = bounds
           paint_slices(context.scene, bounds, palette)
         end.w(@width).h(@height).on_hover { |event, context| show_slice_tooltip(event, context) }
           .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
-        legend = Div.new.flex_row.gap(10).children(@slices.each_with_index.map do |(name, value), index|
-          percent = value / @total * 100
-          Div.new.flex_row.items_center.gap(4)
-            .child(Div.new.w(8).h(8).bg(palette[index % palette.length]))
-            .child(Label.new("#{name}: #{format("%.1f", percent)}%", size: :xs))
-        end)
+        legend = chart_legend(@slices, palette) do |name, value|
+          "#{name}: #{format("%.1f", value / @total * 100)}%"
+        end
         Div.new.gap(4).child(@canvas).child(legend)
       end
 
@@ -308,20 +335,15 @@ module Zaniah
       end
 
       def build(cx)
-        palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
-        raise ArgumentError, "chart colors must not be empty" if palette.empty?
+        palette = chart_palette(cx)
 
         canvas = @canvas = Canvas.new do |bounds, context|
           @plot_bounds = bounds.inset(Edges.new(12, 8, 20, 28))
-          paint_axes(context.scene, @plot_bounds, cx.theme.colors.border)
+          cartesian_axes(context.scene, @plot_bounds, cx.theme.colors.border)
           paint_points(context.scene, @plot_bounds, palette)
         end.w(@width).h(@height).on_hover { |event, context| show_scatter_tooltip(event, context) }
           .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
-        legend = Div.new.flex_row.gap(10).children(@points.keys.each_with_index.map do |name, index|
-          Div.new.flex_row.items_center.gap(4).child(Div.new.w(8).h(8).bg(palette[index % palette.length]))
-            .child(Label.new(name, size: :xs))
-        end)
-        Div.new.gap(4).child(canvas).child(legend)
+        Div.new.gap(4).child(canvas).child(chart_legend(@points.keys, palette))
       end
 
       def tui_cells(*) = spark(@series.values.first)
@@ -340,10 +362,6 @@ module Zaniah
       end
 
       private
-
-      def paint_axes(scene, bounds, color)
-        scene.path("M#{bounds.x},#{bounds.y}V#{bounds.bottom}H#{bounds.right}", stroke: color, width: 1)
-      end
 
       def paint_points(scene, bounds, palette)
         all = @points.values.flatten(1)
@@ -381,20 +399,15 @@ module Zaniah
       end
 
       def build(cx)
-        palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
-        raise ArgumentError, "chart colors must not be empty" if palette.empty?
+        palette = chart_palette(cx)
 
         canvas = @canvas = Canvas.new do |bounds, context|
           @plot_bounds = bounds.inset(Edges.new(12, 8, 20, 28))
-          axes(context.scene, @plot_bounds, cx.theme.colors.border)
+          cartesian_axes(context.scene, @plot_bounds, cx.theme.colors.border)
           paint_areas(context.scene, @plot_bounds, palette)
         end.w(@width).h(@height).on_hover { |event, context| show_line_tooltip(event, context) }
           .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
-        legend = Div.new.flex_row.gap(10).children(@series.keys.each_with_index.map do |name, index|
-          Div.new.flex_row.items_center.gap(4).child(Div.new.w(8).h(8).bg(palette[index % palette.length]))
-            .child(Label.new(name, size: :xs))
-        end)
-        Div.new.gap(4).child(canvas).child(legend)
+        Div.new.gap(4).child(canvas).child(chart_legend(@series.keys, palette))
       end
 
       private
@@ -457,7 +470,7 @@ module Zaniah
             value.negative? ? negative[index] = finish : positive[index] = finish
           end
         end
-        scene.path("M#{bounds.x},#{zero}H#{bounds.right}", stroke: "#777", width: 1)
+        scene.path("M#{bounds.x},#{zero}H#{bounds.right}", stroke: @axis_color || "#777", width: 1)
       end
     end
   end

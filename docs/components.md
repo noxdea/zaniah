@@ -87,7 +87,9 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L4 | `Grid` | `(rows:, columns:, row_height:, column_width:, frozen_rows:, frozen_columns:)`; `scroll_to`, range `selection`, `on_select`, `on_edit`, `on_fill`, `on_resize` | two-axis virtualization, frozen panes, visible-cell resize/fill callbacks | table |
 | L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, `replace`, `replace_children`, `invalidate`, lazy `children` proc | arrows/Home/End | tree/treeitem |
 | L5 | `Sparkline` | `(values, width:, height:, color:, label:)` | line + tooltip | image |
-| L5 | `LineChart`, `BarChart` | `(series, width:, height:, colors:, label:)` | axes, legend, tooltip | image |
+| L5 | `LineChart`, `BarChart`, `StackedBarChart`, `AreaChart` | `(series, width:, height:, colors:, label:)`; `AreaChart(stacked:)` | shared axes, ticks, grid lines, color-keyed legend, tooltip | image |
+| L5 | `PieChart`, `DonutChart` | `(data, width:, height:, colors:, label:)` | slices, shared color-keyed legend, tooltip | image |
+| L5 | `ScatterChart` | `(series, width:, height:, colors:, label:)` | shared axes, ticks, grid lines, color-keyed legend, nearest-point tooltip | image |
 | L5 | `Validation` | `required`, `format`, `length`, `number`, `rule` | composable rules | n/a |
 | L5 | `FormField` | `(name, value:, label:, control:, validation:, hint:)` | errors + describedby | group/control/alert |
 | L5 | `Form` | `field`, `on_change`, `on_submit`, `values`, `valid?` | validates before submit | form |

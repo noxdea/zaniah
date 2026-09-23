@@ -26,7 +26,7 @@ tests and non-window integrations.
 | Toast | live status text |
 | Table, DataGrid | header and visible rows separated with `|` |
 | TreeView | indentation with `▸`/`▾` expansion markers |
-| Sparkline, LineChart, BarChart | eight-level Unicode sparkline summary |
+| Sparkline and all chart types | eight-level Unicode sparkline summary |
 | Form, FormField | labeled values, `!` errors, and a submit button |
 | CodeEditor, RichText | numbered plain-text lines or concatenated text runs |
 

@@ -96,6 +96,14 @@ class DataComponentsTest < Minitest::Test
     assert_operator @window.scene.sprites.length, :>, 0
   end
 
+  def test_line_chart_uses_one_value_range_for_every_series
+    chart = T::UI::LineChart.new({Large: [0, 10], Small: [2, 6]})
+    range = chart.series.values.flatten.minmax
+
+    assert_equal [[0.0, 80.0], [100.0, 40.0]], chart.__send__(:chart_points,
+      T::Bounds.new(0, 0, 100, 100), chart.series.fetch("Small"), range: range)
+  end
+
   def test_pie_donut_scatter_area_and_stacked_charts_render_accessibly
     charts = [
       T::UI::PieChart.new({Requests: 3, Errors: 1}),
