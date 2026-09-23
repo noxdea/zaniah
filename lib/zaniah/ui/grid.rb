@@ -14,7 +14,7 @@ module Zaniah
         estimated_column_width: 96, overscan: 1, &render_cell)
         super()
         raise ArgumentError, "rows and columns must be nonnegative integers" unless [rows, columns].all? { |count| count.is_a?(Integer) && count >= 0 }
-        raise ArgumentError, "frozen counts must fit the grid" unless frozen_rows.is_a?(Integer) && frozen_columns.is_a?(Integer) && frozen_rows.between?(0, rows) && frozen_columns.between?(0, columns)
+        validate_frozen_counts(frozen_rows, frozen_columns, rows, columns)
         raise ArgumentError, "overscan must be a nonnegative integer" unless overscan.is_a?(Integer) && overscan >= 0
         raise ArgumentError, "a cell renderer is required" unless render_cell
 
@@ -51,6 +51,13 @@ module Zaniah
 
       def set_column_width(index, width)
         @column_index.update(index, width)
+        @cx&.window&.request_frame
+        self
+      end
+
+      def freeze_panes(rows:, columns:)
+        validate_frozen_counts(rows, columns, @rows, @columns)
+        @frozen_rows, @frozen_columns = rows, columns
         @cx&.window&.request_frame
         self
       end
@@ -102,6 +109,12 @@ module Zaniah
       def size_provider(value)
         return value if value.respond_to?(:call)
         ->(_index) { value }
+      end
+
+      def validate_frozen_counts(rows, columns, row_count, column_count)
+        unless rows.is_a?(Integer) && columns.is_a?(Integer) && rows.between?(0, row_count) && columns.between?(0, column_count)
+          raise ArgumentError, "frozen counts must fit the grid"
+        end
       end
 
       def estimate(value, source)

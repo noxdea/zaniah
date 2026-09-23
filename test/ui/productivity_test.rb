@@ -46,6 +46,29 @@ class ProductivityComponentsTest < Minitest::Test
     assert_operator grid.scroll_state.offset.x, :>, 0
   end
 
+  def test_grid_freeze_panes_can_change_after_construction
+    rendered = []
+    grid = T::UI::Grid.new(rows: 100, columns: 100, row_height: 20, column_width: 50) do |row, column, _bounds, _cx|
+      rendered << [row, column]
+      "#{row},#{column}"
+    end.w(240).h(120)
+    render(grid)
+    grid.scroll_to(row: 20, column: 10)
+    render(grid)
+    rendered.clear
+
+    assert_same grid, grid.freeze_panes(rows: 2, columns: 1)
+    assert @window.dirty?
+    render(grid)
+    assert_includes rendered, [0, 0]
+    assert_operator grid.visible_rows.begin, :>=, 2
+    assert_operator grid.visible_columns.begin, :>=, 1
+
+    assert_raises(ArgumentError) { grid.freeze_panes(rows: 101, columns: 1) }
+    assert_raises(ArgumentError) { grid.freeze_panes(rows: 1, columns: -1) }
+    assert_equal [2, 1], [grid.instance_variable_get(:@frozen_rows), grid.instance_variable_get(:@frozen_columns)]
+  end
+
   def test_grid_range_selection_keyboard_navigation_and_resize
     resized = []
     grid = T::UI::Grid.new(rows: 20, columns: 20) { |row, column, _bounds, _cx| "#{row},#{column}" }
