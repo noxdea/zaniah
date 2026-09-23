@@ -96,6 +96,36 @@ class DataComponentsTest < Minitest::Test
     assert_operator @window.scene.sprites.length, :>, 0
   end
 
+  def test_pie_donut_scatter_area_and_stacked_charts_render_accessibly
+    charts = [
+      T::UI::PieChart.new({Requests: 3, Errors: 1}),
+      T::UI::DonutChart.new([2, 3, 4]),
+      T::UI::ScatterChart.new({Requests: [[1, 2], [2, 4]], Errors: [[1, 1], [2, 3]]}),
+      T::UI::AreaChart.new({Requests: [1, 3, 2], Errors: [0, 1, 2]}),
+      T::UI::AreaChart.new({Requests: [1, 3, 2], Errors: [2, 1, 3]}, stacked: true),
+      T::UI::StackedBarChart.new({Requests: [1, -2], Errors: [3, -1]})
+    ]
+
+    charts.each do |chart|
+      render(chart)
+      assert_operator @window.scene.sprites.length, :>, 0, chart.class.name
+      assert_equal :image, chart.accessibility_node(nil).role, chart.class.name
+    end
+
+    pie = charts.first
+    @window.dispatcher.focus(pie.focus_handle)
+    @window.input(T::Input::KeyDown.new("right", false))
+    assert_includes pie.accessibility_node(nil).value[:selected], "Errors"
+  end
+
+  def test_new_chart_types_reject_invalid_data
+    assert_raises(ArgumentError) { T::UI::PieChart.new([0, 0]) }
+    assert_raises(ArgumentError) { T::UI::PieChart.new([1, -1]) }
+    assert_raises(ArgumentError) { T::UI::ScatterChart.new([[1]]) }
+    assert_raises(ArgumentError) { T::UI::AreaChart.new({A: [1], B: [1, 2]}, stacked: true) }
+    assert_raises(ArgumentError) { T::UI::AreaChart.new({A: [-1]}, stacked: true) }
+  end
+
   def test_form_validation_and_describedby_relationship
     submitted = nil
     validation = T::UI::Validation.new.required.format(/@/, message: "must be an email")

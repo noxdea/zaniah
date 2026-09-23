@@ -399,6 +399,22 @@ module Zaniah
     end
     class BarChart < LineChart
     end
+    class StackedBarChart < BarChart
+    end
+    class PieChart < Sparkline
+      attr_reader slices: Array[[String, Float]]
+      def initialize: (Hash[untyped, Numeric] | Array[Numeric] data, ?width: Numeric, ?height: Numeric, ?colors: Array[color]?, ?label: String) -> void
+    end
+    class DonutChart < PieChart
+      def initialize: (Hash[untyped, Numeric] | Array[Numeric] data, ?width: Numeric, ?height: Numeric, ?colors: Array[color]?, ?label: String) -> void
+    end
+    class ScatterChart < Sparkline
+      attr_reader points: Hash[String, Array[[Float, Float]]]
+      def initialize: (Hash[untyped, Array[[Numeric, Numeric]]] | Array[[Numeric, Numeric]] series, ?width: Numeric, ?height: Numeric, ?colors: Array[color]?, ?label: String) -> void
+    end
+    class AreaChart < LineChart
+      def initialize: (Hash[untyped, Array[Numeric]] | Array[Numeric] series, ?width: Numeric, ?height: Numeric, ?colors: Array[color]?, ?stacked: bool, ?label: String) -> void
+    end
     class CodeEditor < Component
       attr_reader buffer: TextBuffer
       def initialize: (?String | TextBuffer value, ?language: Symbol?, ?line_numbers: bool, ?read_only: bool) -> void

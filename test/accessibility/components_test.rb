@@ -19,6 +19,7 @@ class AccessibilityComponentsTest < Minitest::Test
     Modal: :dialog, Dialog: :dialog, Drawer: :dialog, Toast: :status, CommandPalette: :dialog,
     SplitPane: :group, PaneGrid: :group, Resizable: :group, DockPanel: :group, ListView: :list, Table: :table,
     DataGrid: :table, TreeView: :tree, Sparkline: :image, LineChart: :image, BarChart: :image,
+    PieChart: :image, DonutChart: :image, ScatterChart: :image, AreaChart: :image, StackedBarChart: :image,
     FormField: :group, Form: :form, CodeEditor: :textbox, RichText: :text
   }.freeze
 

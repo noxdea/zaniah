@@ -161,5 +161,304 @@ module Zaniah
         end
       end
     end
+
+    class PieChart < Sparkline
+      attr_reader :slices
+
+      def initialize(data, width: 320, height: 240, colors: nil, label: "Pie chart")
+        super([1], width: width, height: height, label: label)
+        entries = data.is_a?(Hash) ? data.to_a : data.to_a.each_with_index.map { |value, index| ["#{index + 1}", value] }
+        raise ArgumentError, "pie chart needs at least one slice" if entries.empty?
+
+        @slices = entries.map do |name, value|
+          value = Float(value)
+          raise ArgumentError, "pie values must be finite and nonnegative" unless value.finite? && value >= 0
+          [name.to_s.freeze, value].freeze
+        end.freeze
+        raise ArgumentError, "pie slice labels must be unique" unless @slices.map(&:first).uniq.length == @slices.length
+        @values = @slices.map(&:last).freeze
+        @total = @values.sum
+        raise ArgumentError, "pie chart needs a positive total" unless @total.positive?
+        @series = {label.to_s => @values}.freeze
+        @width, @height, @colors, @label = Float(width), Float(height), colors, label.to_s
+        raise ArgumentError, "chart dimensions must be positive" unless @width.positive? && @height.positive?
+      end
+
+      def build(cx)
+        palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
+        raise ArgumentError, "chart colors must not be empty" if palette.empty?
+
+        @canvas = Canvas.new do |bounds, context|
+          @plot_bounds = bounds
+          paint_slices(context.scene, bounds, palette)
+        end.w(@width).h(@height).on_hover { |event, context| show_slice_tooltip(event, context) }
+          .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
+        legend = Div.new.flex_row.gap(10).children(@slices.each_with_index.map do |(name, value), index|
+          percent = value / @total * 100
+          Div.new.flex_row.items_center.gap(4)
+            .child(Div.new.w(8).h(8).bg(palette[index % palette.length]))
+            .child(Label.new("#{name}: #{format("%.1f", percent)}%", size: :xs))
+        end)
+        Div.new.gap(4).child(@canvas).child(legend)
+      end
+
+      def tui_cells(*) = spark(@values)
+
+      def accessibility_node(_cx)
+        categories = @slices.map { |name, value| {label: name, value: value}.freeze }.freeze
+        node(:image, label: @label, value: {total: @total, categories: categories, selected: selected_summary}.freeze)
+      end
+
+      protected
+
+      def tooltip_at(index)
+        name, value = @slices.fetch(index)
+        "#{name}: #{value}"
+      end
+
+      private
+
+      def paint_slices(scene, bounds, palette)
+        cx, cy = bounds.x + bounds.width / 2, bounds.y + bounds.height / 2
+        radius = [bounds.width, bounds.height].min / 2
+        angle = -Math::PI / 2
+        @slices.each_with_index do |(_name, value), index|
+          next if value.zero?
+
+          finish = angle + Math::PI * 2 * value / @total
+          scene.path(slice_path(cx, cy, radius, angle, finish), fill: palette[index % palette.length])
+          angle = finish
+        end
+      end
+
+      def slice_path(cx, cy, radius, start, finish)
+        if finish - start >= Math::PI * 2 - 1e-10
+          "M#{cx},#{cy - radius} A#{radius},#{radius} 0 1 1 #{cx},#{cy + radius} A#{radius},#{radius} 0 1 1 #{cx},#{cy - radius} Z"
+        else
+          sx, sy = polar(cx, cy, radius, start)
+          ex, ey = polar(cx, cy, radius, finish)
+          large = finish - start > Math::PI ? 1 : 0
+          "M#{cx},#{cy} L#{sx},#{sy} A#{radius},#{radius} 0 #{large} 1 #{ex},#{ey} Z"
+        end
+      end
+
+      def polar(cx, cy, radius, angle) = [cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius]
+
+      def show_slice_tooltip(event, cx)
+        return unless @plot_bounds
+
+        center_x = @plot_bounds.x + @plot_bounds.width / 2
+        center_y = @plot_bounds.y + @plot_bounds.height / 2
+        angle = (Math.atan2(event.position.y - center_y, event.position.x - center_x) + Math::PI / 2) % (Math::PI * 2)
+        target = angle / (Math::PI * 2) * @total
+        index = @values.each_index.find do |candidate|
+          target -= @values[candidate]
+          target < 0
+        end || @values.rindex(&:positive?)
+        @selected_index = index
+        cx.window.offer_tooltip(tooltip_at(index), position: event.position, delay: 0)
+      end
+    end
+
+    class DonutChart < PieChart
+      def initialize(data, **options)
+        super
+        @inner_radius = 0.56
+      end
+
+      private
+
+      def slice_path(cx, cy, radius, start, finish)
+        inner = radius * @inner_radius
+        if finish - start >= Math::PI * 2 - 1e-10
+          "M#{cx},#{cy - radius} A#{radius},#{radius} 0 1 1 #{cx},#{cy + radius} A#{radius},#{radius} 0 1 1 #{cx},#{cy - radius} " \
+            "L#{cx},#{cy - inner} A#{inner},#{inner} 0 1 0 #{cx},#{cy + inner} A#{inner},#{inner} 0 1 0 #{cx},#{cy - inner} Z"
+        else
+          sx, sy = polar(cx, cy, radius, start)
+          ex, ey = polar(cx, cy, radius, finish)
+          isx, isy = polar(cx, cy, inner, start)
+          iex, iey = polar(cx, cy, inner, finish)
+          large = finish - start > Math::PI ? 1 : 0
+          "M#{sx},#{sy} A#{radius},#{radius} 0 #{large} 1 #{ex},#{ey} L#{iex},#{iey} " \
+            "A#{inner},#{inner} 0 #{large} 0 #{isx},#{isy} Z"
+        end
+      end
+    end
+
+    class ScatterChart < Sparkline
+      attr_reader :points
+
+      def initialize(series, width: 480, height: 240, colors: nil, label: "Scatter chart")
+        input = series.is_a?(Hash) ? series : {label => series}
+        raise ArgumentError, "scatter chart needs at least one series" if input.empty?
+        @points = input.to_h do |name, values|
+          pairs = values.to_a.map do |pair|
+            raise ArgumentError, "scatter points must contain x and y" unless pair.respond_to?(:length) && pair.length == 2
+            x, y = pair.map { |value| Float(value) }
+            raise ArgumentError, "scatter values must be finite" unless x.finite? && y.finite?
+            [x, y].freeze
+          end
+          raise ArgumentError, "scatter series must not be empty" if pairs.empty?
+          [name.to_s.freeze, pairs.freeze]
+        end.freeze
+        super(@points.values.first.map(&:last), width: width, height: height, label: label)
+        @series = @points.transform_values { |pairs| pairs.map(&:last).freeze }.freeze
+        @width, @height, @colors, @label = Float(width), Float(height), colors, label.to_s
+        raise ArgumentError, "chart dimensions must be positive" unless @width.positive? && @height.positive?
+      end
+
+      def build(cx)
+        palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
+        raise ArgumentError, "chart colors must not be empty" if palette.empty?
+
+        canvas = @canvas = Canvas.new do |bounds, context|
+          @plot_bounds = bounds.inset(Edges.new(12, 8, 20, 28))
+          paint_axes(context.scene, @plot_bounds, cx.theme.colors.border)
+          paint_points(context.scene, @plot_bounds, palette)
+        end.w(@width).h(@height).on_hover { |event, context| show_scatter_tooltip(event, context) }
+          .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
+        legend = Div.new.flex_row.gap(10).children(@points.keys.each_with_index.map do |name, index|
+          Div.new.flex_row.items_center.gap(4).child(Div.new.w(8).h(8).bg(palette[index % palette.length]))
+            .child(Label.new(name, size: :xs))
+        end)
+        Div.new.gap(4).child(canvas).child(legend)
+      end
+
+      def tui_cells(*) = spark(@series.values.first)
+
+      def accessibility_node(_cx)
+        node(:image, label: @label, value: {series: @points, selected: selected_summary}.freeze)
+      end
+
+      protected
+
+      def tooltip_at(index)
+        @points.map do |name, values|
+          x, y = values[[index, values.length - 1].min]
+          "#{name}: (#{x}, #{y})"
+        end.join(" · ")
+      end
+
+      private
+
+      def paint_axes(scene, bounds, color)
+        scene.path("M#{bounds.x},#{bounds.y}V#{bounds.bottom}H#{bounds.right}", stroke: color, width: 1)
+      end
+
+      def paint_points(scene, bounds, palette)
+        all = @points.values.flatten(1)
+        min_x, max_x = all.map(&:first).minmax
+        min_y, max_y = all.map(&:last).minmax
+        @screen_points = []
+        @points.each_with_index do |(name, values), index|
+          paths = values.map do |x_value, y_value|
+            x = bounds.x + (max_x == min_x ? 0.5 : (x_value - min_x) / (max_x - min_x)) * bounds.width
+            y = bounds.bottom - (max_y == min_y ? 0.5 : (y_value - min_y) / (max_y - min_y)) * bounds.height
+            @screen_points << [name, x_value, y_value, x, y]
+            "M#{x - 3},#{y} A3,3 0 1 0 #{x + 3},#{y} A3,3 0 1 0 #{x - 3},#{y} Z"
+          end.join
+          scene.path(paths, fill: palette[index % palette.length]) unless paths.empty?
+        end
+      end
+
+      def show_scatter_tooltip(event, cx)
+        nearest = @screen_points.min_by do |(_name, _x_value, _y_value, x, y)|
+          (x - event.position.x)**2 + (y - event.position.y)**2
+        end
+        return unless nearest
+
+        name, x_value, y_value = nearest
+        cx.window.offer_tooltip("#{name}: (#{x_value}, #{y_value})", position: event.position, delay: 0)
+      end
+    end
+
+    class AreaChart < LineChart
+      def initialize(series, width: 480, height: 240, colors: nil, stacked: false, label: "Area chart")
+        super(series, width: width, height: height, colors: colors, label: label)
+        raise ArgumentError, "stacked area series must have equal lengths" if stacked && @series.values.map(&:length).uniq.length > 1
+        raise ArgumentError, "stacked area values must be nonnegative" if stacked && @series.values.flatten.any?(&:negative?)
+        @stacked = stacked
+      end
+
+      def build(cx)
+        palette = Array(@colors || [cx.theme.colors.accent, cx.theme.colors.info, cx.theme.colors.success, cx.theme.colors.warning])
+        raise ArgumentError, "chart colors must not be empty" if palette.empty?
+
+        canvas = @canvas = Canvas.new do |bounds, context|
+          @plot_bounds = bounds.inset(Edges.new(12, 8, 20, 28))
+          axes(context.scene, @plot_bounds, cx.theme.colors.border)
+          paint_areas(context.scene, @plot_bounds, palette)
+        end.w(@width).h(@height).on_hover { |event, context| show_line_tooltip(event, context) }
+          .focusable(context: {in_chart: true}) { |action| chart_action(action, cx) }
+        legend = Div.new.flex_row.gap(10).children(@series.keys.each_with_index.map do |name, index|
+          Div.new.flex_row.items_center.gap(4).child(Div.new.w(8).h(8).bg(palette[index % palette.length]))
+            .child(Label.new(name, size: :xs))
+        end)
+        Div.new.gap(4).child(canvas).child(legend)
+      end
+
+      private
+
+      def paint_areas(scene, bounds, palette)
+        count = @series.values.map(&:length).max
+        totals = Array.new(count, 0.0)
+        if @stacked
+          @series.each_value { |values| values.each_with_index { |value, index| totals[index] += value } }
+          minimum, maximum = 0.0, totals.max
+        else
+          minimum, maximum = [0.0, *@series.values.flatten].minmax
+        end
+        span = maximum == minimum ? 1.0 : maximum - minimum
+        y = ->(value) { bounds.bottom - (value - minimum) / span * bounds.height }
+        x = ->(index, length) { bounds.x + (length == 1 ? 0.5 : index.to_f / (length - 1)) * bounds.width }
+        cumulative = Array.new(count, 0.0)
+
+        @series.each_value.with_index do |values, series_index|
+          base = @stacked ? cumulative.dup : Array.new(values.length, 0.0)
+          top = values.each_with_index.map { |value, index| @stacked ? (cumulative[index] += value) : value }
+          top_x = top.each_index.map { |index| x.call(index, top.length) }
+          base_x = base.each_index.map { |index| x.call(index, base.length) }
+          path = "M#{base_x.first},#{y.call(base.first)} " \
+            "L#{top_x.zip(top).map { |px, value| "#{px},#{y.call(value)}" }.join(" L")} " \
+            "L#{base_x.zip(base).reverse.map { |px, value| "#{px},#{y.call(value)}" }.join(" L")} Z"
+          scene.path(path, fill: palette[series_index % palette.length])
+        end
+      end
+    end
+
+    class StackedBarChart < BarChart
+      private
+
+      def paint_bars(scene, bounds, palette)
+        count = @series.values.map(&:length).max
+        positive_totals = Array.new(count, 0.0)
+        negative_totals = Array.new(count, 0.0)
+        @series.each_value do |values|
+          values.each_with_index do |value, index|
+            value.negative? ? negative_totals[index] += value : positive_totals[index] += value
+          end
+        end
+        minimum, maximum = [negative_totals.min, 0].min, [positive_totals.max, 0].max
+        span = maximum == minimum ? 1.0 : maximum - minimum
+        y = ->(value) { bounds.bottom - (value - minimum) / span * bounds.height }
+        zero = y.call(0)
+        group_width = bounds.width / [count, 1].max
+        bar_width = group_width * 0.75
+        positive = Array.new(count, 0.0)
+        negative = Array.new(count, 0.0)
+
+        @series.values.each_with_index do |values, series_index|
+          values.each_with_index do |value, index|
+            base = value.negative? ? negative[index] - value : positive[index] - value
+            finish = base + value
+            first, last = [y.call(base), y.call(finish)].minmax
+            x = bounds.x + index * group_width + (group_width - bar_width) / 2
+            scene.path("M#{x},#{first}H#{x + bar_width}V#{[last, first + 1].max}H#{x}Z", fill: palette[series_index % palette.length])
+            value.negative? ? negative[index] = finish : positive[index] = finish
+          end
+        end
+        scene.path("M#{bounds.x},#{zero}H#{bounds.right}", stroke: "#777", width: 1)
+      end
+    end
   end
 end
