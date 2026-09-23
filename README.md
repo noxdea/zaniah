@@ -42,7 +42,9 @@ the editor, providing the native rendering layer for its UI.
 - Scroll views, inertial input, and uniform or variable-height virtual lists
 - Stable-ID pointer and keyboard reordering without materializing virtual collections
 - Stable-ID split-pane grids with fixed, fractional, and minmax tracks
+- Two-axis virtual data grids with frozen panes, range selection, and editable rich text with IME
 - OpenType shaping, font fallback, Japanese wrapping, text overlays, low-resolution text caching, selection, editing, and IME
+- PNG, GIF, and baseline JPEG image decoding with Exif orientation
 - Themes, state styles, keyed animation, springs, and reduced-motion support
 - Opt-in controls, overlays, tables, externally completable lazy virtual trees, charts, forms, and terminal fallbacks
 - Spatial keyboard focus and a stable-ID, event-diffed cross-platform accessibility tree
@@ -118,6 +120,7 @@ Native backends use the operating system libraries through Ruby's Fiddle. See
 
 - [Native backends](docs/native.md) — windows, displays, file watching, and terminals
 - [Text system](docs/text.md) — font discovery, shaping, rasterization, and caching
+- [Images](docs/images.md) — PNG, GIF, baseline JPEG, and orientation support
 - [SVG and lists](docs/vector_and_list.md) — static vector icons and virtual lists
 - [Drag-and-drop reordering](docs/drag_drop.md) — stable IDs, virtual targets, and keyboard access
 - [Layout and scrolling](docs/layout.md) — Grid, resizable pane grids, scrolling, sticky positioning, and RTL foundations

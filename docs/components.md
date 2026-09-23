@@ -84,6 +84,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L3 | `DockPanel` | `(center:, top:, right:, bottom:, left:)` | five-region layout | group |
 | L3 | `ListView` | `(items, height:, row_height:, selected:)`; `on_select` | virtual rows and keyboard selection | list/listitem |
 | L4 | `Table`, `DataGrid` | `(rows, columns:, height:, selection:, row_key:)`; `on_sort`, `on_select`, `on_edit` | virtual rows, sorting, resizing, editing | table/row/cell |
+| L4 | `Grid` | `(rows:, columns:, row_height:, column_width:, frozen_rows:, frozen_columns:)`; `scroll_to`, range `selection`, `on_select`, `on_edit`, `on_fill`, `on_resize` | two-axis virtualization, frozen panes, visible-cell resize/fill callbacks | table |
 | L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, `replace`, `replace_children`, `invalidate`, lazy `children` proc | arrows/Home/End | tree/treeitem |
 | L5 | `Sparkline` | `(values, width:, height:, color:, label:)` | line + tooltip | image |
 | L5 | `LineChart`, `BarChart` | `(series, width:, height:, colors:, label:)` | axes, legend, tooltip | image |
@@ -91,11 +92,25 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L5 | `FormField` | `(name, value:, label:, control:, validation:, hint:)` | errors + describedby | group/control/alert |
 | L5 | `Form` | `field`, `on_change`, `on_submit`, `values`, `valid?` | validates before submit | form |
 | L5 | `CodeEditor` | `(value, language:, line_numbers:, read_only:)`; `on_change` | multiline editor with scrolling | textbox |
-| L5 | `RichText` | `(runs, selectable:)` | styled selectable runs | text |
+| L5 | `RichText` | `(runs, selectable:, editable:)`; `apply`, `insert`, `delete`, `replace`, `paragraph_style` | styled editing, IME, range selection and caret | text/textbox |
 
 All input components are keyboard operable. Disabled controls remain visible but are
 removed from focus traversal. Overlay components close on Esc; modal overlays restore
 the previous focus. See [TUI](tui.md) for terminal representations.
+
+`UI::RichText` accepts UTF-8 byte ranges at grapheme boundaries. Inline styles are
+`bold`, `italic`, `size`, `color`, `font`, and `link`; paragraphs support start,
+center, end, and non-final-line justification, plus bullet/ordered lists and levels.
+It is read-only by default; set `editable: true` to enable keyboard editing and IME.
+
+## Image decoding
+
+`Image.from_bytes(bytes)` detects PNG, GIF, and baseline JPEG by signature. Pass
+`format: :png`, `:gif`, or `:jpeg` to choose explicitly. JPEG supports 8-bit
+baseline grayscale and three-component RGB/YCbCr, JFIF frame dimensions, Exif
+orientation 1–8, and 4:4:4, 4:2:2, and 4:2:0 sampling. Progressive, CMYK,
+arithmetic-coded, and multi-scan JPEG files raise `JPEG::Error`; the default
+pixel limit is 16,777,216.
 
 Table columns are hashes with `key`, and optional `label`, `width`, `sortable`,
 `resizable`, `editable`, and `render`. Tree items accept hashes containing `id`,

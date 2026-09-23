@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add a two-axis virtualized UI grid with frozen panes, range selection, variable sizing, resize, and fill callbacks.
+- Add editable rich text with style spans, paragraph alignment/lists, selection, caret, and IME composition.
+- Decode baseline 8-bit JPEG images, including Exif orientation, grayscale, RGB, and common YCbCr sampling modes; detect JPEG images from bytes.
+- Allow Alhena 0.3 while retaining compatibility with the existing Alhena 0.2 API.
+
 ## 0.6.2 — 2026-09-21
 
 - Add GIF decoding and a damage-aware terminal grid view.

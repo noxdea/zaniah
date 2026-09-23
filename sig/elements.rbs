@@ -125,6 +125,8 @@ module Zaniah
   end
   class Image < Element
     def initialize: (String path) -> void
+    def self.from_bytes: (String bytes, ?format: :auto | :png | :jpeg | :jpg | :gif) -> Image
+    attr_reader frames: Array[GIF::Frame]?
   end
   class Canvas < Element
     def initialize: () { (Bounds, FrameContext) -> void } -> void

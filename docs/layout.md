@@ -37,6 +37,46 @@ stable accessibility IDs, focus state, value, orientation, and direct increment,
 decrement, minimum, and maximum actions use the same clamped resize path. Nested
 `PaneGrid` instances compose without owning editor, terminal, or document state.
 
+## Two-axis virtual grid
+
+`UI::Grid` virtualizes rows and columns independently. It uses estimated row and
+column sizes for a large sheet, calling the size procs only for frozen and
+visible cells. Use `frozen_rows` and `frozen_columns` for headers and key
+columns; cell ranges are represented by half-open integer ranges.
+
+```ruby
+grid = Zaniah::UI::Grid.new(
+  rows: 1_048_576, columns: 16_384,
+  row_height: ->(row) { row.zero? ? 32 : 24 },
+  column_width: ->(column) { column.zero? ? 180 : 96 },
+  frozen_rows: 1, frozen_columns: 1
+) do |row, column, bounds, cx|
+  Zaniah::UI::Label.new("#{row},#{column}")
+end
+
+grid.on_select { |areas, _event, _cx| p areas }
+grid.on_edit { |row, column, _event, _cx| edit_cell(row, column) }
+grid.on_fill { |source, destination, _cx| fill_cells(source, destination) }
+grid.on_resize { |axis, index, size, _cx| save_size(axis, index, size) }
+```
+
+The renderer returns an Element, String, Numeric, or `nil` for each visible
+cell. `bounds` is local to the grid viewport. Set `estimated_row_height` or
+`estimated_column_width` when proc-based sizes differ substantially from the
+defaults. `scroll_to(row:, column:)` ensures the target cell is visible.
+Resizing is available by dragging a visible cell's lower/right edge or by
+calling `set_row_height` / `set_column_width`. Fill only reports the source and
+destination areas; the application owns cell values and fill semantics. Shift
+extends a range; Cmd/Ctrl-click toggles an additional cell range.
+
+`bench/grid.rb` measures a headless 800×600 viewport over a 1,000,000×16,000
+grid at 23 sequential scroll positions, including cell construction, layout,
+prepaint, and paint. `BUDGET=1 ruby bench/grid.rb` asserts a 16.67 ms median
+frame limit. A local run on 2026-09-23 measured 14.891 ms and constructed an
+average of 250 cells per frame. This microbenchmark does not include an
+application's backing store, expensive cell renderers, or a native compositor;
+rerun it on target hardware for deployment decisions.
+
 `ScrollView` accepts one child and clips it to the viewport. Its `axis` is
 `:vertical`, `:horizontal`, or `:both`; use `scroll_to` for programmatic
 scrolling and `scroll_state` for offsets and edge checks.

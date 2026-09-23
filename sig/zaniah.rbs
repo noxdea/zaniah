@@ -172,4 +172,18 @@ module Zaniah
     def self.decode: (String bytes, ?max_pixels: Integer) -> [Integer, Integer, String]
     def self.write: (String path, Integer width, Integer height, String rgba) -> Integer
   end
+  module JPEG
+    class Error < ArgumentError
+    end
+    def self.decode: (String bytes, ?max_pixels: Integer) -> [Integer, Integer, String]
+  end
+
+  module GIF
+    class Frame < Data
+      attr_reader pixels: String
+      attr_reader delay: Numeric
+      attr_reader disposal: Integer
+    end
+    def self.decode: (String bytes, ?max_pixels: Integer) -> [Integer, Integer, Array[Frame]]
+  end
 end

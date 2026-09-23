@@ -142,6 +142,28 @@ boundaries. The string-backed buffer is intended for ordinary fields and
 documents up to tens of thousands of characters; a piece table is deliberately
 outside the current scope.
 
+`UI::RichText` manages a single text buffer with disjoint style spans. Its
+editing API uses UTF-8 byte ranges, and its surface lays out mixed-size runs on
+shared wrapped lines. Editable input is opt-in to preserve the old read-only
+component behavior:
+
+```ruby
+text = Zaniah::UI::RichText.new([
+  {text: "Quarterly ", bold: true},
+  {text: "report", italic: true, color: "#2563eb", size: 22}
+], editable: true).w(480)
+
+text.apply(0...10, color: "#2563eb")
+text.insert(text.text.bytesize, " — draft")
+text.paragraph_style(0...text.text.bytesize, align: :start, list: :bullet, level: 0)
+```
+
+Supported inline styles are `bold`, `italic`, `size`, `color`, `font`, and
+`link`. Paragraph styles support `align: :start/:center/:end/:justify`,
+`list: :none/:bullet/:ordered`, and nonnegative nesting levels. `on_change`
+receives `(text, rich_text)`; selection changes are reported by `on_select`.
+IME composition uses the existing `TextBuffer` composition path.
+
 ## Inline and block overlays
 
 Attach non-editable UI elements to text without inserting bytes into the source:

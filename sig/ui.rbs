@@ -290,6 +290,27 @@ module Zaniah
       def accessibility_action: (Accessibility::Node node, Symbol action) -> bool?
       def accessibility_value: (Accessibility::Node node, Numeric value) -> bool?
     end
+    class Grid < Component
+      class Area < Data
+        attr_reader rows: Range[Integer]
+        attr_reader columns: Range[Integer]
+        def self.new: (Range[Integer] rows, Range[Integer] columns) -> Area
+                    | (rows: Range[Integer], columns: Range[Integer]) -> Area
+      end
+      attr_reader selection: Array[Area]
+      attr_reader scroll_state: ScrollState
+      attr_reader visible_rows: Range[Integer]?
+      attr_reader visible_columns: Range[Integer]?
+      def initialize: (rows: Integer, columns: Integer, ?row_height: Numeric | Proc, ?column_width: Numeric | Proc, ?frozen_rows: Integer, ?frozen_columns: Integer, ?estimated_row_height: Numeric, ?estimated_column_width: Numeric, ?overscan: Integer) { (Integer, Integer, Bounds, FrameContext) -> _Renderable? } -> void
+      def selection=: (Array[Area] areas) -> Array[Area]
+      def on_select: () { (Array[Area], Input::MouseDown?, FrameContext?) -> void } -> self
+      def on_edit: () { (Integer, Integer, Input::MouseDown?, FrameContext?) -> void } -> self
+      def on_fill: () { (Area, Area, FrameContext?) -> void } -> self
+      def on_resize: () { (Symbol, Integer, Numeric, FrameContext?) -> void } -> self
+      def set_row_height: (Integer index, Numeric height) -> self
+      def set_column_width: (Integer index, Numeric width) -> self
+      def scroll_to: (row: Integer, column: Integer, ?align: :start | :center | :end | :nearest) -> self
+    end
     class Resizable < Component
       attr_reader width: Float
       attr_reader height: Float
@@ -385,8 +406,27 @@ module Zaniah
       def on_change: () { (String, FrameContext?) -> void } -> self
     end
     class RichText < Component
-      attr_reader runs: Array[Hash[Symbol, untyped]]
-      def initialize: (Array[untyped] runs, ?selectable: bool) -> void
+      class Span < Data
+        attr_reader start: Integer
+        attr_reader finish: Integer
+        attr_reader style: Hash[Symbol, untyped]
+      end
+      attr_reader buffer: TextBuffer
+      attr_reader selection: TextSelection
+      attr_reader paragraph_styles: Array[Hash[Symbol, untyped]]
+      def initialize: (String | Array[untyped] runs, ?selectable: bool, ?editable: bool) -> void
+      def text: () -> String
+      def runs: () -> Array[Hash[Symbol, untyped]]
+      def spans: () -> Array[Span]
+      def editable?: () -> bool
+      def selection=: (TextSelection value) -> TextSelection
+      def on_change: () { (String, RichText) -> void } -> self
+      def on_select: () { (TextSelection, RichText) -> void } -> self
+      def apply: (Range[Integer] range, Hash[Symbol, untyped] style) -> self
+      def insert: (Integer offset, String value, ?style: Hash[Symbol, untyped]?) -> self
+      def delete: (Range[Integer] range) -> self
+      def replace: (Range[Integer] range, String value, ?style: Hash[Symbol, untyped]?) -> self
+      def paragraph_style: (Range[Integer] range, ?align: :start | :center | :end | :justify?, ?list: :none | :bullet | :ordered?, ?level: Integer?) -> self
     end
 
     class Validation
