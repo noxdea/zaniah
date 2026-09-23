@@ -28,6 +28,12 @@ module Zaniah
         @render_cell, @selection, @selection_anchor = render_cell, [], nil
         @scroll_state = ScrollState.new(axis: :both)
         @active_cell = [0, 0]
+        @cell_mouse_down = ->(event, context) do
+          row, column = cell_at(event.position)
+          begin_cell(row, column, event, context) if row && column
+        end
+        @cell_drag = ->(event, context) { drag_cell(event, context) }
+        @cell_mouse_up = ->(*) { @resize = @fill_drag = nil }
       end
 
       def on_select(&block) = (@on_select = block; self)
@@ -309,7 +315,9 @@ module Zaniah
         content = @render_cell.call(row, column, bounds, @cx)
         plain_text = content.is_a?(String) || content.is_a?(Numeric)
         if plain_text
-          content = Text.new(content.to_s.encode(Encoding::UTF_8),
+          text = content.to_s
+          text = text.encode(Encoding::UTF_8) unless text.encoding == Encoding::UTF_8 && text.valid_encoding?
+          content = Text.new(text,
             size: @cx.theme.typography.size_sm, color: @cx.theme.colors.text)
         end
         if content && !renderable?(content)
@@ -321,9 +329,9 @@ module Zaniah
           overflow: :hidden, background: selected ? @cx.theme.colors.selection : @cx.theme.colors.surface,
           border: 1, border_color: @cx.theme.colors.border, cursor: :pointer)
         wrapper.child(content) if content && !direct_text
-        wrapper.on_mouse_down { |event, context| begin_cell(row, column, event, context, bounds) }
-        wrapper.on_drag { |event, context| drag_cell(row, column, event, context) }
-        wrapper.on_mouse_up { @resize = @fill_drag = nil }
+        wrapper.on_mouse_down(&@cell_mouse_down)
+        wrapper.on_drag(&@cell_drag)
+        wrapper.on_mouse_up(&@cell_mouse_up)
         if fill_corner?(row, column)
           wrapper.child(Div.new.w(7).h(7).style(position: :absolute, right: 0, bottom: 0,
             background: @cx.theme.colors.accent, cursor: :crosshair)
@@ -343,8 +351,8 @@ module Zaniah
         area && row == area.rows.end - 1 && column == area.columns.end - 1
       end
 
-      def begin_cell(row, column, event, context, bounds)
-        bounds = Bounds.new(@bounds.x + bounds.x, @bounds.y + bounds.y, bounds.width, bounds.height) if @bounds
+      def begin_cell(row, column, event, context)
+        bounds = cell_bounds(row, column)
         @cx.dispatcher.focus(focus_handle, origin: :pointer)
         @on_edit&.call(row, column, event, context) if event.click_count >= 2
         if event.position.x >= bounds.right - 4
@@ -370,7 +378,7 @@ module Zaniah
         :capture
       end
 
-      def drag_cell(row, column, event, context)
+      def drag_cell(event, context)
         if @resize
           axis, index, origin, size = @resize
           value = validate_size(size + (axis == :row ? event.position.y : event.position.x) - origin)
@@ -378,8 +386,16 @@ module Zaniah
           @on_resize&.call(axis, index, value, context)
         elsif @selection_anchor
           target_row, target_column = cell_at(event.position)
-          set_active_area(@selection_anchor, [target_row || row, target_column || column], additive: false, context: context)
+          set_active_area(@selection_anchor, [target_row || @active_cell[0], target_column || @active_cell[1]], additive: false, context: context)
         end
+      end
+
+      def cell_bounds(row, column)
+        x = @column_index.prefix(column)
+        y = @row_index.prefix(row)
+        x -= @scroll_state.offset.x if column >= @frozen_columns
+        y -= @scroll_state.offset.y if row >= @frozen_rows
+        Bounds.new(@bounds.x + x, @bounds.y + y, @column_index[column], @row_index[row])
       end
 
       def set_active_area(first, last, additive:, context: nil)
