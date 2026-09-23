@@ -36,6 +36,9 @@ end
 
 render_grid_frame(grid, window, context, engine, 0, 0)
 grid.scroll_to(row: 500_000, column: 8_000)
+40.times do |index|
+  render_grid_frame(grid, window, context, engine, 500_000 + index * 24, 8_000 + index * 4)
+end
 rendered_before = rendered
 stages = {build: [], layout: [], paint: []}
 times = 23.times.map do |index|
