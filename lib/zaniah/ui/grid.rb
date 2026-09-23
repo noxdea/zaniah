@@ -324,7 +324,7 @@ module Zaniah
           raise TypeError, "grid cell renderer must return a renderable element, String, Numeric, or nil"
         end
         selected = @selection.any? { |area| area.rows.cover?(row) && area.columns.cover?(column) }
-        direct_text = plain_text && !fill_corner?(row, column)
+        direct_text = (plain_text || content.is_a?(Text)) && !fill_corner?(row, column)
         wrapper = (direct_text ? content : Div.new).style(position: :absolute, left: left, top: top, width: width, height: height,
           overflow: :hidden, background: selected ? @cx.theme.colors.selection : @cx.theme.colors.surface,
           border: 1, border_color: @cx.theme.colors.border, cursor: :pointer)

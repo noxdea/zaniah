@@ -69,6 +69,23 @@ class ProductivityComponentsTest < Minitest::Test
     assert_equal [2, 1], [grid.instance_variable_get(:@frozen_rows), grid.instance_variable_get(:@frozen_columns)]
   end
 
+  def test_grid_uses_text_cells_as_the_cell_surface
+    text = T::Text.new("cell", wrap: :none)
+    grid = T::UI::Grid.new(rows: 1, columns: 1) { text }.w(120).h(40)
+
+    render(grid)
+
+    assert_equal :relative, text.parent.resolved_style[:position]
+    assert_equal 1, grid.visible_rows.size
+    assert_equal 1, grid.visible_columns.size
+    assert_equal grid.instance_variable_get(:@cx).theme.colors.surface, text.resolved_style[:background]
+
+    @window.input(T::Input::MouseDown.new(T::Point.new(10, 10), :left, [], 1))
+    @window.input(T::Input::MouseUp.new(T::Point.new(10, 10), :left, []))
+
+    assert_equal [T::UI::Grid::Area.new(rows: 0...1, columns: 0...1)], grid.selection
+  end
+
   def test_grid_resize_overrides_survive_virtualized_builds_and_hide_cycles
     rendered = {}
     grid = T::UI::Grid.new(rows: 100, columns: 100,

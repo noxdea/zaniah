@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Render supplied text grid cells directly as cell surfaces, avoiding an extra wrapper per visible cell.
 - Add a two-axis virtualized UI grid with frozen panes, range selection, variable sizing, resize, and fill callbacks.
 - Preserve explicit grid row/column sizes across viewport rebuilds and support validated, batched row/column hide and unhide.
 - Add editable rich text with style spans, paragraph alignment/lists, selection, caret, and IME composition.
