@@ -10,7 +10,12 @@ module Zaniah
         raise ArgumentError, "gradient radius must be positive" unless radius.positive? && radius.finite?
         new(:radial, normalize(stops), nil, center.freeze, radius)
       end
-      def conic(angle: 0, center: [0.5, 0.5], stops:) = new(:conic, normalize(stops), angle.to_f, center.map(&:to_f).freeze, nil)
+      def conic(angle: 0, center: [0.5, 0.5], stops:)
+        angle, center = angle.to_f, center.map(&:to_f)
+        raise ArgumentError, "gradient angle must be finite" unless angle.finite?
+        raise ArgumentError, "gradient center needs two finite coordinates" unless center.length == 2 && center.all?(&:finite?)
+        new(:conic, normalize(stops), angle, center.freeze, nil)
+      end
 
       private
 

@@ -9,8 +9,10 @@ module Zaniah
     DEFAULTS = {"fill" => "black", "stroke" => "none", "stroke-width" => "1",
       "fill-rule" => "nonzero", "fill-opacity" => "1", "stroke-opacity" => "1",
       "stroke-linecap" => "butt", "stroke-linejoin" => "miter", "stroke-miterlimit" => "4"}.freeze
-    PRESENTATION = (DEFAULTS.keys + %w[color opacity display visibility clip-path clip-rule]).freeze
-    ELEMENTS = %w[svg g path rect circle ellipse line polyline polygon defs use clipPath title desc metadata].freeze
+    PRESENTATION = (DEFAULTS.keys + %w[color opacity display visibility clip-path clip-rule
+      stroke-dasharray stroke-dashoffset mask mask-type stop-color stop-opacity]).freeze
+    ELEMENTS = %w[svg g path rect circle ellipse line polyline polygon defs use clipPath mask
+      linearGradient radialGradient stop title desc metadata].freeze
     NAMES = {"black" => "#000", "white" => "#fff", "red" => "#f00", "green" => "#008000",
       "blue" => "#00f", "yellow" => "#ff0", "gray" => "#808080", "grey" => "#808080",
       "silver" => "#c0c0c0", "maroon" => "#800000", "purple" => "#800080", "fuchsia" => "#f0f",
@@ -48,9 +50,14 @@ module Zaniah
 
     def paint(bounds, _state, _pre, cx)
       return if bounds.width <= 0 || bounds.height <= 0
+      captured = cx.scene.vector_sink && record_paths(cx.scene, bounds)
       scale = cx.window.respond_to?(:scale_factor) ? cx.window.scale_factor : 1
       raster = texture(width: (bounds.width * scale).ceil, height: (bounds.height * scale).ceil)
-      cx.scene.sprite(bounds.x, bounds.y, bounds.width, bounds.height, texture: raster)
+      if captured
+        cx.scene.without_vector_recording { cx.scene.sprite(bounds.x, bounds.y, bounds.width, bounds.height, texture: raster) }
+      else
+        cx.scene.sprite(bounds.x, bounds.y, bounds.width, bounds.height, texture: raster)
+      end
     end
 
     def texture(width: @width.ceil, height: @height.ceil, color: @color)
@@ -65,33 +72,83 @@ module Zaniah
       @textures[key] = GPU::Texture.new(width, height, data: pixels)
     end
 
-    def self.rasterize_outline(outline, stroke_width: nil)
+    def self.rasterize_outline(outline, stroke_width: nil, stroke_cap: :round,
+      stroke_join: :round, stroke_miter: 4, fill_rule: :nonzero, transform: nil)
       require "alhena"
       renderer = allocate
       if stroke_width
         stroke_width = Float(stroke_width)
         raise ArgumentError, "stroke width must be positive" unless stroke_width.positive? && stroke_width.finite?
-        style = DEFAULTS.merge("stroke-linecap" => "round", "stroke-linejoin" => "round")
+        style = DEFAULTS.merge("stroke-linecap" => stroke_cap.to_s,
+          "stroke-linejoin" => stroke_join.to_s, "stroke-miterlimit" => stroke_miter.to_s)
         outline = renderer.send(:stroke, outline, stroke_width, style)
       end
+      outline = outline.transform(transform.to_a) if transform
       return [Bounds.new(0, 0, 0, 0), nil] if outline.empty?
       left, top, right, bottom = outline.bounds
       left, top, right, bottom = left.floor, top.floor, right.ceil, bottom.ceil
       width, height = right - left, bottom - top
       return [Bounds.new(left, top, width, height), nil] unless width.positive? && height.positive?
       translated = outline.transform([1, 0, 0, 1, -left, -top])
-      coverage = renderer.send(:mask, translated, width, height, "nonzero")
+      coverage = renderer.send(:mask, translated, width, height, fill_rule.to_s)
       [Bounds.new(left, top, width, height), GPU::Texture.new(width, height, format: :r8, data: coverage)]
     end
 
     private
+
+    def record_paths(scene, bounds)
+      matrix = multiply([1, 0, 0, 1, bounds.x, bounds.y], viewport(bounds.width, bounds.height))
+      paths = []
+      return false unless collect_paths(@root, matrix, DEFAULTS.merge("color" => @color), paths)
+      paths.each do |outline, fill, stroke, thickness, rule, cap, join, miter, local_transform|
+        scene.record_vector(Vector::Path, outline: outline, fill: fill, stroke: stroke,
+          stroke_width: thickness, fill_rule: rule, stroke_cap: cap, stroke_join: join,
+          stroke_miter: miter, transform: scene.current_transform.compose(Transform.new(*local_transform)))
+      end
+      true
+    end
+
+    def collect_paths(element, matrix, inherited, paths)
+      return true if %w[title desc metadata defs clipPath mask linearGradient radialGradient stop].include?(element.name)
+      return false if element.name == "use"
+      style = properties(element, inherited)
+      return true if style["display"] == "none" || style["visibility"] == "hidden"
+      return false if style["clip-path"] && style["clip-path"] != "none"
+      return false if style["mask"] && style["mask"] != "none"
+      return false if style["stroke-dasharray"] && style["stroke-dasharray"] != "none"
+      return false if number(style.fetch("opacity", "1")) != 1
+      matrix = multiply(matrix, transform(element.attributes["transform"]))
+      if (outline = @paths[element])
+        rule = style["fill-rule"]
+        return false unless %w[nonzero evenodd].include?(rule)
+        return false if [style["fill"], style["stroke"]].any? { |value| value&.start_with?("url(") }
+        fill = vector_color(style["fill"], style["color"], style["fill-opacity"])
+        stroke = vector_color(style["stroke"], style["color"], style["stroke-opacity"])
+        thickness = stroke ? length(style["stroke-width"]) : 0
+        raise ArgumentError, "negative SVG stroke width" if thickness.negative?
+        stroke = nil if thickness.zero?
+        cap, join = style.values_at("stroke-linecap", "stroke-linejoin")
+        miter = number(style["stroke-miterlimit"])
+        return false if stroke && (!%w[butt round square].include?(cap) || !%w[miter round bevel].include?(join) || miter < 1)
+        paths << [outline, fill, stroke, thickness, rule.to_sym, cap.to_sym, join.to_sym, miter, matrix] if !outline.empty? && (fill || stroke)
+      else
+        element.elements.each { |child| return false unless collect_paths(child, matrix, style, paths) }
+      end
+      true
+    end
+
+    def vector_color(value, current, opacity)
+      return if value == "none"
+      rgba = color(value, current).map { |channel| channel / 255.0 }
+      Color.parse(rgba).opacity(number(opacity).clamp(0, 1))
+    end
 
     def validate(element, depth, count)
       count[0] += 1
       raise ArgumentError, "SVG tree is too complex" if depth > 64 || count[0] > 10_000
       raise ArgumentError, "unsupported SVG element #{element.name}" unless ELEMENTS.include?(element.name)
       raise ArgumentError, "nested SVG viewports are not supported" if depth.positive? && element.name == "svg"
-      %w[filter mask stroke-dasharray marker-start marker-mid marker-end].each do |attribute|
+      %w[filter marker-start marker-mid marker-end].each do |attribute|
         raise ArgumentError, "unsupported SVG attribute #{attribute}" if element.attributes[attribute]
       end
       @ids[element.attributes["id"]] = element if element.attributes["id"]
@@ -215,7 +272,7 @@ module Zaniah
     end
 
     def properties(element, inherited)
-      style = inherited.reject { |key, _| %w[opacity clip-path display].include?(key) }
+      style = inherited.reject { |key, _| %w[opacity clip-path mask display].include?(key) }
       PRESENTATION.each { |key| style[key] = element.attributes[key] if element.attributes[key] }
       element.attributes["style"].to_s.split(";").each do |declaration|
         key, value = declaration.split(":", 2).map(&:strip)
@@ -228,13 +285,13 @@ module Zaniah
     end
 
     def render(element, pixels, matrix, inherited, width, height, references, definition: false)
-      return if %w[title desc metadata].include?(element.name)
-      return if %w[defs clipPath].include?(element.name) && !definition
+      return if %w[title desc metadata linearGradient radialGradient stop].include?(element.name)
+      return if %w[defs clipPath mask].include?(element.name) && !definition
       style = properties(element, inherited)
       return if style["display"] == "none"
       matrix = multiply(matrix, transform(element.attributes["transform"]))
       opacity = number(style.fetch("opacity", "1")).clamp(0, 1)
-      isolated = opacity < 1 || style["clip-path"]
+      isolated = opacity < 1 || style["clip-path"] || style["mask"]
       target = isolated ? "\0".b * pixels.bytesize : pixels
       if element.name == "use"
         href = element.attributes["href"] || element.attributes["xlink:href"]
@@ -245,14 +302,17 @@ module Zaniah
         render(referenced, target, shifted, style, width, height, references + [href], definition: true)
       elsif (outline = @paths[element]) && style["visibility"] != "hidden"
         unless style["fill"] == "none" || outline.empty?
-          paint_mask(target, mask(outline.transform(matrix), width, height, style["fill-rule"]), color(style["fill"], style["color"]), number(style["fill-opacity"]).clamp(0, 1))
+          coverage = mask(outline.transform(matrix), width, height, style["fill-rule"])
+          paint_svg_fill(target, coverage, style["fill"], style["color"], number(style["fill-opacity"]).clamp(0, 1), outline, matrix, width, height)
         end
         unless style["stroke"] == "none" || outline.empty?
           thickness = length(style["stroke-width"])
           raise ArgumentError, "negative SVG stroke width" if thickness.negative?
           if thickness.positive?
-            stroked = stroke(outline, thickness, style).transform(matrix)
-            paint_mask(target, mask(stroked, width, height, "nonzero"), color(style["stroke"], style["color"]), number(style["stroke-opacity"]).clamp(0, 1))
+            dashed = dashed_outline(outline, style)
+            stroked = stroke(dashed, thickness, style).transform(matrix)
+            coverage = mask(stroked, width, height, "nonzero")
+            paint_svg_fill(target, coverage, style["stroke"], style["color"], number(style["stroke-opacity"]).clamp(0, 1), outline, matrix, width, height)
           end
         end
       else
@@ -266,6 +326,25 @@ module Zaniah
           raise ArgumentError, "cyclic SVG clip" if references.include?(id) || references.length >= 32
           clip = clip_mask(clipping, matrix, width, height, references + [id])
           (width * height).times { |i| target.setbyte(i * 4 + 3, (target.getbyte(i * 4 + 3) * clip.getbyte(i) / 255.0).round) }
+        end
+        if style["mask"] && style["mask"] != "none"
+          id = style["mask"][/\Aurl\(\s*#([^\s)]+)\s*\)\z/, 1]
+          masking = @ids[id]
+          raise ArgumentError, "invalid SVG mask reference" unless masking&.name == "mask"
+          raise ArgumentError, "cyclic SVG mask" if references.include?(id) || references.length >= 32
+          layer = "\0".b * pixels.bytesize
+          render(masking, layer, matrix, DEFAULTS.merge("color" => @color), width, height, references + [id], definition: true)
+          type = masking.attributes["mask-type"] || "luminance"
+          raise ArgumentError, "unsupported SVG mask type" unless %w[alpha luminance].include?(type)
+          (width * height).times do |i|
+            j = i * 4
+            mask_alpha = layer.getbyte(j + 3)
+            if type == "luminance"
+              luminance = layer.getbyte(j) * 0.2126 + layer.getbyte(j + 1) * 0.7152 + layer.getbyte(j + 2) * 0.0722
+              mask_alpha = (mask_alpha * luminance / 255).round
+            end
+            target.setbyte(j + 3, (target.getbyte(j + 3) * mask_alpha / 255.0).round)
+          end
         end
         composite(pixels, target, opacity)
       end
@@ -289,6 +368,70 @@ module Zaniah
         next if alpha.zero?
         blend(pixels, index * 4, rgba[0], rgba[1], rgba[2], (alpha * rgba[3] * opacity / 255.0).round)
       end
+    end
+
+    def paint_svg_fill(pixels, coverage, value, current, opacity, outline, matrix, width, height)
+      id = value[/\Aurl\(\s*#([^\s)]+)\s*\)\z/, 1]
+      return paint_mask(pixels, coverage, color(value, current), opacity) unless id
+      gradient = @ids[id]
+      raise ArgumentError, "invalid SVG gradient reference" unless gradient && %w[linearGradient radialGradient].include?(gradient.name)
+      stops = gradient.elements.to_a.map do |stop|
+        raise ArgumentError, "invalid SVG gradient stop" unless stop.name == "stop"
+        style = properties(stop, DEFAULTS.merge("color" => current, "stop-color" => "black", "stop-opacity" => "1"))
+        position = unit_number(stop.attributes["offset"], 0)
+        raise ArgumentError, "SVG gradient stops must be ordered" unless position.between?(0, 1)
+        [position, color(style["stop-color"], style["color"]).tap { |rgba| rgba[3] = (rgba[3] * number(style["stop-opacity"]).clamp(0, 1)).round }]
+      end
+      raise ArgumentError, "SVG gradient needs at least two stops" if stops.length < 2
+      raise ArgumentError, "SVG gradient stops must be ordered" unless stops.each_cons(2).all? { |left, right| left.first <= right.first }
+      raise ArgumentError, "unsupported SVG gradient spread" unless [nil, "pad"].include?(gradient.attributes["spreadMethod"])
+      inverse = Transform.new(*multiply(matrix, transform(gradient.attributes["gradientTransform"]))).inverse
+      left, top, right, bottom = outline.bounds
+      box_width, box_height = right - left, bottom - top
+      units = gradient.attributes["gradientUnits"] || "objectBoundingBox"
+      raise ArgumentError, "unsupported SVG gradient units" unless %w[objectBoundingBox userSpaceOnUse].include?(units)
+      gx = ->(value, fallback) { gradient_coordinate(value, fallback, @view_box[0], @view_box[2], units) }
+      gy = ->(value, fallback) { gradient_coordinate(value, fallback, @view_box[1], @view_box[3], units) }
+      sample = lambda do |point|
+        x, y = point.x, point.y
+        if units == "objectBoundingBox"
+          x, y = (x - left) / [box_width, Float::EPSILON].max, (y - top) / [box_height, Float::EPSILON].max
+        end
+        if gradient.name == "linearGradient"
+          x1, y1 = gx.call(gradient.attributes["x1"], 0), gy.call(gradient.attributes["y1"], 0)
+          x2, y2 = gx.call(gradient.attributes["x2"], 1), gy.call(gradient.attributes["y2"], 0)
+          dx, dy = x2 - x1, y2 - y1
+          ((x - x1) * dx + (y - y1) * dy) / [dx * dx + dy * dy, Float::EPSILON].max
+        else
+          cx, cy = gx.call(gradient.attributes["cx"], 0.5), gy.call(gradient.attributes["cy"], 0.5)
+          diagonal = Math.hypot(@view_box[2], @view_box[3]) / Math.sqrt(2)
+          radius = gradient_coordinate(gradient.attributes["r"], 0.5, 0, diagonal, units)
+          raise ArgumentError, "SVG gradient radius must be positive" unless radius.positive?
+          Math.hypot(x - cx, y - cy) / radius
+        end
+      end
+      coverage.bytes.each_with_index do |alpha, index|
+        next if alpha.zero?
+        point = inverse.apply(Point.new(index % width + 0.5, index / width + 0.5))
+        position = sample.call(point).clamp(0, 1)
+        right_index = stops.bsearch_index { |stop| stop.first >= position } || stops.length - 1
+        left_index = [right_index - 1, 0].max
+        from, to = stops[left_index], stops[right_index]
+        amount = to[0] == from[0] ? 1 : ((position - from[0]) / (to[0] - from[0])).clamp(0, 1)
+        rgba = 4.times.map { |channel| (from[1][channel] + (to[1][channel] - from[1][channel]) * amount).round }
+        blend(pixels, index * 4, *rgba.first(3), (alpha * rgba[3] * opacity / 255.0).round)
+      end
+    end
+
+    def unit_number(value, fallback)
+      return fallback unless value
+      value.end_with?("%") ? number(value.delete_suffix("%")) / 100.0 : number(value)
+    end
+
+    def gradient_coordinate(value, fallback, origin, size, units)
+      fraction = value.nil? ? fallback : value.end_with?("%") ? number(value.delete_suffix("%")) / 100.0 : nil
+      return number(value) if fraction.nil?
+      units == "userSpaceOnUse" ? origin + fraction * size : fraction
     end
 
     def composite(pixels, layer, opacity)

@@ -26,30 +26,38 @@ module Zaniah
                   | (bytes: String, texture: GPU::Texture) -> SpriteBatch
     end
     attr_reader quads: Array[Numeric]
+    def quad_texture: (Integer offset) -> GPU::Texture?
     attr_reader sprites: Array[Numeric]
     attr_reader sprite_batches: Array[SpriteBatch]
     attr_reader paths: Array[Numeric]
     attr_reader textures: Array[GPU::Texture]
     attr_reader commands: Array[primitive | Numeric | Bounds | nil]
+    attr_accessor vector_sink: Vector::Recorder?
     def initialize: () -> void
     def clear: () -> self
     def quad: (Numeric x, Numeric y, Numeric width, Numeric height, color: color | Gradient, ?radius: radius | Corners, ?border_width: Numeric | Edges, ?border_color: color, ?opacity: Numeric, ?transform: Transform?, ?border_style: :solid | :dashed) -> self
     def push_quad: (Numeric x, Numeric y, Numeric width, Numeric height, color bg, radius radius, Numeric border_width, color border_color, ?Numeric order) -> self
     def sprite: (Numeric x, Numeric y, Numeric width, Numeric height, texture: GPU::Texture, ?color: color, ?source: _Rectangle?) -> self
+    def image: (Numeric x, Numeric y, Numeric width, Numeric height, image: Image, texture: GPU::Texture, ?source: _Rectangle?) -> self
     def sprite_batch: (String bytes, texture: GPU::Texture) -> self
                     | (SpriteBatch batch) -> self
     def sprite_data: () -> Array[Numeric]
     def sprite_transform: (Integer offset) -> Transform
     def expand_sprite_batch: (Integer index) -> [Integer, Integer]
     def triangle: ([Numeric, Numeric, Numeric, Numeric, Numeric, Numeric] points, color: color) -> self
-    def path: (String | SVG::Path | SVG::_Outline path, ?fill: color?, ?stroke: color?, ?width: Numeric) -> self
+    def path: (String | SVG::Path | SVG::_Outline path, ?fill: color?, ?stroke: color?, ?width: Numeric,
+      ?fill_rule: :nonzero | :evenodd, ?stroke_cap: :butt | :round | :square,
+      ?stroke_join: :miter | :round | :bevel, ?stroke_miter: Numeric) -> self
     def shadow: (Numeric x, Numeric y, Numeric width, Numeric height, ?color: color, ?blur: Numeric, ?radius: radius | Corners, ?spread: Numeric, ?inset: bool) -> self
     def underline: (Numeric x, Numeric y, Numeric width, color: color, ?thickness: Numeric, ?wave: bool) -> self
     def clip: [T] (Bounds bounds) { () -> T } -> T
     def current_clip: () -> Bounds?
+    def current_transform: () -> Transform
     def layer: [T] (Numeric order) { () -> T } -> T
     def push_transform: [T] (Transform transform) { () -> T } -> T
     def push_opacity: [T] (Numeric opacity) { () -> T } -> T
+    def without_vector_recording: [T] () { () -> T } -> T
+    def record_vector: (untyped kind, ?transform: Transform, ?clip: Bounds?, ?opacity: Numeric, **untyped attributes) -> Vector::command?
     def each_command: () { (primitive, Integer, Bounds?) -> void } -> void
                     | () -> Enumerator[[primitive, Integer, Bounds?], void]
   end

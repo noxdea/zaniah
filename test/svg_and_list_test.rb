@@ -71,6 +71,27 @@ class SVGAndListTest < Minitest::Test
     assert_operator pixel(after_close, 16, 16)[3], :>, 0
   end
 
+  def test_gradients_dash_and_alpha_luminance_masks
+    gradient = svg("<defs><linearGradient id='g'><stop offset='0%' stop-color='red'/><stop offset='100%' stop-color='blue'/></linearGradient></defs><rect width='20' height='20' fill='url(#g)'/>").texture
+    assert_operator pixel(gradient, 1, 10)[0], :>, pixel(gradient, 18, 10)[0]
+    assert_operator pixel(gradient, 18, 10)[2], :>, pixel(gradient, 1, 10)[2]
+    radial = svg("<defs><radialGradient id='g'><stop offset='0' stop-color='white'/><stop offset='1' stop-color='black'/></radialGradient></defs><rect width='20' height='20' fill='url(#g)'/>").texture
+    assert_operator pixel(radial, 10, 10)[0], :>, pixel(radial, 1, 1)[0]
+    user_gradient = svg("<defs><linearGradient id='g' gradientUnits='userSpaceOnUse' x2='100%'><stop offset='0' stop-color='red'/><stop offset='1' stop-color='blue'/></linearGradient></defs><rect width='20' height='20' fill='url(#g)'/>").texture
+    assert_operator pixel(user_gradient, 18, 10)[2], :>, 200
+
+    dashed = svg("<line x1='1' y1='10' x2='19' y2='10' stroke='red' stroke-width='2' stroke-dasharray='3 3' stroke-dashoffset='0'/>").texture
+    assert_equal 255, pixel(dashed, 2, 10)[3]
+    assert_equal 0, pixel(dashed, 5, 10)[3]
+    assert_equal 255, pixel(dashed, 8, 10)[3]
+
+    %w[alpha luminance].each do |type|
+      masked = svg("<defs><mask id='m' mask-type='#{type}'><rect width='10' height='20' fill='white'/></mask></defs><rect width='20' height='20' fill='blue' mask='url(#m)'/>").texture
+      assert_equal [0, 0, 255, 255], pixel(masked, 5, 10)
+      assert_equal 0, pixel(masked, 15, 10)[3]
+    end
+  end
+
   def test_svg_rejects_active_malformed_and_unbounded_content
     assert_raises(ArgumentError) { Zaniah::SVG.new("<!DOCTYPE svg [<!ENTITY e SYSTEM 'file:///etc/passwd'>]><svg>&e;</svg>") }
     assert_raises(ArgumentError) { svg("<script>anything</script>") }

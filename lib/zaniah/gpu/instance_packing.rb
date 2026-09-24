@@ -17,6 +17,7 @@ module Zaniah
           case kind
           when :quad
             q, i = scene.quads, offset
+            texture = scene.quad_texture(offset)
             data.push(q[i], q[i+1], q[i+2], q[i+3], q[i+4], q[i+5], q[i+6], q[i+7],
               q[i+8], q[i+9], q[i+10], q[i+11], q[i+12], q[i+13], q[i+14], q[i+15],
               q[i+16], q[i+17], q[i+18], q[i+19], q[i+20], q[i+21], q[i+22], q[i+23],
@@ -64,6 +65,7 @@ module Zaniah
         expected = 0
         scene.each_command do |kind, offset, clip|
           return unless kind == :quad && offset == expected
+          return if scene.quad_texture(offset)
           if batches.empty? || batches.last[0][2] != clip
             batches << [[:quad, nil, clip], expected / STRIDE, 1]
           else

@@ -26,10 +26,10 @@ fields for source UVs. Triangle vertices reuse rect and radii fields.
 | 32–37 | affine transform (`a,b,c,d,tx,ty`) | affine transform |
 | 38–39 | reserved shadow spread / inset or border flags | unused |
 
-Opacity is multiplied into both fill and border alpha before packing. Linear
-and radial gradients use exactly two stops; a future multi-stop implementation
-may use a 1D texture without another stride change. Shadows are expanded into
-ordinary quad instances, so the reserved shadow fields remain available.
+Opacity is multiplied into both fill and border alpha before packing. The
+original two-stop and expanded-quad behavior has since been extended without
+changing this layout: see [ADR 017](017-analytic-shadows.md) for the shadow
+fields and [ADR 018](018-gradient-ramps.md) for multistop ramps and conic fills.
 
 Metal, OpenGL, and Vulkan consume the layout directly, Software consumes the
 equivalent 40-float quad layout, and cached text sprite batches use the same

@@ -27,7 +27,7 @@ module Zaniah
         scene.each_command do |kind, offset, clip|
           bounds = clip ? @viewport.intersect(clip) : @viewport
           case kind
-          when :quad then draw_quad(scene.quads, offset, bounds)
+          when :quad then draw_quad(scene, offset, bounds)
           when :sprite then draw_sprite(scene, offset, bounds)
           when :sprite_batch
             first, count = scene.expand_sprite_batch(offset)
@@ -43,8 +43,9 @@ module Zaniah
 
       private
 
-      def draw_quad(data, offset, clip)
-        values = data.slice(offset, Scene::QUAD_STRIDE)
+      def draw_quad(scene, offset, clip)
+        values = scene.quads.slice(offset, Scene::QUAD_STRIDE)
+        return draw_shadow(values, clip) if values[31] == 4
         x, y, width, height = values.first(4)
         color, secondary = values[4, 4], values[8, 4]
         radii, border_color, borders = values[12, 4], values[16, 4], values[20, 4]
@@ -59,12 +60,13 @@ module Zaniah
         end
         gradient = gradient_parameters(gradient)
         if matrix == Transform.identity && borders.all?(&:zero?) && radii.all?(&:zero?) &&
-            color[3] == 1 && secondary[3] == 1 && gradient[0].positive? &&
+            color[3] == 1 && secondary[3] == 1 && (1..2).cover?(gradient[0]) &&
             [x, y, width, height].all? { |value| value == value.to_i }
           fill_cached_gradient(bounds, x.to_i, y.to_i, width.to_i, height.to_i, color, secondary, gradient)
           return
         end
         inverse = matrix.inverse
+        ramp_data = scene.quad_texture(offset)&.data
         top, bottom = [bounds.y.floor, 0].max, [bounds.bottom.ceil, @height].min
         left, right = [bounds.x.floor, 0].max, [bounds.right.ceil, @width].min
         pixel_y = top
@@ -80,7 +82,14 @@ module Zaniah
             distance = Math.sqrt([quad_x, 0].max**2 + [quad_y, 0].max**2) + [[quad_x, quad_y].max, 0].min - radius
             coverage = (0.5 - distance).clamp(0, 1)
             if coverage.positive?
-              fill = gradient[0].zero? ? color : mix(color, secondary, gradient_offset(gradient, local_x, local_y, width, height))
+              fill = if gradient[0].zero?
+                color
+              elsif ramp_data
+                ramp_index = (secondary[0].to_i * 256 + (gradient_offset(gradient, local_x, local_y, width, height) * 255).round) * 4
+                4.times.map { |index| ramp_data.getbyte(ramp_index + index) / 255.0 }.tap { |sample| sample[3] *= color[3] }
+              else
+                mix(color, secondary, gradient_offset(gradient, local_x, local_y, width, height))
+              end
               edge = [local_y, width - local_x, height - local_y, local_x].each_with_index.min_by(&:first).last
               border = borders[edge]
               dashed = values[39] == 1 && ((edge.odd? ? local_y : local_x) % 6) >= 3
@@ -91,6 +100,45 @@ module Zaniah
           end
           pixel_y += 1
         end
+      end
+
+      def draw_shadow(values, clip)
+        x, y, width, height = values.first(4)
+        color, radii = values[4, 4], values[12, 4]
+        blur, spread, inset = values[30], values[38], values[39] == 1
+        return if inset && blur.zero? && spread.zero?
+        matrix = Transform.new(*values[32, 6])
+        inverse = matrix.inverse
+        bounds = transformed_bounds(x, y, width, height, matrix).intersect(clip)
+        margin = inset ? 0 : spread + blur * 3 + 1
+        origin_x, origin_y = x + margin, y + margin
+        content_width, content_height = width - margin * 2, height - margin * 2
+        top, bottom = [bounds.y.floor, 0].max, [bounds.bottom.ceil, @height].min
+        left, right = [bounds.x.floor, 0].max, [bounds.right.ceil, @width].min
+        (top...bottom).each do |pixel_y|
+          (left...right).each do |pixel_x|
+            point = inverse.apply(Point.new(pixel_x + 0.5, pixel_y + 0.5))
+            local_x, local_y = point.x - origin_x, point.y - origin_y
+            radius = local_y < content_height / 2.0 ? (local_x < content_width / 2.0 ? radii[0] : radii[1]) : (local_x < content_width / 2.0 ? radii[3] : radii[2])
+            radius = radius.clamp(0, [content_width, content_height].min / 2.0)
+            qx = (local_x - content_width / 2.0).abs - content_width / 2.0 + radius
+            qy = (local_y - content_height / 2.0).abs - content_height / 2.0 + radius
+            distance = Math.hypot([qx, 0].max, [qy, 0].max) + [[qx, qy].max, 0].min - radius
+            coverage = if inset
+              inside = (0.5 - distance).clamp(0, 1)
+              inside * (blur.zero? ? (distance + spread + 0.5).clamp(0, 1) : (0.5 + 0.5 * erf_approx((distance + spread) / (blur * Math.sqrt(2)))))
+            else
+              blur.zero? ? (0.5 - distance + spread).clamp(0, 1) : (0.5 - 0.5 * erf_approx((distance - spread) / (blur * Math.sqrt(2))))
+            end
+            blend(pixel_x, pixel_y, *color.first(3), color[3] * coverage) if coverage.positive?
+          end
+        end
+      end
+
+      def erf_approx(value)
+        sign = value.negative? ? -1 : 1
+        square = value * value
+        sign * Math.sqrt(1 - Math.exp(-square * (4.0 / Math::PI + 0.147 * square) / (1 + 0.147 * square)))
       end
 
       def fill_rect(bounds, red, green, blue)
@@ -216,7 +264,11 @@ module Zaniah
       def gradient_offset(gradient, x, y, width, height)
         kind, first, scale, cosine, sine, center_x, center_y, radius = gradient
         nx, ny = x / width, y / height
-        raw = kind == 1 ? (nx - 0.5) * cosine + (ny - 0.5) * sine + 0.5 : Math.hypot(nx - center_x, ny - center_y) / radius
+        raw = case kind
+        when 1, 4 then (nx - 0.5) * cosine + (ny - 0.5) * sine + 0.5
+        when 2, 5 then Math.hypot(nx - center_x, ny - center_y) / radius
+        else ((Math.atan2(ny - center_y, nx - center_x) - Math.atan2(sine, cosine)) / (2 * Math::PI)) % 1
+        end
         ((raw - first) * scale).clamp(0, 1)
       end
 

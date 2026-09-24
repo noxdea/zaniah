@@ -23,6 +23,7 @@ layout(location = 6) out vec4 widths;
 layout(location = 7) out vec4 gradient;
 layout(location = 8) out vec4 center_kind;
 layout(location = 9) out float dash;
+layout(location = 10) out float spread;
 
 void main() {
   vec2 corners[4] = vec2[4](vec2(0, 0), vec2(1, 0), vec2(0, 1), vec2(1, 1));
@@ -47,4 +48,5 @@ void main() {
   gradient = instance_gradient;
   center_kind = instance_center_kind;
   dash = instance_translation.w;
+  spread = instance_translation.z;
 }

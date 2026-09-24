@@ -1,0 +1,116 @@
+module Zaniah
+  module Vector
+    type command = Quad | Shadow | Path | GlyphRun | Image | Underline | Raster
+
+    class Quad < Data
+      attr_reader bounds: Bounds
+      attr_reader fill: Color | Gradient
+      attr_reader radii: Array[Numeric]
+      attr_reader border: [Array[Numeric], Color]
+      attr_reader border_style: :solid | :dashed
+      attr_reader transform: Transform
+      attr_reader clip: Bounds?
+      attr_reader opacity: Numeric
+      attr_reader layer: Numeric
+      attr_reader sequence: Integer
+    end
+    class Shadow < Data
+      attr_reader bounds: Bounds
+      attr_reader radii: radius | Corners
+      attr_reader color: Color
+      attr_reader blur: Numeric
+      attr_reader spread: Numeric
+      attr_reader inset: bool
+      attr_reader transform: Transform
+      attr_reader clip: Bounds?
+      attr_reader opacity: Numeric
+      attr_reader layer: Numeric
+      attr_reader sequence: Integer
+    end
+    class Path < Data
+      attr_reader outline: untyped
+      attr_reader fill: Color?
+      attr_reader stroke: Color?
+      attr_reader stroke_width: Numeric
+      attr_reader fill_rule: :nonzero | :evenodd
+      attr_reader stroke_cap: :butt | :round | :square
+      attr_reader stroke_join: :miter | :round | :bevel
+      attr_reader stroke_miter: Numeric
+      attr_reader transform: Transform
+      attr_reader clip: Bounds?
+      attr_reader opacity: Numeric
+      attr_reader layer: Numeric
+      attr_reader sequence: Integer
+    end
+    class GlyphRun < Data
+      attr_reader font: TextSystem::_Font
+      attr_reader size: Numeric
+      attr_reader glyphs: Array[[Integer, Numeric, Numeric]]
+      attr_reader color: Color
+      attr_reader text: String
+      attr_reader clusters: Array[[Integer, Integer]]
+      attr_reader transform: Transform
+      attr_reader clip: Bounds?
+      attr_reader opacity: Numeric
+      attr_reader layer: Numeric
+      attr_reader sequence: Integer
+    end
+    class Image < Data
+      attr_reader image: Zaniah::Image
+      attr_reader bounds: Bounds
+      attr_reader source: Bounds
+      attr_reader pixels: String
+      attr_reader pixel_width: Integer
+      attr_reader pixel_height: Integer
+      attr_reader format: GPU::format
+      attr_reader transform: Transform
+      attr_reader clip: Bounds?
+      attr_reader opacity: Numeric
+      attr_reader layer: Numeric
+      attr_reader sequence: Integer
+    end
+    class Underline < Data
+      attr_reader x: Numeric
+      attr_reader y: Numeric
+      attr_reader width: Numeric
+      attr_reader thickness: Numeric
+      attr_reader color: Color
+      attr_reader wave: bool
+      attr_reader transform: Transform
+      attr_reader clip: Bounds?
+      attr_reader opacity: Numeric
+      attr_reader layer: Numeric
+      attr_reader sequence: Integer
+    end
+    class Raster < Data
+      attr_reader bounds: Bounds
+      attr_reader pixels: String
+      attr_reader pixel_width: Integer
+      attr_reader pixel_height: Integer
+      attr_reader format: GPU::format
+      attr_reader color: Color
+      attr_reader source: Bounds
+      attr_reader transform: Transform
+      attr_reader clip: Bounds?
+      attr_reader opacity: Numeric
+      attr_reader layer: Numeric
+      attr_reader sequence: Integer
+    end
+    class Document < Data
+      attr_reader width: Numeric?
+      attr_reader height: Numeric?
+      attr_reader commands: Array[command]
+    end
+    class Recorder
+      attr_reader width: Numeric?
+      attr_reader height: Numeric?
+      def initialize: (?width: Numeric?, ?height: Numeric?) -> void
+      def size=: (Size size) -> Size
+      def clear: () -> Array[command]
+      def record: (command command) -> Array[command]
+      def snapshot_pixels: (GPU::Texture texture) -> String
+      def document: () -> Document
+    end
+    def self.record: (width: Numeric, height: Numeric, ?scale_factor: Numeric, ?theme: Theme, ?text_system: TextSystem::Renderer?) { () -> _Renderable } -> Document
+  end
+end

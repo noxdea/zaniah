@@ -74,7 +74,12 @@ module Zaniah
             @paint_bytes += length
           end
         end
-        batches.each { |batch| scene.sprite_batch(batch) }
+        if scene.vector_sink && line.glyphs.none? { |glyph| color_font?(glyph.font) }
+          record_glyph_runs(scene, line, x, y, color, spans)
+          scene.without_vector_recording { batches.each { |batch| scene.sprite_batch(batch) } }
+        else
+          batches.each { |batch| scene.sprite_batch(batch) }
+        end
         scene
       end
 
@@ -125,6 +130,31 @@ module Zaniah
       end
 
       private
+
+      def color_font?(font)
+        font.tables.key?("COLR") || font.tables.key?("sbix") || font.tables.key?("CBDT")
+      end
+
+      def record_glyph_runs(scene, line, x, y, color, spans)
+        text, group, key, span_index = line.text.dup.freeze, [], nil, 0
+        flush = lambda do
+          next if group.empty?
+          scene.record_vector(Vector::GlyphRun, font: key[0], size: line.size,
+            glyphs: group.map { |glyph| [glyph.id, x + glyph.x, y].freeze }.freeze,
+            color: key[1], text: text,
+            clusters: group.map { |glyph| [glyph.start, glyph.finish].freeze }.freeze)
+          group.clear
+        end
+        line.glyphs.each do |glyph|
+          span_index += 1 while spans && span_index < spans.length && glyph.start >= spans[span_index][1]
+          tint = spans && spans[span_index] && glyph.start >= spans[span_index][0] ? spans[span_index][2] : color
+          current = [glyph.font, tint]
+          flush.call if key && key != current
+          key = current
+          group << glyph
+        end
+        flush.call
+      end
 
       def font_identity(font)
         return font.object_id unless @cache_dir

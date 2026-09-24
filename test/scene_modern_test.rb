@@ -35,6 +35,58 @@ class SceneModernTest < Minitest::Test
     assert_operator pixel(pixels, 20, 19, 19).first, :>, pixel(pixels, 20, 0, 0).first
   end
 
+  def test_multi_stop_and_conic_gradients_use_bounded_ramps
+    scene = T::Scene.new
+    gradient = T::Gradient.linear(angle: 0, stops: [[0, "#f00"], [0.5, "#0f0"], [1, "#00f"]])
+    scene.quad(0, 0, 11, 1, color: gradient)
+    assert_equal 4, scene.quads[24]
+    assert_equal [256, 256], [scene.quad_texture(0).width, scene.quad_texture(0).height]
+    pixels = T::GPU::Software.new(11, 1).render(scene)
+    assert_operator pixel(pixels, 11, 0, 0)[0], :>, 200
+    assert_operator pixel(pixels, 11, 5, 0)[1], :>, 200
+    assert_operator pixel(pixels, 11, 10, 0)[2], :>, 200
+
+    scene.clear
+    scene.quad(0, 0, 11, 11, color: T::Gradient.conic(stops: [[0, "#f00"], [0.5, "#0f0"], [1, "#00f"]]))
+    assert_equal 6, scene.quads[24]
+    assert_equal 40 * 4, T::GPU::InstancePacking.pack(scene).first.bytesize
+    pixels = T::GPU::Software.new(11, 11).render(scene)
+    refute_equal pixel(pixels, 11, 9, 5), pixel(pixels, 11, 5, 9)
+    assert_raises(ArgumentError) { T::Gradient.conic(center: [Float::INFINITY, 0.5], stops: [[0, "#000"], [1, "#fff"]]) }
+  end
+
+  def test_multistop_gradients_share_atlas_rows_and_bound_lru
+    scene = T::Scene.new
+    colors = 257.times.map do |index|
+      T::Gradient.linear(stops: [[0, "#000"], [0.5, format("#%06x", index + 1)], [1, "#fff"]])
+    end
+    scene.quad(0, 0, 2, 2, color: colors[0])
+    scene.quad(2, 0, 2, 2, color: T::Gradient.conic(stops: colors[1].stops))
+    assert_same scene.quad_texture(0), scene.quad_texture(40)
+    assert_equal [0, 1], [scene.quads[8], scene.quads[48]]
+    assert_equal 6, scene.quads[64]
+    assert_equal 1, T::GPU::InstancePacking.pack(scene).last.length
+    colors.drop(2).each_with_index { |gradient, index| scene.quad(index, 4, 1, 1, color: gradient) }
+    assert_equal 256, scene.instance_variable_get(:@gradient_ramps).length
+    assert_equal 1, scene.instance_variable_get(:@gradient_overflow_atlases).length
+    refute_same scene.quad_texture(0), scene.quad_texture(256 * 40)
+    scene.clear
+    scene.quad(0, 0, 2, 2, color: colors.last)
+    refute scene.instance_variable_get(:@gradient_ramps).key?(colors.first)
+    assert_equal 256, scene.instance_variable_get(:@gradient_ramps).length
+  end
+
+  def test_shadow_is_one_instance_with_analytic_coverage
+    scene = T::Scene.new.shadow(8, 8, 8, 8, color: "#000", blur: 2, spread: 1, radius: 2)
+    assert_equal 40, scene.quads.length
+    assert_equal 4, scene.quads[31]
+    assert_equal [1, 0], scene.quads[38, 2]
+    pixels = T::GPU::Software.new(24, 24).render(scene)
+    assert_operator pixel(pixels, 24, 4, 12)[3], :>, 0
+    assert_operator pixel(pixels, 24, 8, 12)[3], :>, pixel(pixels, 24, 4, 12)[3]
+    assert_equal 0, pixel(pixels, 24, 0, 0)[3]
+  end
+
   def test_transform_applies_to_rendering_and_hit_testing
     scene = T::Scene.new
     scene.push_transform(T::Transform.translate(5, 2)) { scene.quad(0, 0, 3, 3, color: "#0f0") }

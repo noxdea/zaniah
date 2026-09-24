@@ -25,14 +25,14 @@ module Zaniah
       @texture = GPU::Texture.new(width, height, data: pixels)
     end
 
-    attr_reader :frames
+    attr_reader :frames, :texture
 
     def request_layout(_cx)
       @layout_node = Layout::Node.new(style: @style, measure: ->(_width, _height) { [@texture.width, @texture.height] })
     end
 
     def paint(bounds, _state, _prepaint, cx)
-      cx.scene.sprite(bounds.x, bounds.y, bounds.width, bounds.height, texture: @texture)
+      cx.scene.image(bounds.x, bounds.y, bounds.width, bounds.height, image: self, texture: @texture)
     end
 
     private

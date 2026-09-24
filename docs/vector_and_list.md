@@ -13,14 +13,23 @@ icon = Zaniah::SVG.parse(
 ```
 
 The renderer supports SVG paths, basic shapes, groups, transforms, view boxes,
-inherited fill and stroke, `currentColor`, opacity, local `defs`/`use`, and
-user-space clip paths. It is intended for static icons, not arbitrary web SVG.
+inherited fill and stroke, `currentColor`, opacity, local `defs`/`use`,
+user-space clip paths, linear/radial gradients, stroke dash arrays and offsets,
+and local alpha/luminance masks. It is intended for static icons, not arbitrary
+web SVG.
 
-Scripts, external references, CSS stylesheets, gradients, filters, masks, images,
-text, markers, dash arrays, nested viewports, and object-bounding-box clips are
+Scripts, external references, CSS stylesheets, filters, images,
+text, markers, nested viewports, and object-bounding-box clips are
 unsupported and raise `ArgumentError`. Input is bounded to 2 MiB, 10,000 XML
 nodes, 64 levels, and 100,000 path operations; each output texture is limited to
 one megapixel.
+
+SVG gradients support ordered stops, local references, `objectBoundingBox` and
+`userSpaceOnUse` coordinates, and the default pad spread. Other spread methods
+and external references remain unsupported. Masks rasterize within the same
+one-megapixel output limit. Gradient, dashed, and masked shapes are represented
+as a `Vector::Raster` fallback when recording; simple solid outlines remain
+`Vector::Path` commands.
 
 ## Variable-height lists
 

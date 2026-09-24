@@ -181,6 +181,60 @@ module Zaniah
       end
       result
     end
+
+    def dashed_outline(outline, style)
+      source = style["stroke-dasharray"]
+      return outline unless source && source != "none"
+      pattern = numbers(source)
+      return outline if pattern.empty?
+      raise ArgumentError, "SVG dash lengths must be nonnegative" if pattern.any?(&:negative?)
+      return outline if pattern.all?(&:zero?)
+      pattern += pattern if pattern.length.odd?
+      period = pattern.sum
+      offset = number(style.fetch("stroke-dashoffset", "0")) % period
+      result = Alhena::Outline.new
+      operations = 0
+      contours(outline).each do |points, closed|
+        index, phase = 0, offset
+        while phase >= pattern[index] && index < pattern.length * 2
+          phase -= pattern[index]
+          index = (index + 1) % pattern.length
+        end
+        remaining = pattern[index] - phase
+        path = closed ? points + [points.first] : points
+        drawing = false
+        path.each_cons(2) do |start_point, end_point|
+          length = Math.hypot(end_point[0] - start_point[0], end_point[1] - start_point[1])
+          next if length.zero?
+          traveled = 0.0
+          while traveled < length - 1e-9
+            if remaining <= 1e-9
+              index = (index + 1) % pattern.length
+              remaining = pattern[index]
+              drawing = false
+              next if remaining <= 1e-9
+            end
+            step = [length - traveled, remaining].min
+            a = traveled / length
+            b = (traveled + step) / length
+            first = [start_point[0] + (end_point[0] - start_point[0]) * a, start_point[1] + (end_point[1] - start_point[1]) * a]
+            last = [start_point[0] + (end_point[0] - start_point[0]) * b, start_point[1] + (end_point[1] - start_point[1]) * b]
+            if index.even?
+              result.move_to(*first) unless drawing
+              result.line_to(*last)
+              drawing = true
+              operations += 1
+              raise ArgumentError, "SVG dash is too complex" if operations > 100_000
+            else
+              drawing = false
+            end
+            traveled += step
+            remaining -= step
+          end
+        end
+      end
+      result
+    end
     end
   end
 end

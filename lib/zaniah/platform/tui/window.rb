@@ -92,9 +92,36 @@ module Zaniah
             end
             line
           end
+          record_vector_cells(rows, colors) if @scene.vector_sink
           @output.write("\e[H" + lines.join("\r\n") + "\e[0m")
           @output.write("\e[#{(@ime_state.y / 20).floor + 1};#{(@ime_state.x / 8).floor + 1}H\e[?25h") if @ime_state && @output.tty?
           @output.flush
+        end
+
+        private
+
+        def record_vector_cells(rows, colors)
+          return unless rows.any? { |cells| cells.any? { |char| !char.empty? && char != " " } }
+          raster_scene = Scene.new
+          renderer = TextSystem::Renderer.new
+          rows.each_with_index do |cells, row|
+            cells.each_with_index do |char, col|
+              next if char.empty? || char == " "
+              line = renderer.layout_line(char, size: 14)
+              renderer.paint_line(raster_scene, line, x: col * 8, y: row * 20 + 14,
+                color: colors[row][col] || "#ddd")
+            end
+          end
+          width, height = @content_size.width.to_i, @content_size.height.to_i
+          pixels = GPU::Software.new(width, height).render(raster_scene).dup.freeze
+          bounds = Bounds.new(0, 0, width, height)
+          @scene.layer(Scene::LAYER_DEBUG) do
+            @scene.record_vector(Vector::Raster, bounds: bounds, pixels: pixels,
+              pixel_width: width, pixel_height: height, format: :rgba8,
+              color: Color.parse("#fff"), source: bounds)
+          end
+        ensure
+          renderer&.close
         end
       end
     end

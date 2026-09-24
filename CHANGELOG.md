@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0 — 2026-09-24
+
+- Add semantic vector recording for UI scenes, including text, images, and raster fallbacks for unsupported drawing.
+- Render shadows analytically across backends; their edge appearance changes from earlier releases.
+- Add shared multi-stop and conic gradient ramps across Software, OpenGL, Metal, and Vulkan rendering.
+- Support SVG gradients, dashed strokes, and alpha and luminance masks.
+
 ## 0.8.0 — 2026-09-24
 
 - Add native macOS and Windows menus, declarative context menus, and platform-aware shortcut labels.

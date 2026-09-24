@@ -23,7 +23,7 @@ module Zaniah
         uniform vec2 viewport;
         out vec2 local_position; out vec2 size; out vec4 color; out vec4 radii;
         out vec4 secondary; out vec4 border; out vec4 widths; out vec4 gradient;
-        out vec4 center_kind; out vec2 uv; out float dash;
+        out vec4 center_kind; out vec2 uv; out float dash; out float spread;
         void main() {
           vec2 vertices[4] = vec2[4](vec2(0,0),vec2(1,0),vec2(0,1),vec2(1,1));
           vec2 corner = vertices[gl_VertexID];
@@ -35,25 +35,35 @@ module Zaniah
           local_position = corner * rect.zw; size = rect.zw; color = tint;
           secondary = tint2; radii = corners; border = border_color; widths = edges_source;
           gradient = gradient_data; center_kind = gradient_center_kind;
-          uv = edges_source.xy + corner * edges_source.zw; dash = translation_flags.w;
+          uv = edges_source.xy + corner * edges_source.zw; dash = translation_flags.w; spread = translation_flags.z;
         }
       GLSL
       FRAGMENT = <<~GLSL.freeze
         #version 330 core
         in vec2 local_position; in vec2 size; in vec4 color; in vec4 radii;
         in vec4 secondary; in vec4 border; in vec4 widths; in vec4 gradient;
-        in vec4 center_kind; in vec2 uv; in float dash;
+        in vec4 center_kind; in vec2 uv; in float dash; in float spread;
         uniform sampler2D atlas;
         out vec4 output_color;
+        float approx_erf(float value) {
+          float square = value * value;
+          return sign(value) * sqrt(1 - exp(-square * (1.27323954474 + 0.147 * square) / (1 + 0.147 * square)));
+        }
         void main() {
           vec4 result = color;
           if (center_kind.w == 0) {
             if (gradient.x > 0) {
               vec2 normalized = local_position / size;
-              float raw = gradient.x == 1
+              float raw = gradient.x == 1 || gradient.x == 4
                 ? dot(normalized - 0.5, vec2(cos(radians(gradient.w)), sin(radians(gradient.w)))) + 0.5
-                : length(normalized - center_kind.xy) / center_kind.z;
-              result = mix(color, secondary, clamp((raw - gradient.y) / max(gradient.z - gradient.y, 0.000001), 0, 1));
+                : gradient.x == 2 || gradient.x == 5 ? length(normalized - center_kind.xy) / center_kind.z
+                : fract((atan(normalized.y - center_kind.y, normalized.x - center_kind.x) - radians(gradient.w)) / 6.28318530718 + 1.0);
+              float amount = clamp((raw - gradient.y) / max(gradient.z - gradient.y, 0.000001), 0, 1);
+              if (gradient.x >= 4) {
+                vec2 ramp_uv = vec2((floor(amount * 255.0 + 0.5) + 0.5) / 256.0, (secondary.x + 0.5) / 256.0);
+                vec4 sample_color = texture(atlas, ramp_uv);
+                result = vec4(sample_color.rgb, sample_color.a * color.a);
+              } else result = mix(color, secondary, amount);
             }
             float radius = local_position.y < size.y/2 ? (local_position.x < size.x/2 ? radii.x : radii.y) : (local_position.x < size.x/2 ? radii.w : radii.z);
             radius = clamp(radius, 0, min(size.x,size.y)/2);
@@ -65,6 +75,19 @@ module Zaniah
             float border_width = edge == edge_distance.x ? widths.x : edge == edge_distance.y ? widths.y : edge == edge_distance.z ? widths.z : widths.w;
             float coordinate = edge == edge_distance.x || edge == edge_distance.z ? local_position.x : local_position.y;
             if (border_width > 0 && distance >= -border_width && !(dash == 1 && mod(coordinate,6) >= 3)) result = border;
+            result.a *= coverage;
+          } else if (center_kind.w == 4) {
+            float margin = dash == 1 ? 0 : spread + center_kind.z * 3 + 1;
+            vec2 original_size = size - 2 * margin;
+            vec2 p = local_position - margin;
+            float radius = p.y < original_size.y/2 ? (p.x < original_size.x/2 ? radii.x : radii.y) : (p.x < original_size.x/2 ? radii.w : radii.z);
+            radius = clamp(radius, 0, min(original_size.x,original_size.y)/2);
+            vec2 q = abs(p - original_size/2) - original_size/2 + radius;
+            float distance = length(max(q,0)) + min(max(q.x,q.y),0) - radius;
+            float sigma = center_kind.z;
+            float coverage = dash == 1
+              ? clamp(0.5 - distance, 0, 1) * (sigma == 0 ? clamp(distance + spread + 0.5, 0, 1) : 0.5 + 0.5 * approx_erf((distance + spread) / (sigma * 1.41421356237)))
+              : sigma == 0 ? clamp(0.5 - distance + spread, 0, 1) : 0.5 - 0.5 * approx_erf((distance - spread) / (sigma * 1.41421356237));
             result.a *= coverage;
           } else if (center_kind.w == 1 || center_kind.w == 2) {
             vec4 sample_color = texture(atlas,uv);

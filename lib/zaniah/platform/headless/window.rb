@@ -291,6 +291,7 @@ module Zaniah
           frame_started = MONOTONIC_CLOCK.call
           @text_system.scale_factor = @scale_factor if @text_system.respond_to?(:scale_factor=)
           @scene.clear
+          @scene.vector_sink.size = @content_size if @scene.vector_sink&.respond_to?(:size=)
           @text_runs.clear
           @text_system.start_frame if @text_system.respond_to?(:start_frame)
           @used_state.clear
