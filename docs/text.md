@@ -164,6 +164,25 @@ Supported inline styles are `bold`, `italic`, `size`, `color`, `font`, and
 receives `(text, rich_text)`; selection changes are reported by `on_select`.
 IME composition uses the existing `TextBuffer` composition path.
 
+## Editing shortcuts
+
+Editable text fields and rich text share the same actions from keyboard, menu,
+and command dispatch. The default desktop keys are:
+
+| Action | macOS | Windows | Linux |
+| --- | --- | --- | --- |
+| Undo / redo | Cmd+Z / Cmd+Shift+Z | Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Ctrl+Z / Ctrl+Shift+Z |
+| Cut / copy / paste / select all | Cmd+X/C/V/A | Ctrl+X/C/V/A | Ctrl+X/C/V/A |
+| Previous / next word | Option+Left/Right | Ctrl+Left/Right | Ctrl+Left/Right |
+| Document start / end | Cmd+Up/Down | Ctrl+Home/End | Ctrl+Home/End |
+
+Shift with a word arrow extends the selection. Up/Down moves between logical
+lines in multiline fields; Home/End moves to the current line's edges. Copy
+requires a selection, and password fields never copy or cut. Paste and undo
+are disabled during IME composition. The TUI does not assign these desktop
+editing shortcuts by default because terminal control keys can conflict;
+applications may provide a custom keymap.
+
 ## Inline and block overlays
 
 Attach non-editable UI elements to text without inserting bytes into the source:

@@ -3,9 +3,18 @@
 module Zaniah
   module Input
     Hit = Data.define(:bounds, :owner)
+    HitRegion = Data.define(:bounds, :owner, :transform, :clip) do
+      def contains?(point)
+        return false if clip && !clip.contains?(point)
+        bounds.contains?(transform.inverse.apply(point))
+      rescue ArgumentError
+        false
+      end
+    end
 
     class Dispatcher
       attr_reader :focused, :focus_origin, :focus_tree
+      attr_accessor :window
 
       def initialize(keymap: Keymap.default_ui)
         @keymap, @hits = keymap, []
@@ -45,8 +54,44 @@ module Zaniah
           focus(target, origin: :keyboard)
           return action
         end
-        chain.each { |handle| break if handle.on_action&.call(action) }
+        perform(action, source: :keyboard)
         action
+      end
+
+      def perform(action, source: :keyboard)
+        chain = @focused ? @focused.ancestors : []
+        chain.each do |handle|
+          if handle.validate
+            state = handle.validate.call(action)
+            return false if state == false
+            next if state.nil?
+          end
+          return true if handle.on_action&.call(action)
+        end
+        command = @window&.app&.actions&.command(action)
+        return false unless command&.handler
+        context = FrameContext.new(@window)
+        return false if command.enabled&.call(context) == false
+        command.handler.call(context)
+        true
+      end
+
+      def available?(action)
+        chain = @focused ? @focused.ancestors : []
+        chain.each do |handle|
+          next unless handle.validate
+          state = handle.validate.call(action)
+          return state ? :enabled : :disabled unless state.nil?
+        end
+        command = @window&.app&.actions&.command(action)
+        return :unhandled unless command
+        return :disabled unless command.handler
+        command.enabled&.call(FrameContext.new(@window)) == false ? :disabled : :enabled
+      end
+
+      def checked?(action)
+        command = @window&.app&.actions&.command(action)
+        command&.checked&.call(FrameContext.new(@window))
       end
 
       def register_focus(handle)
@@ -75,6 +120,7 @@ module Zaniah
         @transforms.replace([Transform.identity])
       end
       def hits = @hits.map { |bounds, _, owner, _, clip| Hit.new(clip ? bounds.intersect(clip) : bounds, owner) }.freeze
+      def hit_regions = @hits.map { |bounds, _, owner, transform, clip| HitRegion.new(bounds, owner, transform, clip) }.freeze
 
       def hover_chain(position)
         return [] unless position

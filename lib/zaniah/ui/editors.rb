@@ -46,6 +46,7 @@ module Zaniah
         @buffer = TextBuffer.new(text)
         @paragraph_styles = Array.new(text.count("\n") + 1) { {} }
         @selection, @selectable, @editable = TextSelection.new(0), !!selectable, !!editable
+        @undo_states, @redo_states = [], []
       end
 
       def text = @buffer.to_s
@@ -83,6 +84,7 @@ module Zaniah
         first, finish = checked_range(range)
         changes = normalize_style(style)
         return self if first == finish || changes.empty?
+        record_edit
         boundaries = [0, text.bytesize, first, finish, *@spans.flat_map { |span| [span.start, span.finish] }].uniq.sort
         @spans = merge_spans(boundaries.each_cons(2).filter_map do |from, to|
           next if from == to
@@ -98,6 +100,7 @@ module Zaniah
         offset = checked_offset(offset)
         validate_text(value)
         return self if value.empty?
+        record_edit
         inherited = style ? normalize_style(style) : style_at(offset)
         size, newlines = value.bytesize, value.count("\n")
         @buffer.insert(offset, value)
@@ -122,6 +125,7 @@ module Zaniah
       def delete(range)
         first, finish = checked_range(range)
         return self if first == finish
+        record_edit
         old = text
         first_line = @buffer.line_at(first)
         removed_lines = old.byteslice(first...finish).count("\n")
@@ -142,6 +146,7 @@ module Zaniah
         first, finish = checked_range(range)
         validate_text(value)
         return delete(first...finish) if value.empty?
+        record_edit
         inherited = style ? normalize_style(style) : style_at(first)
         first_line, last_line = @buffer.line_at(first), @buffer.line_at(finish)
         before_styles = @paragraph_styles.take(first_line)
@@ -187,6 +192,8 @@ module Zaniah
         first_line, last_line = @buffer.line_at(first), @buffer.line_at(finish)
         last_line = [last_line, @paragraph_styles.length - 1].min
         values = {align: align, list: list, level: level}.compact
+        return self if values.empty?
+        record_edit
         (first_line..last_line).each { |index| @paragraph_styles[index] = @paragraph_styles[index].merge(values).freeze }
         @on_change&.call(text, self)
         @cx&.window&.request_frame
@@ -208,10 +215,24 @@ module Zaniah
         head = @selection.head
         case action
         when :select_all then self.selection = TextSelection.new(0, text.bytesize)
+        when :copy then @cx.window.clipboard = text.byteslice(@selection.range)
+        when :cut
+          @cx.window.clipboard = text.byteslice(@selection.range)
+          delete(@selection.range)
+        when :paste then replace_selection(@cx.window.clipboard.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace))
+        when :undo, :redo then restore_edit(action)
         when :move_left then self.selection = TextSelection.new(@selection.collapsed? ? Unicode.previous_boundary(text, head) : @selection.range.begin)
         when :move_right then self.selection = TextSelection.new(@selection.collapsed? ? Unicode.next_boundary(text, head) : @selection.range.end)
         when :select_left then self.selection = TextSelection.new(@selection.anchor, Unicode.previous_boundary(text, head))
         when :select_right then self.selection = TextSelection.new(@selection.anchor, Unicode.next_boundary(text, head))
+        when :word_left, :word_right, :select_word_left, :select_word_right
+          direction = action.to_s.end_with?("left") ? :left : :right
+          target = Unicode.word_boundary(text, head, direction)
+          self.selection = action.to_s.start_with?("select") ? TextSelection.new(@selection.anchor, target) : TextSelection.new(target)
+        when :line_up, :line_down
+          self.selection = TextSelection.new(Unicode.neighbor_line_offset(text, head, action == :line_up ? -1 : 1))
+        when :document_start then self.selection = TextSelection.new(0)
+        when :document_end then self.selection = TextSelection.new(text.bytesize)
         when :line_start, :select_line_start then move_line_edge(action, :start)
         when :line_end, :select_line_end then move_line_edge(action, :end)
         when :delete_backward then delete_backward
@@ -220,6 +241,21 @@ module Zaniah
         else return false
         end
         true
+      end
+
+      def validate_text_action(action)
+        case action
+        when :copy then !@selection.collapsed?
+        when :cut then @editable && !@selection.collapsed?
+        when :paste then @editable && !@buffer.composition
+        when :undo then @editable && !@buffer.composition && !@undo_states.empty?
+        when :redo then @editable && !@redo_states.empty?
+        when :delete_backward, :delete_forward, :insert_newline then @editable
+        when :select_all, :move_left, :move_right, :select_left, :select_right,
+          :word_left, :word_right, :select_word_left, :select_word_right,
+          :line_up, :line_down, :document_start, :document_end,
+          :line_start, :line_end, :select_line_start, :select_line_end then true
+        end
       end
 
       def input(event)
@@ -256,6 +292,22 @@ module Zaniah
       end
 
       private
+
+      def edit_state = [text, @spans, @paragraph_styles.dup, @selection]
+
+      def record_edit
+        @undo_states << edit_state
+        @redo_states.clear
+      end
+
+      def restore_edit(action)
+        from, to = action == :undo ? [@undo_states, @redo_states] : [@redo_states, @undo_states]
+        return false if from.empty?
+        to << edit_state
+        value, @spans, @paragraph_styles, @selection = from.pop
+        @buffer.replace(0...@buffer.bytesize, value)
+        changed
+      end
 
       def normalize_runs(value)
         text, spans = +"", []

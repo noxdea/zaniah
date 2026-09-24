@@ -32,6 +32,21 @@ class TextBufferTest < Minitest::Test
     assert_equal "A語b\n日本", buffer.to_s
   end
 
+  def test_history_availability_tracks_edits_and_redo_invalidation
+    buffer = Zaniah::TextBuffer.new("a")
+    refute buffer.can_undo?
+    refute buffer.can_redo?
+    buffer.insert(1, "b")
+    assert buffer.can_undo?
+    refute buffer.can_redo?
+    buffer.undo
+    refute buffer.can_undo?
+    assert buffer.can_redo?
+    buffer.insert(1, "c")
+    assert buffer.can_undo?
+    refute buffer.can_redo?
+  end
+
   def test_selection_normalization_and_word_boundaries
     selection = Zaniah::TextSelection.new(8, 2)
     assert_equal 2...8, selection.range

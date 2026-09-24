@@ -81,6 +81,8 @@ module Zaniah
       @wake.synchronize { @condition.signal }
     end
 
+    def idle? = @foreground.empty?
+
     def drain
       now = @clock.call
       due, @timers = @timers.partition { |deadline, _| deadline <= now }

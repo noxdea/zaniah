@@ -81,6 +81,7 @@ module Zaniah
       align: @text_align, ellipsis: @ellipsis, kinsoku: @kinsoku)
       @wrap, @line_height, @letter_spacing = mode, line_height, letter_spacing
       @text_align, @ellipsis, @kinsoku = align, ellipsis, kinsoku
+      @focus_handle.context[:multiline] = mode != :none || @text.include?("\n") if @focus_handle
       self
     end
 
@@ -88,7 +89,8 @@ module Zaniah
       @selectable = value
       @selection ||= TextSelection.new(0)
       return self unless value
-      focusable(context: {in_text_field: true}) { |action| text_action(action) }
+      focusable(context: {in_text_field: true, multiline: @wrap != :none || @text.include?("\n")},
+        validate: ->(action) { validate_text_action(action) }) { |action| text_action(action) }
       @focus_handle.on_input = ->(event) { text_input(event) }
       on_mouse_down { |event, _| begin_selection(event) }
       on_drag { |event, _| extend_selection(event) }
@@ -104,6 +106,7 @@ module Zaniah
     end
 
     def request_layout(cx)
+      @cx = cx
       @text = @buffer.to_s if @buffer
       value = display_text
       @paragraph, @line = nil, nil
@@ -226,10 +229,24 @@ module Zaniah
       head = @selection.head
       case action
       when :select_all then @selection = TextSelection.new(0, @text.bytesize)
+      when :copy then @cx.window.clipboard = @text.byteslice(@selection.range)
+      when :cut
+        @cx.window.clipboard = @text.byteslice(@selection.range)
+        delete_range(@selection.range)
+      when :paste then replace_selection(@cx.window.clipboard.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace))
+      when :undo, :redo then history(action)
       when :move_left then @selection = TextSelection.new(@selection.collapsed? ? Unicode.previous_boundary(@text, head) : @selection.range.begin)
       when :move_right then @selection = TextSelection.new(@selection.collapsed? ? Unicode.next_boundary(@text, head) : @selection.range.end)
       when :select_left then @selection = TextSelection.new(@selection.anchor, Unicode.previous_boundary(@text, head))
       when :select_right then @selection = TextSelection.new(@selection.anchor, Unicode.next_boundary(@text, head))
+      when :word_left, :word_right, :select_word_left, :select_word_right
+        direction = action.to_s.end_with?("left") ? :left : :right
+        target = Unicode.word_boundary(@text, head, direction)
+        @selection = action.to_s.start_with?("select") ? TextSelection.new(@selection.anchor, target) : TextSelection.new(target)
+      when :line_up, :line_down
+        @selection = TextSelection.new(Unicode.neighbor_line_offset(@text, head, action == :line_up ? -1 : 1))
+      when :document_start then @selection = TextSelection.new(0)
+      when :document_end then @selection = TextSelection.new(@text.bytesize)
       when :line_start, :select_line_start then move_to_line_edge(action, :start)
       when :line_end, :select_line_end then move_to_line_edge(action, :end)
       when :delete_backward then delete_backward
@@ -237,7 +254,33 @@ module Zaniah
       when :insert_newline then replace_selection("\n") if @editable
       else return false
       end
+      @cx&.window&.request_frame
       true
+    end
+
+    def validate_text_action(action)
+      case action
+      when :copy then !@secure && !@selection.collapsed?
+      when :cut then !!@editable && !@secure && !@selection.collapsed?
+      when :paste then !!@editable && !@buffer.composition
+      when :undo then !!@editable && !@buffer.composition && @buffer.can_undo?
+      when :redo then !!@editable && @buffer.can_redo?
+      when :delete_backward, :delete_forward, :insert_newline then !!@editable
+      when :select_all, :move_left, :move_right, :select_left, :select_right,
+        :word_left, :word_right, :select_word_left, :select_word_right,
+        :line_up, :line_down, :document_start, :document_end,
+        :line_start, :line_end, :select_line_start, :select_line_end then true
+      end
+    end
+
+    def history(action)
+      before = @buffer.to_s
+      @buffer.public_send(action)
+      @text = @buffer.to_s
+      return if @text == before
+      position = Unicode.grapheme_boundaries(@text).reverse.find { |offset| offset <= @selection.head } || 0
+      @selection = TextSelection.new(position)
+      @on_change&.call(@text)
     end
 
     def text_input(event)

@@ -39,6 +39,7 @@ require_relative "zaniah/process_pool"
 require_relative "zaniah/input"
 require_relative "zaniah/drag_drop"
 require_relative "zaniah/element"
+require_relative "zaniah/inspection"
 require_relative "zaniah/describe"
 Zaniah.autoload(:SVG, File.expand_path("zaniah/svg", __dir__))
 require_relative "zaniah/scroll_state"

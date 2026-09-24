@@ -10,12 +10,13 @@ module Zaniah
   class Error < StandardError
   end
 
-  class Configuration < Struct[Symbol | TextSystem::_Rasterizer | TextSystem::_FontDB | TextSystem::_Shaper | TextSystem::_Segmenter]
+  class Configuration < Struct[Symbol | TextSystem::_Rasterizer | TextSystem::_FontDB | TextSystem::_Shaper | TextSystem::_Segmenter | UI::Matcher::_Matcher | nil]
     attr_accessor font_raster: Symbol | TextSystem::_Rasterizer
     attr_accessor shaper: Symbol | TextSystem::_Shaper
     attr_accessor font_db: Symbol | TextSystem::_FontDB
     attr_accessor segmenter: Symbol | TextSystem::_Segmenter
-    def self.new: (?font_raster: Symbol | TextSystem::_Rasterizer, ?shaper: Symbol | TextSystem::_Shaper, ?font_db: Symbol | TextSystem::_FontDB, ?segmenter: Symbol | TextSystem::_Segmenter) -> Configuration
+    attr_accessor matcher: UI::Matcher::_Matcher?
+    def self.new: (?font_raster: Symbol | TextSystem::_Rasterizer, ?shaper: Symbol | TextSystem::_Shaper, ?font_db: Symbol | TextSystem::_FontDB, ?segmenter: Symbol | TextSystem::_Segmenter, ?matcher: UI::Matcher::_Matcher?) -> Configuration
   end
   def self.configuration: () -> Configuration
   def self.configure: [T] () { (Configuration) -> T } -> T
@@ -129,6 +130,8 @@ module Zaniah
     def self.previous_boundary: (String text, Integer offset) -> Integer
     def self.next_boundary: (String text, Integer offset) -> Integer
     def self.word_range_at: (String text, Integer offset) -> Range[Integer]
+    def self.word_boundary: (String text, Integer offset, :left | :right direction) -> Integer
+    def self.neighbor_line_offset: (String text, Integer offset, Integer direction) -> Integer
     def self.width: (String text, ?ambiguous: 1 | 2) -> Integer
   end
 
@@ -152,6 +155,8 @@ module Zaniah
     def initialize: (?String text, ?clock: clock, ?group_interval: Numeric) -> void
     def to_s: () -> String
     def bytesize: () -> Integer
+    def can_undo?: () -> bool
+    def can_redo?: () -> bool
     def insert: (Integer offset, String text) -> self
     def delete: (Range[Integer] range) -> self
     def replace: (Range[Integer] range, String text) -> self

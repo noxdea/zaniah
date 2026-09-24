@@ -30,6 +30,7 @@ module Zaniah
   class App
     attr_reader windows: Array[Platform::Headless::Window]
     attr_reader executor: TaskExecutor
+    attr_reader actions: Input::ActionRegistry
     def initialize: (?clock: clock) -> void
     def new_entity: [T] () { (EntityContext[T]) -> T } -> Entity[T]
     def read: [T] (Entity[T] entity) -> T
@@ -69,6 +70,7 @@ module Zaniah
     def await: [T] (Task[T] task, ?timeout: Numeric?) -> T
     def post: () { () -> void } -> void
     def drain: () -> void
+    def idle?: () -> bool
     def wait: (Numeric seconds) -> void
     def shutdown: () -> void
   end

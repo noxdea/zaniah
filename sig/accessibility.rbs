@@ -36,6 +36,7 @@ module Zaniah
       def each: () { (Node, Array[Integer]) -> void } -> void
               | () -> Enumerator[[Node, Array[Integer]], void]
       def find: () { (Node) -> bool } -> Node?
+      def query: (?role: Symbol?, ?label: String | Regexp?, ?states: Hash[Symbol, untyped]) -> Array[[Node, Array[Integer]]]
       def perform: (Node node, Symbol action) -> untyped
       def assign: (Node node, Numeric value) -> untyped
     end

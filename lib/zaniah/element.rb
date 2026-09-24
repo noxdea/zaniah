@@ -52,16 +52,19 @@ module Zaniah
     def opacity(value) = style(opacity: value)
     def ring(width, color = nil, offset = 0) = style(ring: Ring.new(width, color, offset))
     def cursor(value) = style(cursor: value)
-    def focusable(tab_index: 0, context: {}, &on_action)
+    def focusable(tab_index: 0, context: {}, validate: (validate_omitted = true), &on_action)
       @focus_handle ||= Input::FocusHandle.new(owner: self)
       @focus_handle.tab_index, @focus_handle.focusable = Integer(tab_index), true
       @focus_handle.context.merge!(context)
+      @focus_handle.validate = validate unless validate_omitted
       @focus_handle.on_action = on_action if on_action
       self
     end
     def focus_handle = @focus_handle
     def tooltip(text) = (@tooltip = text.to_s; self)
+    def tooltip_text = @tooltip
     def context_menu(items) = (@context_menu = items; self)
+    def context_menu_items = @context_menu
     def flex = style(display: :flex)
     def flex_row = style(flex_direction: :row)
     def flex_col = style(flex_direction: :column)

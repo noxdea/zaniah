@@ -34,6 +34,34 @@ module Zaniah
       starts[first]...(starts[last] || text.bytesize)
     end
 
+    def self.word_boundary(text, offset, direction)
+      raise ArgumentError, "direction must be left or right" unless %i[left right].include?(direction)
+      if direction == :left
+        return 0 if offset.zero?
+        cursor = previous_boundary(text, offset)
+        while cursor.positive? && text.byteslice(cursor...next_boundary(text, cursor)).match?(/\A\s+\z/)
+          cursor = previous_boundary(text, cursor)
+        end
+        word_range_at(text, cursor).begin
+      else
+        return text.bytesize if offset >= text.bytesize
+        cursor = word_range_at(text, offset).end
+        while cursor < text.bytesize && text.byteslice(cursor...next_boundary(text, cursor)).match?(/\A\s+\z/)
+          cursor = next_boundary(text, cursor)
+        end
+        cursor
+      end
+    end
+
+    def self.neighbor_line_offset(text, offset, direction)
+      lines = text.split("\n", -1)
+      line = text.byteslice(0...offset).count("\n")
+      target = (line + direction).clamp(0, lines.length - 1)
+      start = lines.take(line).sum { |value| value.bytesize + 1 }
+      column = text.byteslice(start...offset).grapheme_clusters.length
+      lines.take(target).sum { |value| value.bytesize + 1 } + lines[target].grapheme_clusters.take(column).sum(&:bytesize)
+    end
+
     def self.width(text, ambiguous: 1)
       require "rbconfig"
       require "unicode/display_width"

@@ -65,4 +65,18 @@ class ComponentGoldenTest < Zaniah::UITest
       end
     end
   end
+
+  %i[dark light high_contrast].each do |appearance|
+    define_method("test_command_palette_match_#{appearance}") do
+      theme = Zaniah::Theme.public_send(appearance)
+      palette = Zaniah::UI::CommandPalette.new(Array.new(6) { |index| ["Ruby command #{index}", ->(*) { }] }, open: true)
+      palette.instance_variable_set(:@query, "Ru")
+      root = Zaniah::Div.new.w_full.h_full.p(20).bg(theme.colors.background).child(palette)
+      @app.global(:theme, theme)
+      @window.render(root, present: false)
+      @clock.advance(1)
+
+      assert_golden("components/command-palette-match-#{appearance}", theme: theme) { root }
+    end
+  end
 end

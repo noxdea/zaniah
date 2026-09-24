@@ -23,9 +23,10 @@ module Zaniah
     class Combobox < Component
       attr_reader :value, :query
 
-      def initialize(items, value: nil, label: "Choose", placeholder: "Type to filter…", disabled: false)
+      def initialize(items, value: nil, label: "Choose", placeholder: "Type to filter…", disabled: false, matcher: nil)
         super()
         @items = normalize_items(items)
+        @matcher = Matcher::Session.new(@items.map(&:first), matcher || Zaniah.configuration.matcher || Matcher::Substring.new)
         @label, @placeholder, @disabled = label.to_s, placeholder.to_s, !!disabled
         @value = value
         @query = label_for(value).to_s
@@ -37,22 +38,27 @@ module Zaniah
 
       def build(cx)
         @cx = cx
-        @matches = @items.select { |label, _| @query.empty? || label.downcase.include?(@query.downcase) }.first(8)
+        @matches = @matcher.results(@query).first(8).filter_map do |match|
+          item = @items[match.index]
+          [item, match] if item
+        end
         @selected_index = @selected_index.clamp(0, [@matches.length - 1, 0].max)
         field = TextField.new(@query, label: @label, placeholder: @placeholder, disabled: @disabled)
           .on_change { |text, context| @query = text; @open = true; @selected_index = 0; context&.window&.request_frame }
         root = Div.new.gap(cx.theme.spacing[1]).focusable(context: {in_combobox: true}) { |action| combo_action(action) }.child(field)
         if @open && !@matches.empty? && !@disabled
           root.child(Div.new.p(2).gap(1).bg(cx.theme.colors.surface).border(1).border_color(cx.theme.colors.border)
-            .rounded(cx.theme.radii[:sm]).children(@matches.map.with_index do |(label, value), index|
-              Button.new(label, size: :sm, variant: index == @selected_index ? :secondary : :ghost).w_full
+            .rounded(cx.theme.radii[:sm]).children(@matches.map.with_index do |((label, value), match), index|
+              button = match.ranges.empty? ? Button.new(label, size: :sm, variant: index == @selected_index ? :secondary : :ghost) :
+                HighlightedButton.new(label, ranges: match.ranges, size: :sm, variant: index == @selected_index ? :secondary : :ghost)
+              button.w_full
                 .on_click { |event, context| choose(value, label, event, context) }
             end))
         end
         root
       end
 
-      def tui_cells(*) = "#{@label}: [#{@query}█]" + (@open ? "\n" + @matches.map.with_index { |(label, _), index| "#{index == @selected_index ? ">" : " "} #{label}" }.join("\n") : "")
+      def tui_cells(*) = "#{@label}: [#{@query}█]" + (@open ? "\n" + @matches.map.with_index { |((label, _), _match), index| "#{index == @selected_index ? ">" : " "} #{label}" }.join("\n") : "")
       def accessibility_node(_cx) = node(:combobox, label: @label, value: @value,
         states: {expanded: @open, disabled: @disabled}, actions: @disabled ? [] : %i[focus set_value])
 
@@ -77,7 +83,7 @@ module Zaniah
         when :choose_option
           match = @matches[@selected_index]
           return false unless match
-          return choose(match[1], match[0], nil, @cx)
+          return choose(match[0][1], match[0][0], nil, @cx)
         when :dismiss then @open = false
         else return false
         end

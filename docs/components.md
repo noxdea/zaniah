@@ -59,7 +59,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L2 | `NumberInput` | TextField plus `min:`, `max:`, `step:`; `increment`, `decrement` | numeric | textbox |
 | L2 | `TagInput` | `(tags, separator:, ...)`; `on_tags_change` | badge list + editor | textbox |
 | L2 | `Select` | `(items, label:, value:, disabled:)`; `on_change` | single choice | combobox |
-| L2 | `Combobox` | `(items, value:, label:, placeholder:, disabled:)`; `on_change` | editable, filtered choices | combobox |
+| L2 | `Combobox` | `(items, value:, label:, placeholder:, disabled:, matcher:)`; `on_change` | editable, filtered choices with highlighted matches | combobox |
 | L2 | `MultiSelect` | `(items, value:, label:, disabled:)`; `on_change` | multiple selected badges | listbox |
 | L2 | `DatePicker` | `(value, min:, max:, label:, disabled:)`; `on_change` | ISO date, day/week keyboard steps | combobox |
 | L2 | `TimePicker` | `(value, step:, label:, disabled:)`; `on_change` | 24-hour time, minute/hour keyboard steps | combobox |
@@ -77,7 +77,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L3 | `Modal`, `Dialog` | `(content, title:, open:, close_on_scrim:, width:)` | focus trap, scrim, Esc | dialog/modal |
 | L3 | `Drawer` | Modal plus `side:` | left/right | dialog/modal |
 | L3 | `Toast` | `(message, variant:, queue:)`; `dismiss` | info/success/warning/danger | live status |
-| L3 | `CommandPalette` | `(commands, open:, placeholder:)` | searchable modal | dialog/list |
+| L3 | `CommandPalette` | `(commands, open:, placeholder:, matcher:)`; `.from(app.actions)` | searchable modal, Up/Down/Enter | dialog/list |
 | L3 | `SplitPane` | `(first, second, orientation:, ratio:, min:, max:)`; `on_change` | horizontal/vertical, draggable separator | group/separator |
 | L3 | `PaneGrid` | `(panes, columns:, rows:, divider_size:, minimum:, keyboard_step:)`; `replace`, `on_resize` | arbitrary resizable grid, stable pane IDs | group/separator |
 | L3 | `Resizable` | `(content, width:, height:, min_width:, min_height:, max_width:, max_height:)`; `on_resize` | drag or keyboard resize | group/separator |
@@ -99,6 +99,15 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 All input components are keyboard operable. Disabled controls remain visible but are
 removed from focus traversal. Overlay components close on Esc; modal overlays restore
 the previous focus. See [TUI](tui.md) for terminal representations.
+
+`Combobox` and `CommandPalette` default to case-insensitive substring matching in
+input order. Pass `matcher:` to either component, or set a default with
+`Zaniah.configure { |config| config.matcher = matcher }`. A matcher implements
+`match(query, labels)` and returns `UI::Matcher::Match` values with an original
+label `index`, descending `score`, and half-open UTF-8 byte `ranges` for highlighting.
+It may also implement `refine(previous_matches, query)` for incremental queries.
+`CommandPalette.from(app.actions)` uses registered action titles and disables
+unavailable actions; shortcuts will be added with `UI::Kbd` in the menu phase.
 
 `UI::RichText` accepts UTF-8 byte ranges at grapheme boundaries. Inline styles are
 `bold`, `italic`, `size`, `color`, `font`, and `link`; paragraphs support start,

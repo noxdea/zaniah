@@ -1,5 +1,8 @@
 module Zaniah
   module Input
+    module StandardActions
+      EDIT: Array[Symbol]
+    end
     type modifiers = Array[String]
     type button = :left | :middle | :right | Integer
     type context = Hash[String | Symbol, String | Symbol | Numeric | bool | nil]
@@ -12,6 +15,13 @@ module Zaniah
       attr_reader owner: Element?
       def self.new: (Bounds bounds, Element? owner) -> Hit
                   | (bounds: Bounds, owner: Element?) -> Hit
+    end
+    class HitRegion < Data
+      attr_reader bounds: Bounds
+      attr_reader owner: Element?
+      attr_reader transform: Transform
+      attr_reader clip: Bounds?
+      def contains?: (Point point) -> bool
     end
 
     class KeyDown < Data
@@ -102,10 +112,11 @@ module Zaniah
       attr_accessor on_action: (^(action) -> bool)?
       attr_accessor on_focus: (^(bool) -> void)?
       attr_accessor on_input: (^(event) -> bool)?
+      attr_accessor validate: (^(action) -> bool?)?
       attr_accessor tab_index: Integer?
       attr_accessor focusable: bool
       attr_accessor bounds: Bounds?
-      def initialize: (?parent: FocusHandle?, ?context: context, ?owner: untyped, ?tab_index: Integer?, ?focusable: bool, ?bounds: Bounds?) -> void
+      def initialize: (?parent: FocusHandle?, ?context: context, ?owner: untyped, ?tab_index: Integer?, ?focusable: bool, ?bounds: Bounds?, ?validate: (^(action) -> bool?)?) -> void
     def ancestors: () -> Array[FocusHandle]
     def parent=: (FocusHandle? value) -> FocusHandle?
     end
@@ -124,14 +135,19 @@ module Zaniah
       attr_reader focused: FocusHandle?
       attr_reader focus_origin: Symbol?
       attr_reader focus_tree: FocusTree
+      attr_accessor window: Platform::Headless::Window?
       def initialize: (?keymap: Keymap) -> void
       def focus: (FocusHandle? handle, ?origin: Symbol) -> void
       def focus_visible?: () -> bool
       def key: (String key) -> (action | :pending | nil)
+      def perform: (action action, ?source: Symbol) -> bool
+      def available?: (action action) -> (:enabled | :disabled | :unhandled)
+      def checked?: (action action) -> bool?
       def register_focus: (FocusHandle handle) -> FocusTree
       def input: (event event) -> bool
       def clear_hits: () -> void
       def hits: () -> Array[Hit]
+      def hit_regions: () -> Array[HitRegion]
       def hover_chain: (Point? position) -> Array[untyped]
       def hit: (Bounds bounds, ?clip: Bounds?, ?owner: Element?, ?transform: Transform) { (mouse_event | FileDrop) -> (bool | :capture | nil) } -> void
       def clip: [T] (Bounds bounds) { () -> T } -> T
@@ -140,9 +156,20 @@ module Zaniah
     end
     class ActionRegistry
       def initialize: () -> void
-      def register: (String | Symbol name, ?description: String | Symbol) { (*untyped) -> untyped } -> void
+      def register: (String | Symbol name, ?description: String | Symbol?, ?title: String | Symbol?, ?category: String | Symbol?, ?enabled: (^(untyped) -> bool)?, ?checked: (^(untyped) -> bool)?) ?{ (*untyped) -> untyped } -> [String | Symbol, (^(*untyped) -> untyped)?]
+      def command: (String | Symbol name) -> Command?
       def call: (String | Symbol name, *untyped args) -> untyped
       def entries: () -> Hash[String, String | Symbol]
+    end
+    class Command < Data
+      attr_reader name: String | Symbol
+      attr_reader title: String | Symbol
+      attr_reader category: String | Symbol?
+      attr_reader enabled: (^(untyped) -> bool)?
+      attr_reader checked: (^(untyped) -> bool)?
+      attr_reader handler: (^(*untyped) -> untyped)?
+      def self.new: (String | Symbol name, String | Symbol title, String | Symbol? category, (^(untyped) -> bool)? enabled, (^(untyped) -> bool)? checked, (^(*untyped) -> untyped)? handler) -> Command
+                  | (name: String | Symbol, title: String | Symbol, category: String | Symbol?, enabled: (^(untyped) -> bool)?, checked: (^(untyped) -> bool)?, handler: (^(*untyped) -> untyped)?) -> Command
     end
   end
 end

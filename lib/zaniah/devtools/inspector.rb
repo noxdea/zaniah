@@ -2,7 +2,7 @@
 
 module Zaniah
   module DevTools
-    Entry = Data.define(:object, :name, :key, :test_id, :bounds, :style, :children)
+    Entry = Inspection::Entry
 
     class Inspector
       attr_reader :window, :snapshot, :selected
@@ -32,8 +32,9 @@ module Zaniah
         true
       end
 
-      def frame(element)
-        @snapshot = collect(element)
+      def frame(_element)
+        @inspection = Inspection.snapshot(window)
+        @snapshot = @inspection.root
         return unless visible?
         @selected = hovered
         paint_highlight(@selected.bounds) if @selected&.bounds
@@ -42,33 +43,8 @@ module Zaniah
 
       private
 
-      def collect(object, seen = {})
-        return if !object || seen[object.object_id]
-        seen[object.object_id] = true
-        node = object.respond_to?(:layout_node) ? object.layout_node : nil
-        style = if object.respond_to?(:resolved_style) && object.resolved_style
-          object.resolved_style.to_h
-        elsif object.respond_to?(:root) && object.root&.respond_to?(:resolved_style) && object.root.resolved_style
-          object.root.resolved_style.to_h
-        else {}
-        end
-        children = object.respond_to?(:children) ? object.children.filter_map { |child| collect(child, seen) } : []
-        Entry.new(object: object, name: object.class.name.sub("Zaniah::", ""),
-          key: object.respond_to?(:identity_key) ? object.identity_key : nil,
-          test_id: object.respond_to?(:test_id) ? object.test_id : nil,
-          bounds: node&.bounds, style: style.freeze, children: children.freeze)
-      end
-
       def hovered
-        owner = window.dispatcher.hits.reverse.find { |hit| window.pointer_position && hit.bounds.contains?(window.pointer_position) }&.owner
-        find_entry(@snapshot, owner) || @snapshot
-      end
-
-      def find_entry(entry, object)
-        return unless entry && object
-        return entry if entry.object.equal?(object)
-        entry.children.each { |child| return found if (found = find_entry(child, object)) }
-        nil
+        @inspection.at(window.pointer_position) || @snapshot
       end
 
       def paint_highlight(bounds)

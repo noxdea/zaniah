@@ -64,6 +64,8 @@ module Zaniah
         attr_reader accessibility_tree: Accessibility::Tree
         attr_reader accessibility_revision: Integer
         attr_reader frame_stats: Hash[Symbol, Numeric]
+        attr_reader last_root: _Renderable?
+        attr_reader frame_number: Integer
         attr_accessor text_system: TextSystem::_System?
         attr_accessor ime_state: Bounds?
         attr_accessor title: String
@@ -82,12 +84,15 @@ module Zaniah
         def animation_active?: () -> bool
         def closed?: () -> bool
         def pointer_down?: () -> bool
+        def clipboard: () -> String
+        def clipboard=: (String text) -> String
         def set_cursor: (cursor style) -> cursor
         def cursor_style=: (cursor style) -> cursor
         def displays: () -> Array[Display]
         # Raises Error for backends without native physical-display placement.
         def move_to_display: (Display display) -> bool
         def popup: () -> Popup?
+        def tooltip_state: () -> { text: String, position: Point, at: Numeric, shown: bool }?
         def resize: (Numeric width, Numeric height) -> void
         def input: (Input::event event) -> void
         def offer_tooltip: (String text, position: Point, ?delay: Numeric) -> void

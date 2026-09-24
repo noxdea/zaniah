@@ -9,6 +9,7 @@ module Zaniah
       class Window < Headless::Window
         def initialize(input: $stdin, output: $stdout, **options)
           @input, @output = input, output
+          options[:keymap] ||= Input::Keymap.default_ui(platform: :tui, clock: options.fetch(:clock, MONOTONIC_CLOCK))
           super(**options)
           @text_system = TextRenderer.new
           @input_decoder = InputDecoder.new { |event| self.input(event) }
@@ -38,6 +39,13 @@ module Zaniah
         end
 
         def feed_input(bytes) = @input_decoder.feed(bytes)
+
+        def clipboard=(text)
+          super
+          @output.write("\e]52;c;#{[clipboard].pack('m0')}\a")
+          @output.flush
+          clipboard
+        end
 
         def render(element, **options)
           super(element, **options, present: false)

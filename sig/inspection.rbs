@@ -1,0 +1,57 @@
+module Zaniah
+  def self.bundled_font_path: () -> String
+
+  module Inspection
+    class Entry < Data
+      # The element is a live reference and is valid only until the next frame.
+      attr_reader element: _Renderable
+      attr_reader type: String
+      attr_reader key: untyped
+      attr_reader test_id: String?
+      attr_reader bounds: Bounds?
+      attr_reader style: Hash[Symbol, untyped]
+      attr_reader tooltip: String?
+      attr_reader context_menu: Array[[String, bool]]?
+      attr_reader handlers: Array[Symbol]
+      attr_reader focusable: bool
+      attr_reader focused: bool
+      attr_reader children: Array[Entry]
+      def name: () -> String
+      def object: () -> _Renderable
+      def focusable?: () -> bool
+      def focused?: () -> bool
+    end
+
+    class Overlays < Data
+      attr_reader tooltip: Hash[Symbol, untyped]?
+      attr_reader popup: Platform::Headless::Popup?
+      attr_reader menu: untyped
+    end
+
+    class FrameInfo < Data
+      attr_reader number: Integer
+      attr_reader stats: Hash[Symbol, Numeric]
+    end
+
+    class AccessibilitySnapshot < Data
+      attr_reader root: Accessibility::Node?
+      def query: (?role: Symbol?, ?label: String | Regexp?, ?states: Hash[Symbol, untyped]) -> Array[[Accessibility::Node, Array[Integer]]]
+    end
+
+    class Snapshot < Data
+      attr_reader root: Entry?
+      attr_reader overlays: Overlays
+      attr_reader text_runs: Array[Platform::text_run]
+      attr_reader frame: FrameInfo
+      attr_reader accessibility: AccessibilitySnapshot
+      attr_reader hits: Array[Input::HitRegion]
+      def find: (?test_id: String?, ?type: Class | String?) -> Entry?
+      def where: (?test_id: String?, ?type: Class | String?) -> Array[Entry]
+      def at: (Point? point) -> Entry?
+    end
+
+    def self.snapshot: (Platform::Headless::Window window) -> Snapshot
+    def self.idle?: (App app) -> bool
+    def self.perform: (Platform::Headless::Window window, Accessibility::Node? node, Symbol action) -> bool
+  end
+end

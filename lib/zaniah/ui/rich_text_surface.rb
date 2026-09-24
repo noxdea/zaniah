@@ -16,8 +16,9 @@ module Zaniah
           on_mouse_down { |event, _cx| begin_selection(event) }
           on_drag { |event, _cx| extend_selection(event) }
         end
-        focusable(context: owner.editable? ? {in_text_field: true} : {in_text: true}) do |action|
-          owner.editable? ? owner.text_action(action) : action == :select_all && select_all
+        focusable(context: {in_text_field: true, in_text: !owner.editable?, multiline: true},
+          validate: ->(action) { owner.validate_text_action(action) }) do |action|
+          owner.text_action(action)
         end
         @focus_handle.on_input = ->(event) { owner.input(event) }
       end
@@ -290,12 +291,6 @@ module Zaniah
       def word_selection(offset)
         range = Unicode.word_range_at(@owner.text, [offset, @owner.text.bytesize].min)
         TextSelection.new(range.begin, range.end)
-      end
-
-      def select_all
-        @owner.selection = TextSelection.new(0, @owner.text.bytesize)
-        @owner.instance_variable_get(:@cx)&.window&.request_frame
-        true
       end
     end
   end

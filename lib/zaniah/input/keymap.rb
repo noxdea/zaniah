@@ -6,6 +6,10 @@ require_relative "context_predicate"
 
 module Zaniah
   module Input
+    module StandardActions
+      EDIT = %i[undo redo cut copy paste select_all].freeze
+    end
+
     class Keymap
       class << self
         def default_ui(platform: RUBY_PLATFORM, **options)
@@ -13,8 +17,11 @@ module Zaniah
         end
 
         def platform_defaults(platform, **options)
-          primary = platform.to_s.match?(/darwin|mac/) ? "cmd" : "ctrl"
-          new(**options)
+          mac = platform.to_s.match?(/darwin|mac/)
+          windows = platform.to_s.match?(/mingw|mswin|windows/)
+          tui = platform.to_s == "tui"
+          primary = mac ? "cmd" : "ctrl"
+          map = new(**options)
             .bind("tab", :focus_next)
             .bind("shift-tab", :focus_previous)
             .bind("left", :focus_left, context: "!in_text_field && !in_list")
@@ -30,7 +37,6 @@ module Zaniah
             .bind("pagedown", :page_down, context: "in_list")
             .bind("up", :previous_option, context: "in_list")
             .bind("down", :next_option, context: "in_list")
-            .bind("#{primary}-a", :select_all, context: "in_text_field || in_list")
             .bind("left", :move_left, context: "in_text_field")
             .bind("right", :move_right, context: "in_text_field")
             .bind("shift-left", :select_left, context: "in_text_field")
@@ -73,7 +79,6 @@ module Zaniah
             .bind("end", :last, context: "in_table")
             .bind("pageup", :page_up, context: "in_table")
             .bind("pagedown", :page_down, context: "in_table")
-            .bind("#{primary}-a", :select_all, context: "in_table")
             .bind("up", :previous_option, context: "in_grid")
             .bind("down", :next_option, context: "in_grid")
             .bind("left", :previous_column, context: "in_grid")
@@ -85,17 +90,38 @@ module Zaniah
             .bind("home", :first, context: "in_grid")
             .bind("end", :last, context: "in_grid")
             .bind("enter", :activate, context: "in_grid")
-            .bind("#{primary}-a", :select_all, context: "in_grid")
             .bind("up", :previous_option, context: "in_combobox")
             .bind("down", :next_option, context: "in_combobox")
             .bind("home", :first, context: "in_combobox")
             .bind("end", :last, context: "in_combobox")
             .bind("enter", :choose_option, context: "in_combobox")
             .bind("esc", :dismiss, context: "in_combobox")
+            .bind("up", :previous_option, context: "in_palette")
+            .bind("down", :next_option, context: "in_palette")
+            .bind("enter", :choose_option, context: "in_palette")
             .bind("left", :previous_option, context: "in_chart")
             .bind("right", :next_option, context: "in_chart")
             .bind("home", :first, context: "in_chart")
             .bind("end", :last, context: "in_chart")
+            .bind("up", :line_up, context: "in_text_field && multiline")
+            .bind("down", :line_down, context: "in_text_field && multiline")
+          return map if tui
+
+          word = mac ? "alt" : "ctrl"
+          map.bind("#{primary}-a", :select_all)
+            .bind("#{primary}-z", :undo)
+            .bind("#{primary}-shift-z", :redo)
+            .bind("#{primary}-x", :cut)
+            .bind("#{primary}-c", :copy)
+            .bind("#{primary}-v", :paste)
+            .bind("#{word}-left", :word_left, context: "in_text_field")
+            .bind("#{word}-right", :word_right, context: "in_text_field")
+            .bind("#{word}-shift-left", :select_word_left, context: "in_text_field")
+            .bind("#{word}-shift-right", :select_word_right, context: "in_text_field")
+            .bind(mac ? "cmd-up" : "ctrl-home", :document_start, context: "in_text_field")
+            .bind(mac ? "cmd-down" : "ctrl-end", :document_end, context: "in_text_field")
+          map.bind("ctrl-y", :redo) if windows
+          map
         end
       end
 

@@ -28,6 +28,7 @@ class DevToolsTest < Minitest::Test
     @window.tick
     refute inspector.visible?
     assert_equal "Div", inspector.snapshot.name
+    assert_same @window.last_root, inspector.snapshot.object
     assert_operator @window.frame_stats[:command_count], :>, 0
 
     @window.input(Zaniah::Input::KeyDown.new("f12", false))

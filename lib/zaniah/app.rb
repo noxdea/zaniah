@@ -7,13 +7,14 @@ require_relative "task_executor"
 
 module Zaniah
   class App
-    attr_reader :windows, :executor
+    attr_reader :windows, :executor, :actions
 
     def initialize(clock: MONOTONIC_CLOCK)
       @slots, @generations, @free, @windows, @globals = [], [], [], [], {theme: Theme.dark}
       @listeners, @effects, @updating, @flushing = {}, [], 0, false
       @clock = clock
       @executor = TaskExecutor.new(clock: clock)
+      @actions = Input::ActionRegistry.new
     end
 
     def new_entity
@@ -107,6 +108,7 @@ module Zaniah
       options[:clock] ||= @clock
       window = Platform.open_window(**options)
       window.app = self
+      window.dispatcher.window = window
       @windows << window
       @globals[:theme] = platform_theme(window)
       window.on_appearance do |appearance|

@@ -20,7 +20,7 @@ tests and non-window integrations.
 | Tabs, Accordion, Collapsible | selected tab in brackets and `[+]`/`[-]` disclosure markers |
 | ScrollView, Scrollbar | clipped child content and `│`/`─` track |
 | Breadcrumb, Pagination, bars | slash-separated path, page status, space-separated content |
-| Modal, Dialog, Drawer, CommandPalette | box-drawing overlay; focus stays inside until dismissed |
+| Modal, Dialog, Drawer, CommandPalette | box-drawing overlay; palette filters results and supports Up/Down/Enter; focus stays inside until dismissed |
 | SplitPane, PaneGrid, Resizable, DockPanel | `│`/`─` separators, resize corner, or ordered dock regions |
 | ListView | visible rows with `>` on the selected item |
 | Toast | live status text |

@@ -36,6 +36,15 @@ module Zaniah
 
       def find(&predicate) = each.find { |node, _path| predicate.call(node) }&.first
 
+      def query(role: nil, label: nil, states: {})
+        raise ArgumentError, "label must be a String or Regexp" unless label.nil? || label.is_a?(String) || label.is_a?(Regexp)
+        each.select do |node, _path|
+          (role.nil? || node.role == role) &&
+            (label.nil? || (node.label && (label.is_a?(Regexp) ? label.match?(node.label) : node.label == label))) &&
+            states.all? { |key, value| node.states.key?(key) && node.states[key] == value }
+        end
+      end
+
       def perform(node, action)
         owner = @action_owners&.[](node.object_id)
         owner&.accessibility_action(node, action)

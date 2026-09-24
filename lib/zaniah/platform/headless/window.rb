@@ -9,7 +9,7 @@ module Zaniah
         include Appearance
         DEFAULT_CLEAR = "#181b20"
 
-        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style, :animator, :clock, :accessibility_tree, :accessibility_revision, :frame_stats
+        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style, :animator, :clock, :accessibility_tree, :accessibility_revision, :frame_stats, :last_root, :frame_number
         attr_accessor :text_system, :ime_state, :title, :app, :devtools
 
         def initialize(width: 800, height: 600, title: "Zaniah UI", scale_factor: 1,
@@ -23,6 +23,7 @@ module Zaniah
           @accessibility_tree, @accessibility_revision = Accessibility::Tree.new, 0
           @frame_stats = {fps: 0.0, frame_ms: 0.0, layout_ms: 0.0, prepaint_ms: 0.0, paint_ms: 0.0, command_count: 0}.freeze
           @state, @used_state, @text_runs = {}, {}, []
+          @last_root, @frame_number = nil, 0
           @dirty, @closed, @pointer_down, @cursor_style = true, false, false, :arrow
         end
 
@@ -38,6 +39,10 @@ module Zaniah
         def animation_active? = !!@animator&.active?
         def closed? = @closed
         def pointer_down? = @pointer_down
+        def clipboard = @clipboard.to_s
+        def clipboard=(text)
+          @clipboard = text.to_s
+        end
         def set_cursor(style)
           raise ArgumentError, "unknown cursor #{style}" unless %i[arrow text pointer crosshair resize_horizontal resize_vertical].include?(style)
           return style if @cursor_style == style
@@ -64,6 +69,8 @@ module Zaniah
                     enabled: @menu[:items].map { |_, callback| !callback.nil? }.freeze,
                     selected_index: @menu[:index], bounds: popup_bounds(@menu))
         end
+
+        def tooltip_state = @tooltip&.merge(text: @tooltip[:text].dup.freeze)&.freeze
 
         def resize(width, height)
           @content_size = Size.new(width, height)
@@ -173,6 +180,8 @@ module Zaniah
             prepaint_ms: (prepaint_finished - layout_finished) * 1000,
             paint_ms: (paint_finished - prepaint_finished) * 1000,
             command_count: @scene.commands.length / 4}.freeze
+          @last_root = element
+          @frame_number += 1
           @on_frame&.call(element, clear)
           @device.render(@scene, clear: clear) if present
           @text_system.end_frame if @text_system.respond_to?(:end_frame)

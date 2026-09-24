@@ -43,10 +43,12 @@ module Zaniah
     def opacity: (Numeric value) -> self
     def ring: (Numeric width, ?(color?) color, ?Numeric offset) -> self
     def cursor: (Platform::cursor value) -> self
-    def focusable: (?tab_index: Integer, ?context: Input::context) ?{ (Input::action) -> bool } -> self
+    def focusable: (?tab_index: Integer, ?context: Input::context, ?validate: (^(Input::action) -> bool?)?) ?{ (Input::action) -> bool } -> self
     def focus_handle: () -> Input::FocusHandle?
     def tooltip: (String text) -> self
+    def tooltip_text: () -> String?
     def context_menu: (menu items) -> self
+    def context_menu_items: () -> menu?
     def flex: () -> self
     def flex_row: () -> self
     def flex_col: () -> self

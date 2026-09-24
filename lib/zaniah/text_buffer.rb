@@ -14,6 +14,8 @@ module Zaniah
 
     def to_s = @text.dup
     def bytesize = @text.bytesize
+    def can_undo? = !@undo.empty?
+    def can_redo? = !@redo.empty?
 
     def insert(offset, string)
       change(offset...offset, string, :insert)
