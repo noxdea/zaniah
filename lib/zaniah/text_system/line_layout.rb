@@ -7,7 +7,7 @@ module Zaniah
 
       def self.new(*values, **keywords)
         if keywords.any?
-          values = self.class.members.map { |name| keywords.fetch(name, nil) }
+          values = members.map { |name| keywords.fetch(name, nil) }
         end
         raise ArgumentError, "expected seven to nine line layout members" unless (7..9).cover?(values.length)
         values << nil if values.length == 7
