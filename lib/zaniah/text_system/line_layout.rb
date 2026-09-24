@@ -3,7 +3,9 @@
 module Zaniah
   module TextSystem
     LineLayout = Data.define(:text, :glyphs, :width, :ascent, :descent, :size, :carets, :visual_carets, :writing_mode) do
-      def initialize(*values, **keywords)
+      singleton_class.alias_method(:raw_new, :new)
+
+      def self.new(*values, **keywords)
         if keywords.any?
           values = self.class.members.map { |name| keywords.fetch(name, nil) }
         end
@@ -12,14 +14,7 @@ module Zaniah
         values << :horizontal_tb if values.length == 8
         values[8] ||= :horizontal_tb
         raise ArgumentError, "writing mode must be horizontal_tb or vertical_rl" unless %i[horizontal_tb vertical_rl].include?(values.last)
-        if Data == Struct
-          super(*values)
-        else
-          super(text: values[0], glyphs: values[1], width: values[2], ascent: values[3],
-            descent: values[4], size: values[5], carets: values[6],
-            visual_carets: values[7], writing_mode: values[8])
-        end
-        freeze
+        raw_new(*values)
       end
 
       def index_for_x(x)
