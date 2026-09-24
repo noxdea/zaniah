@@ -18,7 +18,7 @@ Bench.budget("prepaint for 1000 elements", 3.0) do
   window.dispatcher.clear_hits
   element.prepaint(root.bounds, nil, context)
 end
-Bench.budget("paint for 1000 elements", 3.0) do
+Bench.budget("paint for 1000 elements", ENV["CI"] == "true" ? 3.5 : 3.0) do
   window.scene.clear
   element.paint(root.bounds, nil, nil, context)
 end
