@@ -1,0 +1,31 @@
+module Zaniah
+  class Menu
+    class Item < Data
+      attr_reader action: Symbol | String?
+      attr_reader title: String?
+      attr_reader shortcut: String?
+      attr_reader role: Symbol?
+      attr_reader children: Array[Item]
+      attr_reader dynamic: (^( ) -> Array[Item] | Menu)?
+      def separator?: () -> bool
+      def submenu?: () -> bool
+    end
+
+    class Builder
+      attr_reader items: Array[Item]
+      def initialize: (?owner: untyped) -> void
+      def item: (Symbol | String action, ?title: String?, ?shortcut: String?, ?role: Symbol?) -> self
+      def submenu: (String title, ?items: (^( ) -> Array[Item] | Menu)?) ?{ () -> untyped } -> self
+      def separator: () -> self
+      def app_menu: () -> self
+      def window_menu: () -> self
+      def standard_edit_items: () -> self
+    end
+
+    attr_reader items: Array[Item]
+    def self.build: () { () -> untyped } -> Menu
+    def initialize: (Array[Item] items) -> void
+    def resolve: (?registry: Input::ActionRegistry?, ?keymap: Input::Keymap?, ?platform: String | Symbol) -> Array[Item]
+    def children_for: (Item item, ?registry: Input::ActionRegistry?, ?keymap: Input::Keymap?, ?platform: String | Symbol) -> Array[Item]
+  end
+end

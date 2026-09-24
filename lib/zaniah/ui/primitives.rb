@@ -31,6 +31,47 @@ module Zaniah
       def accessibility_node(_cx) = node(:text, label: @text)
     end
 
+    class Kbd < Component
+      MAC_MODIFIERS = {"cmd" => "⌘", "ctrl" => "⌃", "alt" => "⌥", "shift" => "⇧"}.freeze
+      MODIFIERS = {"cmd" => "Super", "ctrl" => "Ctrl", "alt" => "Alt", "shift" => "Shift"}.freeze
+      KEYS = {"esc" => "Esc", "enter" => "Enter", "space" => "Space", "tab" => "Tab",
+              "left" => "←", "right" => "→", "up" => "↑", "down" => "↓"}.freeze
+
+      attr_reader :keys, :platform
+
+      def self.for(action, keymap:, platform: RUBY_PLATFORM)
+        keys = keymap.shortcut_for(action)
+        keys && new(keys, platform: platform)
+      end
+
+      def initialize(keys, platform: RUBY_PLATFORM)
+        super()
+        @keys = (keys.is_a?(Array) ? keys.join(" ") : keys.to_s).split.map { |key| Input::Keystroke.normalize(key) }.freeze
+        @platform = platform
+      end
+
+      def build(cx)
+        Div.new.flex_row.items_center.p([2, 5]).bg(cx.theme.colors.surface_hover)
+          .border(1).border_color(cx.theme.colors.border).rounded(cx.theme.radii[:sm])
+          .child(Text.new(display, size: cx.theme.typography.size_xs, color: cx.theme.colors.text_muted))
+      end
+
+      def tui_cells(*) = @keys.map { |key| format_key(key, mac: false) }.join(" ")
+      def accessibility_node(_cx) = node(:text, label: tui_cells)
+
+      private
+
+      def display = @keys.map { |key| format_key(key, mac: @platform.to_s.match?(/darwin|mac/)) }.join(" ")
+
+      def format_key(key, mac:)
+        parts = key.end_with?("-") ? key.delete_suffix("-").split("-") : key.split("-")
+        base = key.end_with?("-") ? "-" : parts.pop
+        return (parts.sort_by { |part| %w[cmd ctrl alt shift].index(part) || 4 }.map { |part| MAC_MODIFIERS.fetch(part) }.join + (KEYS[base] || base.upcase)) if mac
+
+        (parts.sort_by { |part| %w[cmd ctrl alt shift].index(part) || 4 }.map { |part| MODIFIERS.fetch(part) } + [KEYS[base] || base.upcase]).join("+")
+      end
+    end
+
     class Icon < Component
       GLYPHS = {check: "✓", close: "×", search: "⌕", menu: "☰", info: "ⓘ", warning: "⚠"}.freeze
 

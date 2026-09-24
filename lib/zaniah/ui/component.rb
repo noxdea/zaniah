@@ -18,6 +18,11 @@ module Zaniah
       def paint_style(**properties) = (@root.paint_style(**properties); self)
       def test_id(value = (getter = true)) = getter ? @test_id : (@test_id = value.to_s.freeze; self)
       def style(**properties) = (@component_style.merge!(properties); self)
+      def window_control(kind)
+        raise ArgumentError, "unknown window control" unless Element::WINDOW_CONTROLS.include?(kind)
+        @window_control = kind
+        self
+      end
       def accessibility_node(_cx) = nil
       def tui_cells(_bounds = nil, _cx = nil) = nil
       def focus_handle = @root&.focus_handle
@@ -44,6 +49,7 @@ module Zaniah
         @root.key(@key) if @key && @root.respond_to?(:key)
         @root.test_id(@test_id) if @test_id && @root.respond_to?(:test_id)
         @root.style(**@component_style) if !@component_style.empty? && @root.respond_to?(:style)
+        @root.window_control(@window_control) if @window_control
         @root.send(:parent=, self) if @root.respond_to?(:parent=, true)
         @layout_node = @root.request_layout(cx)
       end
@@ -52,7 +58,7 @@ module Zaniah
         @bounds = bounds
         @root.prepaint(bounds, state, cx)
         if @restore_focus && (handle = focus_handle)
-          cx.dispatcher.focus(handle, origin: @restore_origin)
+          cx.dispatcher.focus(handle, origin: @restore_origin) if cx.dispatcher.focus_tree.allows?(handle)
           @restore_focus = false
         end
       end

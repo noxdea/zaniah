@@ -49,6 +49,7 @@ module Zaniah
 
       def restore = @traps.pop
       def release_trap(handle) = @traps.delete(handle)
+      def allows?(handle) = @traps.empty? || handle.ancestors.include?(@traps.last)
 
       private
 

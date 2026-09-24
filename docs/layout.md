@@ -75,6 +75,27 @@ apply a validated batch with a single frame request; `row_hidden?` and
 destination areas; the application owns cell values and fill semantics. Shift
 extends a range; Cmd/Ctrl-click toggles an additional cell range.
 
+Copy and paste are opt-in: the grid never owns cell values. `on_copy` receives
+the selected `Grid::Area` values and returns MIME-keyed content, which Zaniah
+writes to the clipboard. `on_paste` receives the same half-open areas and all
+available clipboard formats; the application decides how to apply them.
+Without the corresponding hook, the action is unhandled. With a hook but no
+selection, the action is disabled.
+
+```ruby
+grid.on_copy do |areas, _cx|
+  {"text/plain" => cells_as_tsv(areas), "text/html" => cells_as_html(areas)}
+end
+grid.on_paste do |areas, content, _cx|
+  paste_cells(areas, content.fetch("text/plain")) if content.types.include?("text/plain")
+end
+```
+
+`UI::Table` and `UI::DataGrid` use the same hooks. Their existing `selection`
+remains a set of stable row IDs; hook arguments are `Grid::Area` ranges in the
+current sorted display order, covering all columns. Disjoint selected rows
+produce separate areas. The application retains ownership of table data.
+
 `bench/grid.rb` measures a headless 800×600 viewport over a 1,000,000×16,000
 grid at 23 sequential scroll positions, including cell construction, layout,
 prepaint, and paint. `BUDGET=1 ruby bench/grid.rb` asserts a 16.67 ms median

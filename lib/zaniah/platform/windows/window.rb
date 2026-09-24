@@ -3,6 +3,8 @@
 require "fiddle/import"
 require_relative "../../ffi/library"
 require_relative "../../gpu/open_gl"
+require_relative "clipboard_data"
+require_relative "native_menu"
 
 module Zaniah
   module Platform
@@ -67,9 +69,12 @@ module Zaniah
           definition.cursor = @user.fn(:LoadCursorW, [P, P], P).call(0, 32512)
           raise Error, "RegisterClassExW failed" if @user.fn(:RegisterClassExW, [P], I).call(definition).zero?
           @instance = instance
-          @handle = @user.fn(:CreateWindowExW, [U, P, P, U, I, I, I, I, P, P, P, P], P).call(0, @class_name, wide(@title), 0x00CF0000, 100, 100, content_size.width.to_i, content_size.height.to_i, 0, 0, instance, 0)
+          style = decorations == :none ? (resizable ? 0x800F0000 : 0x80080000) : 0x00CF0000
+          style &= ~0x00050000 unless resizable
+          @handle = @user.fn(:CreateWindowExW, [U, P, P, U, I, I, I, I, P, P, P, P], P).call(transparent ? 0x00080000 : 0, @class_name, wide(@title), style, 100, 100, content_size.width.to_i, content_size.height.to_i, 0, 0, instance, 0)
           raise Error, "CreateWindowExW failed" if @handle.null?
           INSTANCES[@handle.to_i] = self
+          @native_menu = NativeMenu.new(self, @user)
           @scale_factor = @user.fn(:GetDpiForWindow, [P], U).call(@handle) / 96.0
           client = "\0" * 16
           @user.fn(:GetClientRect, [P, P], I).call(@handle, client)
@@ -117,6 +122,7 @@ module Zaniah
           @user.fn(:SetWindowTextW, [P, P], I).call(@handle, wide(title)) if @handle
         end
         def tick
+          @native_menu.sync(app&.menu_bar)
           event = "\0" * 48
           while !closed? && @user.fn(:PeekMessageW, [P, P, U, U, U], I).call(event, 0, 0, 0, 1) != 0
             @user.fn(:TranslateMessage, [P], I).call(event)
@@ -146,6 +152,18 @@ module Zaniah
         def message(message, wparam, lparam)
           case message
           when 0x0010 then close; return 0
+          when 0x0116 then return 0 if @native_menu&.prepare(wparam, 0) # WM_INITMENU
+          when 0x0111 then return 0 if @native_menu&.command(wparam, lparam) # WM_COMMAND
+          when 0x0117 then return 0 if @native_menu&.prepare(wparam, lparam) # WM_INITMENUPOPUP
+          when 0x0083 then return 0 if decorations == :hidden_titlebar && !wparam.zero? # WM_NCCALCSIZE
+          when 0x0084
+            region = native_window_region(lparam)
+            return region if region
+          when 0x0024
+            if min_size && !lparam.zero?
+              Fiddle::Pointer.new(lparam)[24, 8] = [(min_size.width * @scale_factor).round, (min_size.height * @scale_factor).round].pack("l2")
+              return 0
+            end
           when 0x003d
             result = Accessibility::Windows.provider_result(self, wparam, lparam)
             return result if result
@@ -158,7 +176,9 @@ module Zaniah
           when 0x0005
             width, height = lparam & 0xffff, (lparam >> 16) & 0xffff
             resize(width / @scale_factor, height / @scale_factor) if width.positive? && height.positive?
-          when 0x0003 then @on_moved&.call([signed16(lparam), signed16(lparam >> 16)])
+          when 0x0003
+            @on_moved&.call([signed16(lparam) / @scale_factor, signed16(lparam >> 16) / @scale_factor])
+            notify_state_change
           when 0x02e0
             @scale_factor = (wparam & 0xffff) / 96.0
             left, top, right, bottom = Fiddle::Pointer.new(lparam)[0, 16].unpack("l4")
@@ -211,6 +231,27 @@ module Zaniah
           @user.fn(:DefWindowProcW, [P, U, N, N], N).call(@handle, message, wparam, lparam)
         end
         def signed16(number) = (number & 0xffff) >= 0x8000 ? (number & 0xffff) - 0x10000 : number & 0xffff
+        def native_window_region(lparam)
+          return if decorations == :native
+          point = [signed16(lparam), signed16(lparam >> 16)].pack("l2")
+          return if @user.fn(:ScreenToClient, [P, P], I).call(@handle, point).zero?
+          x, y = point.unpack("l2").map { |value| value / @scale_factor }
+          if resizable
+            edge = 8
+            left, right = x < edge, x >= content_size.width - edge
+            top, bottom = y < edge, y >= content_size.height - edge
+            return 13 if top && left
+            return 14 if top && right
+            return 16 if bottom && left
+            return 17 if bottom && right
+            return 10 if left
+            return 11 if right
+            return 12 if top
+            return 15 if bottom
+          end
+          region = window_region_at(Point.new(x, y))
+          {drag: 2, minimize: 8, maximize: 9, restore: 9, close: 20}[region]
+        end
         def commit_character(code)
           input(Input::TextInput.new(code.chr(Encoding::UTF_8))) if code >= 32 && code != 127 && code <= 0x10ffff
         end
@@ -259,33 +300,145 @@ module Zaniah
             @imm.fn(:ImmSetCandidateWindow, [P, P], I).call(context, candidate)
           end
         end
-        def clipboard
+        def clipboard = read_clipboard(types: ["text/plain"]).formats.fetch("text/plain", "")
+        def clipboard=(text)
+          value = text.to_s
+          write_clipboard([Clipboard::Item.new("text/plain" => value)])
+          value
+        end
+
+        def write_clipboard(items)
+          stored = super
+          formats = {}
+          stored.each { |item| item.formats.each { |type, data| formats[type] ||= data } }
+          allocated = []
+          begin
+            formats.each do |type, data|
+              format, bytes = clipboard_payload(type, data)
+              allocated << [format, clipboard_memory(bytes)]
+            end
+            with_clipboard do
+              raise Error, "EmptyClipboard failed" if @user.fn(:EmptyClipboard, [], I).call.zero?
+              allocated.each do |entry|
+                raise Error, "SetClipboardData failed" if @user.fn(:SetClipboardData, [U, P], P).call(*entry).null?
+                entry[1] = nil # SetClipboardData owns this HGLOBAL from here onward.
+              end
+            end
+          ensure
+            allocated.each { |_, memory| @kernel.fn(:GlobalFree, [P], P).call(memory) if memory }
+          end
+          stored
+        end
+
+        def read_clipboard(types:)
+          raise TypeError, "clipboard types must be an Array" unless types.is_a?(Array)
           with_clipboard do
-            memory = @user.fn(:GetClipboardData, [U], P).call(13)
-            next "" if memory.null?
-            pointer = @kernel.fn(:GlobalLock, [P], P).call(memory)
-            next "" if pointer.null?
-            size = @kernel.fn(:GlobalSize, [P], Fiddle::TYPE_SIZE_T).call(memory)
-            values = pointer[0, size].unpack("v*").take_while { |value| !value.zero? }
-            @kernel.fn(:GlobalUnlock, [P], I).call(memory)
-            values.pack("v*").force_encoding("UTF-16LE").encode("UTF-8", invalid: :replace)
+            formats = {}
+            types.each do |type|
+              data = read_clipboard_type(type)
+              formats[type] = data if data
+            end
+            Clipboard::Content.new(formats)
           end
         end
-        def clipboard=(text)
-          bytes = wide(text)
+
+        def clipboard_types
           with_clipboard do
-            memory = @kernel.fn(:GlobalAlloc, [U, Fiddle::TYPE_SIZE_T], P).call(2, bytes.bytesize)
-            raise NoMemoryError, "clipboard allocation failed" if memory.null?
-            pointer = @kernel.fn(:GlobalLock, [P], P).call(memory)
-            pointer[0, bytes.bytesize] = bytes
-            @kernel.fn(:GlobalUnlock, [P], I).call(memory)
-            @user.fn(:EmptyClipboard, [], I).call
-            result = @user.fn(:SetClipboardData, [U, P], P).call(13, memory)
-            if result.null?
-              @kernel.fn(:GlobalFree, [P], P).call(memory)
-              raise Error, "SetClipboardData failed"
+            types = []
+            format = 0
+            loop do
+              format = @user.fn(:EnumClipboardFormats, [U], U).call(format)
+              break if format.zero?
+              type = clipboard_type_name(format)
+              types << type if type && !types.include?(type)
             end
+            types.freeze
           end
+        end
+
+        def clipboard_payload(type, data)
+          case type
+          when "text/plain" then [13, wide(data)]
+          when "text/html" then [clipboard_format("HTML Format"), ClipboardData.format_html(data) + "\0".b]
+          when "image/png" then [clipboard_format("PNG"), data]
+          when "text/uri-list"
+            paths = ClipboardData.file_paths(data)
+            paths ? [15, ClipboardData.hdrop(paths)] : [clipboard_format(type), data]
+          else [clipboard_format(type), data]
+          end
+        end
+
+        def clipboard_format(name)
+          @clipboard_formats ||= {}
+          @clipboard_formats[name] ||= begin
+            format = @user.fn(:RegisterClipboardFormatW, [P], U).call(wide(name))
+            raise Error, "RegisterClipboardFormatW failed for #{name}" if format.zero?
+            format
+          end
+        end
+
+        def clipboard_memory(bytes)
+          memory = @kernel.fn(:GlobalAlloc, [U, Fiddle::TYPE_SIZE_T], P).call(2, [bytes.bytesize, 1].max)
+          raise NoMemoryError, "clipboard allocation failed" if memory.null?
+          begin
+            pointer = @kernel.fn(:GlobalLock, [P], P).call(memory)
+            raise Error, "GlobalLock failed" if pointer.null?
+            pointer[0, bytes.bytesize] = bytes unless bytes.empty?
+            pointer[0, 1] = "\0" if bytes.empty?
+            @kernel.fn(:GlobalUnlock, [P], I).call(memory)
+            memory
+          rescue StandardError
+            @kernel.fn(:GlobalFree, [P], P).call(memory)
+            raise
+          end
+        end
+
+        def read_clipboard_type(type)
+          case type
+          when "text/plain"
+            data = clipboard_bytes(13)
+            data&.unpack("v*")&.take_while { |value| !value.zero? }&.pack("v*")&.force_encoding(Encoding::UTF_16LE)&.encode(Encoding::UTF_8, invalid: :replace)
+          when "text/html"
+            data = clipboard_bytes(clipboard_format("HTML Format"))
+            ClipboardData.parse_html(data) if data
+          when "image/png"
+            clipboard_bytes(clipboard_format("PNG")) || begin
+              data = clipboard_bytes(17)
+              ClipboardData.dibv5_to_png(data) if data
+            end
+          when "text/uri-list"
+            paths = clipboard_paths_open
+            paths.empty? ? clipboard_bytes(clipboard_format(type))&.force_encoding(Encoding::UTF_8)&.scrub : ClipboardData.uri_list(paths)
+          else
+            data = clipboard_bytes(clipboard_format(type))
+            type.start_with?("text/") ? data&.force_encoding(Encoding::UTF_8)&.scrub : data
+          end
+        rescue ArgumentError
+          nil # Ignore a malformed format supplied by another application.
+        end
+
+        def clipboard_bytes(format)
+          memory = @user.fn(:GetClipboardData, [U], P).call(format)
+          return nil if memory.null?
+          pointer = @kernel.fn(:GlobalLock, [P], P).call(memory)
+          return nil if pointer.null?
+          size = @kernel.fn(:GlobalSize, [P], Fiddle::TYPE_SIZE_T).call(memory)
+          pointer[0, size].b
+        ensure
+          @kernel.fn(:GlobalUnlock, [P], I).call(memory) if pointer && !pointer.null?
+        end
+
+        def clipboard_type_name(format)
+          return "text/plain" if format == 13
+          return "text/uri-list" if format == 15
+          return "image/png" if format == 17
+          bytes = "\0".b * 1024
+          length = @user.fn(:GetClipboardFormatNameW, [U, P, I], I).call(format, bytes, bytes.bytesize / 2)
+          return nil if length.zero?
+          name = bytes.byteslice(0, length * 2).force_encoding(Encoding::UTF_16LE).encode(Encoding::UTF_8)
+          return "text/html" if name == "HTML Format"
+          return "image/png" if name == "PNG"
+          name if name.match?(%r{\A[^\s/]+/[^\s/]+\z})
         end
         def with_clipboard
           raise Error, "clipboard is busy" if @user.fn(:OpenClipboard, [P], I).call(@handle).zero?
@@ -296,16 +449,17 @@ module Zaniah
           end
         end
         def clipboard_paths
-          with_clipboard do
-            drop = @user.fn(:GetClipboardData, [U], P).call(15)
-            next [] if drop.null?
-            count = @shell.fn(:DragQueryFileW, [P, U, P, U], U).call(drop, 0xffffffff, 0, 0)
-            Array.new(count) do |i|
-              size = @shell.fn(:DragQueryFileW, [P, U, P, U], U).call(drop, i, 0, 0)
-              bytes = "\0" * ((size + 1) * 2)
-              @shell.fn(:DragQueryFileW, [P, U, P, U], U).call(drop, i, bytes, size + 1)
-              bytes.byteslice(0, size * 2).force_encoding("UTF-16LE").encode("UTF-8")
-            end
+          with_clipboard { clipboard_paths_open }
+        end
+        def clipboard_paths_open
+          drop = @user.fn(:GetClipboardData, [U], P).call(15)
+          return [] if drop.null?
+          count = @shell.fn(:DragQueryFileW, [P, U, P, U], U).call(drop, 0xffffffff, 0, 0)
+          Array.new(count) do |i|
+            size = @shell.fn(:DragQueryFileW, [P, U, P, U], U).call(drop, i, 0, 0)
+            bytes = "\0" * ((size + 1) * 2)
+            @shell.fn(:DragQueryFileW, [P, U, P, U], U).call(drop, i, bytes, size + 1)
+            bytes.byteslice(0, size * 2).force_encoding("UTF-16LE").encode("UTF-8")
           end
         end
         def dropped_files(drop)
@@ -337,6 +491,7 @@ module Zaniah
         end
         def on_appearance(&block) = @on_appearance = block
         def context_menu(items, position: nil)
+          return context_model_menu(items, position) if items.is_a?(Zaniah::Menu)
           return super(items, position: position || Point.new(0, 0)) if defined?(Zaniah::UI::ContextMenu)
           menu = @user.fn(:CreatePopupMenu, [], P).call
           raise Error, "CreatePopupMenu failed" if menu.null?
@@ -350,6 +505,45 @@ module Zaniah
           items[selected - 1][1]&.call if selected.positive?
         ensure
           @user.fn(:DestroyMenu, [P], I).call(menu) if menu && !menu.null?
+        end
+        def context_model_menu(model, position)
+          menu = @user.fn(:CreatePopupMenu, [], P).call
+          raise Error, "CreatePopupMenu failed" if menu.null?
+          actions = {}
+          options = {registry: app&.actions, keymap: dispatcher.keymap, platform: :windows}
+          append_context_model_items(menu, model, model.resolve(**options), actions, options)
+          point = position ? [(position.x * @scale_factor).round, (position.y * @scale_factor).round].pack("l2") : "\0" * 8
+          position ? @user.fn(:ClientToScreen, [P, P], I).call(@handle, point) : @user.fn(:GetCursorPos, [P], I).call(point)
+          x, y = point.unpack("l2")
+          selected = @user.fn(:TrackPopupMenuEx, [P, U, I, I, P, P], U).call(menu, 0x182, x, y, @handle, 0)
+          dispatcher.perform(actions[selected], source: :menu) if actions[selected]
+        ensure
+          @user.fn(:DestroyMenu, [P], I).call(menu) if menu && !menu.null?
+        end
+        def append_context_model_items(handle, model, items, actions, options)
+          items.each do |item|
+            if item.separator?
+              flags, id, label = [0x0800, 0, nil]
+            elsif item.submenu?
+              child = @user.fn(:CreatePopupMenu, [], P).call
+              raise Error, "CreatePopupMenu failed" if child.null?
+              flags, id, label = [0x0010, child.to_i, item.title]
+            else
+              id = actions.length + 1
+              raise Error, "too many context menu items" if id >= 0x8000
+              enabled = dispatcher.available?(item.action) == :enabled
+              flags = (enabled ? 0 : 1) | (dispatcher.checked?(item.action) ? 8 : 0)
+              label = item.title
+              actions[id] = enabled ? item.action : nil
+            end
+            appended = @user.fn(:AppendMenuW, [P, U, N, P], I).call(handle, flags, id, label && wide(label))
+            if appended.zero?
+              @user.fn(:DestroyMenu, [P], I).call(child) if child
+              raise Error, "AppendMenuW failed"
+            end
+            append_context_model_items(child, model, model.children_for(item, **options), actions, options) if child
+            child = nil
+          end
         end
         def cursor_style=(style)
           id = {arrow: 32512, text: 32513, pointer: 32649, crosshair: 32515, resize_horizontal: 32644, resize_vertical: 32645}.fetch(style)
@@ -383,14 +577,51 @@ module Zaniah
         def open_url(url)
           @shell.fn(:ShellExecuteW, [P, P, P, P, P, I], P).call(@handle, wide("open"), wide(url), 0, 0, 1).to_i > 32
         end
+        def frame
+          rect = "\0" * 16
+          raise Error, "GetWindowRect failed" if @user.fn(:GetWindowRect, [P, P], I).call(@handle, rect).zero?
+          left, top, right, bottom = rect.unpack("l4")
+          Bounds.new(left / @scale_factor, top / @scale_factor, (right - left) / @scale_factor, (bottom - top) / @scale_factor)
+        end
+        def frame=(bounds)
+          WindowState.new(frame: bounds, display_id: nil, maximized: false, fullscreen: false)
+          raise ArgumentError, "Windows frame origin must be numeric" if bounds.x.nil?
+          result = @user.fn(:SetWindowPos, [P, P, I, I, I, I, U], I).call(@handle, 0,
+            (bounds.x * @scale_factor).round, (bounds.y * @scale_factor).round,
+            (bounds.width * @scale_factor).round, (bounds.height * @scale_factor).round, 0x0014)
+          raise Error, "SetWindowPos failed" if result.zero?
+          bounds
+        end
+        def maximized? = @user.fn(:IsZoomed, [P], I).call(@handle) != 0
+        def minimized? = @user.fn(:IsIconic, [P], I).call(@handle) != 0
+        def fullscreen? = !@restore_rect.nil?
+        def always_on_top? = @always_on_top
+        def always_on_top=(value)
+          value = !!value
+          result = @user.fn(:SetWindowPos, [P, P, I, I, I, I, U], I).call(@handle, value ? -1 : -2, 0, 0, 0, 0, 0x0013)
+          raise Error, "SetWindowPos failed" if result.zero?
+          @always_on_top = value
+          notify_state_change
+        end
+        def state
+          display = @user.fn(:MonitorFromWindow, [P, U], P).call(@handle, 2)
+          WindowState.new(frame: frame, display_id: display.to_i, maximized: maximized?, fullscreen: fullscreen?)
+        end
+        def maximize = @user.fn(:ShowWindow, [P, I], I).call(@handle, 3)
+        def minimize = @user.fn(:ShowWindow, [P, I], I).call(@handle, 6)
+        def restore
+          toggle_fullscreen if fullscreen?
+          @user.fn(:ShowWindow, [P, I], I).call(@handle, 9)
+        end
         def toggle_fullscreen
           if @restore_rect
-            @user.fn(:SetWindowLongPtrW, [P, I, N], N).call(@handle, -16, 0x00CF0000)
+            @user.fn(:SetWindowLongPtrW, [P, I, N], N).call(@handle, -16, @restore_style)
             left, top, right, bottom = @restore_rect.unpack("l4")
             @user.fn(:SetWindowPos, [P, P, I, I, I, I, U], I).call(@handle, 0, left, top, right - left, bottom - top, 0x0020)
             @restore_rect = nil
           else
             @restore_rect = "\0" * 16
+            @restore_style = @user.fn(:GetWindowLongPtrW, [P, I], N).call(@handle, -16)
             @user.fn(:GetWindowRect, [P, P], I).call(@handle, @restore_rect)
             monitor = @user.fn(:MonitorFromWindow, [P, U], P).call(@handle, 2)
             info = [40].pack("I") + "\0" * 36
@@ -417,6 +648,7 @@ module Zaniah
         end
         def close
           return false unless super
+          @native_menu&.close
           Accessibility.close(self)
           @gl.fn(:wglMakeCurrent, [P, P], I).call(0, 0)
           @gl.fn(:wglDeleteContext, [P], I).call(@context)

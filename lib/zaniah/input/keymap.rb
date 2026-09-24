@@ -166,6 +166,14 @@ module Zaniah
       end
 
       def bindings = @bindings.dup.freeze
+
+      def shortcut_for(action)
+        @bindings.reverse_each.find { |binding|
+          same_action = binding.action == action ||
+            ((binding.action.is_a?(Symbol) || binding.action.is_a?(String)) && binding.action.to_s == action.to_s)
+          same_action && binding.predicate.call({})
+        }&.keys&.join(" ")
+      end
     end
   end
 end

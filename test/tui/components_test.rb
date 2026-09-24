@@ -14,6 +14,7 @@ class TUIComponentsTest < Minitest::Test
     scroll = Zaniah::ScrollState.new.tap { |state| state.update(content_size: Zaniah::Size.new(100, 200), viewport_size: Zaniah::Size.new(100, 100)) }
     {
       Label: [label["Hello"], "Hello"], Icon: [Zaniah::UI::Icon.new(:check), "✓"],
+      Kbd: [Zaniah::UI::Kbd.new("ctrl-shift-p", platform: :windows), "Ctrl+Shift+P"],
       Divider: [Zaniah::UI::Divider.new, "─"], Spacer: [Zaniah::UI::Spacer.new, ""],
       Card: [Zaniah::UI::Card.new(label["Body"]), "┌ card ┐"], Badge: [Zaniah::UI::Badge.new("New"), "[New]"],
       Avatar: [Zaniah::UI::Avatar.new("Ruby UI"), "(RU)"], Skeleton: [Zaniah::UI::Skeleton.new, "░░░"],

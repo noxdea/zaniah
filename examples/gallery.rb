@@ -22,6 +22,7 @@ module Gallery
       .child(Zaniah::Div.new.flex_row.items_center.gap(12).children([
         Zaniah::UI::Label.new("Label"), Zaniah::UI::Icon.new(:info, label: "Information"),
         Zaniah::UI::Badge.new("New", variant: :accent), Zaniah::UI::Avatar.new("Ruby UI"),
+        Zaniah::UI::Kbd.new("ctrl-shift-p", platform: :windows),
         Zaniah::UI::Spacer.new(4), Zaniah::UI::Skeleton.new]))
       .child(Zaniah::UI::Divider.new)
       .child(Zaniah::UI::EmptyState.new("No results", message: "Try another query").h(64))

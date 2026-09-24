@@ -9,12 +9,19 @@ module Zaniah
         include Appearance
         DEFAULT_CLEAR = "#181b20"
 
-        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style, :animator, :clock, :accessibility_tree, :accessibility_revision, :frame_stats, :last_root, :frame_number
+        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style, :animator, :clock, :accessibility_tree, :accessibility_revision, :frame_stats, :last_root, :frame_number, :decorations, :transparent, :min_size, :resizable, :traffic_lights
         attr_accessor :text_system, :ime_state, :title, :app, :devtools
 
         def initialize(width: 800, height: 600, title: "Zaniah UI", scale_factor: 1,
-                       keymap: nil, clock: MONOTONIC_CLOCK)
+                       keymap: nil, clock: MONOTONIC_CLOCK, decorations: :native,
+                       transparent: false, min_size: nil, resizable: true, traffic_lights: nil)
+          raise ArgumentError, "unknown window decorations" unless %i[native hidden_titlebar none].include?(decorations)
+          raise ArgumentError, "transparent must be boolean" unless transparent == true || transparent == false
+          raise ArgumentError, "min_size must be a Size" unless min_size.nil? || min_size.is_a?(Size)
+          raise ArgumentError, "resizable must be boolean" unless resizable == true || resizable == false
+          raise ArgumentError, "traffic_lights must be a Point" unless traffic_lights.nil? || traffic_lights.is_a?(Point)
           @content_size, @scale_factor, @title = Size.new(width, height), scale_factor, title
+          @decorations, @transparent, @min_size, @resizable, @traffic_lights = decorations, transparent, min_size, resizable, traffic_lights
           @scene = Scene.new
           @device = GPU::Software.new(width, height)
           @dispatcher = Input::Dispatcher.new(keymap: keymap || Input::Keymap.default_ui(clock: clock))
@@ -24,6 +31,8 @@ module Zaniah
           @frame_stats = {fps: 0.0, frame_ms: 0.0, layout_ms: 0.0, prepaint_ms: 0.0, paint_ms: 0.0, command_count: 0}.freeze
           @state, @used_state, @text_runs = {}, {}, []
           @last_root, @frame_number = nil, 0
+          @window_frame = Bounds.new(0, 0, width, height)
+          @maximized = @minimized = @fullscreen = @always_on_top = false
           @dirty, @closed, @pointer_down, @cursor_style = true, false, false, :arrow
         end
 
@@ -31,6 +40,7 @@ module Zaniah
         def on_resize(&block) = @on_resize = block
         def on_close(&block) = @on_close = block
         def on_moved(&block) = @on_moved = block
+        def on_state_change(&block) = @on_state_change = block
         def on_tick(&block) = @on_tick = block
         def on_frame(&block) = @on_frame = block
         def draw(&block) = @draw = block
@@ -39,9 +49,36 @@ module Zaniah
         def animation_active? = !!@animator&.active?
         def closed? = @closed
         def pointer_down? = @pointer_down
-        def clipboard = @clipboard.to_s
+        def write_clipboard(items)
+          unless items.is_a?(Array) && items.all? { |item| item.is_a?(Clipboard::Item) }
+            raise TypeError, "clipboard items must be an Array of Clipboard::Item"
+          end
+          @clipboard_items = items.dup.freeze
+        end
+
+        def clipboard_types
+          (@clipboard_items || []).flat_map(&:types).uniq.freeze
+        end
+
+        def read_clipboard(types:)
+          raise TypeError, "clipboard types must be an Array" unless types.is_a?(Array)
+          formats = {}
+          types.each do |type|
+            item = (@clipboard_items || []).find { |entry| entry.types.include?(type) }
+            formats[type] = item.fetch(type) if item
+          end
+          Clipboard::Content.new(formats)
+        end
+
+        def clipboard
+          content = read_clipboard(types: ["text/plain"])
+          content.types.empty? ? "" : content.fetch("text/plain")
+        end
+
         def clipboard=(text)
-          @clipboard = text.to_s
+          value = text.to_s
+          write_clipboard([Clipboard::Item.new("text/plain" => value)])
+          value
         end
         def set_cursor(style)
           raise ArgumentError, "unknown cursor #{style}" unless %i[arrow text pointer crosshair resize_horizontal resize_vertical].include?(style)
@@ -57,9 +94,103 @@ module Zaniah
           validate_display!(display)
           raise Error, "#{self.class} does not support native display placement"
         end
+        def window_region_at(position)
+          @dispatcher.hit_regions.reverse_each do |region|
+            next unless region.contains?(position)
+            owner = region.owner
+            return owner.window_control_kind if owner.respond_to?(:window_control_kind) && owner.window_control_kind
+            return :drag if owner.respond_to?(:window_drag_region?) && owner.window_drag_region?
+            return nil
+          end
+          nil
+        end
+
+        def frame = @window_frame
+        def frame=(bounds)
+          WindowState.new(frame: bounds, display_id: nil, maximized: false, fullscreen: false)
+          raise ArgumentError, "headless frame origin must be numeric" if bounds.x.nil?
+          old = @window_frame
+          @window_frame = bounds
+          if old.width != bounds.width || old.height != bounds.height
+            @suppress_state_change = true
+            begin
+              resize(bounds.width, bounds.height)
+            ensure
+              @suppress_state_change = false
+            end
+          end
+          @on_moved&.call([bounds.x, bounds.y]) if old.x != bounds.x || old.y != bounds.y
+          notify_state_change unless old == bounds
+          bounds
+        end
+        def maximized? = @maximized
+        def minimized? = @minimized
+        def fullscreen? = @fullscreen
+        def always_on_top? = @always_on_top
+        def always_on_top=(value)
+          @always_on_top = !!value
+          notify_state_change
+        end
+        def state
+          display = displays.find { |candidate| candidate.id == @display_id } || displays.find(&:primary) || displays.first
+          WindowState.new(frame: frame, display_id: display&.id, maximized: @maximized, fullscreen: @fullscreen)
+        end
+        def maximize
+          return if @maximized
+          @restore_frame ||= frame
+          @maximized, @minimized = true, false
+          self.frame = (displays.find(&:primary) || displays.first).bounds
+          notify_state_change
+        end
+        def minimize
+          return if @minimized
+          @minimized = true
+          notify_state_change
+        end
+        def restore
+          changed = @maximized || @minimized || @fullscreen
+          @maximized = @minimized = @fullscreen = false
+          self.frame = @restore_frame if @restore_frame
+          @restore_frame = nil
+          notify_state_change if changed
+        end
+        def toggle_fullscreen
+          if @fullscreen
+            restore
+          else
+            @restore_frame ||= frame
+            @fullscreen, @minimized = true, false
+            self.frame = (displays.find(&:primary) || displays.first).bounds
+            notify_state_change
+          end
+        end
+        def restore_state(saved)
+          saved = WindowState.from_h(saved)
+          display = displays.find { |candidate| candidate.id == saved.display_id } || displays.find(&:primary) || displays.first
+          raise Error, "no display is available" unless display
+
+          bounds = display.bounds
+          requested = saved.frame
+          width, height = requested.width, requested.height
+          x = requested.x || bounds.x
+          y = requested.y || bounds.y
+          visible_x = [width, bounds.width, 48].min
+          visible_y = [height, bounds.height, 32].min
+          x = x.clamp(bounds.x - width + visible_x, bounds.right - visible_x)
+          y = y.clamp(bounds.y, bounds.bottom - visible_y)
+          @display_id = display.id
+          @maximized = @minimized = @fullscreen = false
+          self.frame = Bounds.new(x, y, width, height)
+          if saved.maximized
+            maximize
+          elsif saved.fullscreen
+            toggle_fullscreen
+          end
+          state
+        end
 
         def popup
-          if @popup_component.respond_to?(:popup_data)
+          if @popup_component&.open? && @popup_component.respond_to?(:popup_data)
             data = @popup_component.popup_data
             return Popup.new(labels: data[:labels], enabled: data[:enabled], selected_index: data[:selected_index], bounds: data[:bounds])
           end
@@ -74,10 +205,15 @@ module Zaniah
 
         def resize(width, height)
           @content_size = Size.new(width, height)
+          @window_frame = Bounds.new(@window_frame.x, @window_frame.y, width, height)
           @device.resize(width, height)
           @on_resize&.call(@content_size)
           request_frame
+          notify_state_change unless @suppress_state_change
+          true
         end
+
+        def notify_state_change = @on_state_change&.call(state)
 
         def input(event)
           return if popup_input(event)
@@ -106,9 +242,14 @@ module Zaniah
         end
 
         def context_menu(items, position: Point.new(0, 0))
-          raise ArgumentError, "menu items must be label/callback pairs" unless items.is_a?(Array) && items.all? { |item| item.is_a?(Array) && item.length == 2 && item.first.is_a?(String) && (item.last.nil? || item.last.respond_to?(:call)) }
+          if items.is_a?(Zaniah::Menu)
+            require "zaniah/ui" unless defined?(Zaniah::UI::ContextMenu)
+          elsif !items.is_a?(Array) || !items.all? { |item| item.is_a?(Array) && item.length == 2 && item.first.is_a?(String) && (item.last.nil? || item.last.respond_to?(:call)) }
+            raise ArgumentError, "menu items must be label/callback pairs or a Menu"
+          end
           if defined?(Zaniah::UI::ContextMenu)
-            @popup_component = Zaniah::UI::ContextMenu.new(items, anchor: position)
+            @popup_component = Zaniah::UI::ContextMenu.new(items, anchor: position,
+              dispatcher: @dispatcher, registry: app&.actions, target_focus: @dispatcher.focused)
             @menu = nil
             @tooltip = nil
             request_frame

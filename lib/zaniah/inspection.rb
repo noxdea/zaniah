@@ -112,6 +112,11 @@ module Zaniah
       handle = object.focus_handle if object.respond_to?(:focus_handle)
       items = object.context_menu_items if object.respond_to?(:context_menu_items)
       menu = items&.map { |label, callback| [label.dup.freeze, !callback.nil?].freeze }&.freeze if items.is_a?(Array)
+      if items.is_a?(Menu)
+        menu = items.resolve(registry: window.app&.actions, keymap: window.dispatcher.keymap).map do |item|
+          [item.title.to_s.freeze, item.submenu? || (!!item.action && window.dispatcher.available?(item.action) == :enabled)].freeze
+        end.freeze
+      end
       Entry.new(element: object, type: object.class.name.to_s.delete_prefix("Zaniah::").freeze,
         key: object.respond_to?(:identity_key) ? copy(object.identity_key) : nil,
         test_id: object.respond_to?(:test_id) ? copy(object.test_id) : nil,

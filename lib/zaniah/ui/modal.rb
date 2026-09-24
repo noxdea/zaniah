@@ -121,13 +121,14 @@ module Zaniah
               registry.call(name, cx)
             end
           end
-          [title, callback, enabled]
+          [title, callback, enabled, action]
         end
         new(commands, **options)
       end
 
-      def initialize(commands, open: false, placeholder: "Type a command…", matcher: nil)
-        @commands = commands.to_a.map { |label, callback, enabled| [label.to_s, callback, enabled] }
+      def initialize(commands, open: false, placeholder: "Type a command…", matcher: nil, keymap: nil)
+        @commands = commands.to_a.map { |label, callback, enabled, action| [label.to_s, callback, enabled, action] }
+        @keymap = keymap
         @matcher = Matcher::Session.new(@commands.map(&:first), matcher || Zaniah.configuration.matcher || Matcher::Substring.new)
         @query, @placeholder, @selected_index = "", placeholder, 0
         @focus_search = !!open
@@ -153,6 +154,9 @@ module Zaniah
           button.disabled(!enabled?(entry, cx)).w_full.on_click do |event, context|
             choose(index, event, context)
           end
+          shortcut = entry[3] && Kbd.for(entry[3], keymap: @keymap || cx.dispatcher.keymap)
+          button = Div.new.flex_row.items_center.gap(cx.theme.spacing[2]).child(button.flex_1).child(shortcut) if shortcut
+          button
         end)
         @content = Div.new.gap(cx.theme.spacing[2]).child(field).child(results)
         super
@@ -170,7 +174,10 @@ module Zaniah
         @focus_search = false
       end
 
-      def tui_cells(*) = "> #{@query}\n" + filtered.map { |entry, _| entry[0] }.join("\n")
+      def tui_cells(*) = "> #{@query}\n" + filtered.map { |entry, _|
+        shortcut = entry[3] && (@keymap || @cx&.dispatcher&.keymap)&.shortcut_for(entry[3])
+        shortcut ? "#{entry[0]}  #{Kbd.new(shortcut, platform: :tui).tui_cells}" : entry[0]
+      }.join("\n")
 
       def accessibility_node(cx)
         return unless @open

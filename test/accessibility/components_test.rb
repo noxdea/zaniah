@@ -5,7 +5,7 @@ require_relative "../tui/components_test"
 
 class AccessibilityComponentsTest < Minitest::Test
   ROLES = {
-    Label: :text, Icon: :image, Divider: :separator, Card: :group, Badge: :text, Avatar: :image,
+    Label: :text, Kbd: :text, Icon: :image, Divider: :separator, Card: :group, Badge: :text, Avatar: :image,
     Skeleton: :progressbar, EmptyState: :group, Button: :button, IconButton: :button,
     ToggleButton: :button, ButtonGroup: :group, Checkbox: :checkbox, Radio: :radio,
     RadioGroup: :radiogroup, Switch: :switch, Slider: :slider, RangeSlider: :slider,

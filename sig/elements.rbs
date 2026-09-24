@@ -49,6 +49,10 @@ module Zaniah
     def tooltip_text: () -> String?
     def context_menu: (menu items) -> self
     def context_menu_items: () -> menu?
+    def window_drag_region: () -> self
+    def window_drag_region?: () -> bool
+    def window_control: (:close | :minimize | :maximize | :restore | :fullscreen kind) -> self
+    def window_control_kind: () -> (:close | :minimize | :maximize | :restore | :fullscreen)?
     def flex: () -> self
     def flex_row: () -> self
     def flex_col: () -> self

@@ -1,0 +1,11 @@
+module Zaniah
+  class WindowState < Data
+    attr_reader frame: Bounds
+    attr_reader display_id: Integer | String | nil
+    attr_reader maximized: bool
+    attr_reader fullscreen: bool
+    def self.new: (frame: Bounds, display_id: Integer | String | nil, maximized: bool, fullscreen: bool) -> WindowState
+    def self.from_h: (WindowState | Hash[Symbol | String, untyped]) -> WindowState
+    def to_h: () -> Hash[Symbol, untyped]
+  end
+end

@@ -1,0 +1,26 @@
+module Zaniah
+  module Clipboard
+    class Item
+      attr_reader types: Array[String]
+      attr_reader formats: Hash[String, String]
+      def initialize: (Hash[String, String] formats) -> void
+      def fetch: (String type) -> String
+      def ==: (untyped other) -> bool
+      def eql?: (untyped other) -> bool
+      def hash: () -> Integer
+    end
+
+    class Content < Item
+    end
+  end
+
+  module Platform
+    module Headless
+      class Window
+        def write_clipboard: (Array[Clipboard::Item] items) -> Array[Clipboard::Item]
+        def read_clipboard: (types: Array[String]) -> Clipboard::Content
+        def clipboard_types: () -> Array[String]
+      end
+    end
+  end
+end

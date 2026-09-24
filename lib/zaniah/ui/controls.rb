@@ -58,6 +58,8 @@ module Zaniah
         changed(event, cx)
         @on_click&.call(event, cx)
         cx&.window&.request_frame
+        control = @window_control == :fullscreen ? :toggle_fullscreen : @window_control
+        cx&.window&.public_send(control) if control && cx&.window&.respond_to?(control)
         true
       end
 

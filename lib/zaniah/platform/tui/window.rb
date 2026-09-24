@@ -40,11 +40,14 @@ module Zaniah
 
         def feed_input(bytes) = @input_decoder.feed(bytes)
 
-        def clipboard=(text)
-          super
-          @output.write("\e]52;c;#{[clipboard].pack('m0')}\a")
-          @output.flush
-          clipboard
+        def write_clipboard(items)
+          result = super
+          content = read_clipboard(types: ["text/plain"])
+          unless content.types.empty?
+            @output.write("\e]52;c;#{[content.fetch('text/plain')].pack('m0')}\a")
+            @output.flush
+          end
+          result
         end
 
         def render(element, **options)

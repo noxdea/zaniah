@@ -15,6 +15,7 @@ module Zaniah
         extend Fiddle::Importer
         Visual = struct ["void *visual", "unsigned long visualid", "int screen", "int depth", "int c_class", "unsigned long red_mask", "unsigned long green_mask", "unsigned long blue_mask", "int colormap_size", "int bits_per_rgb"]
         Attributes = struct ["unsigned long background_pixmap", "unsigned long background_pixel", "unsigned long border_pixmap", "unsigned long border_pixel", "int bit_gravity", "int win_gravity", "int backing_store", "unsigned long backing_planes", "unsigned long backing_pixel", "int save_under", "long event_mask", "long do_not_propagate_mask", "int override_redirect", "unsigned long colormap", "unsigned long cursor"]
+        SizeHints = struct ["long flags", "int x", "int y", "int width", "int height", "int min_width", "int min_height", "int max_width", "int max_height", "int width_inc", "int height_inc", "int min_aspect_x", "int min_aspect_y", "int max_aspect_x", "int max_aspect_y", "int base_width", "int base_height", "int win_gravity"]
       end
 
       # X11 works on Xorg and through XWayland on Wayland sessions.
@@ -38,6 +39,7 @@ module Zaniah
         end
         def initialize(gpu: :opengl, **options)
           super(**options)
+          raise Error, "traffic_lights is only supported on macOS" if traffic_lights
           @x = FFI::Library.new("libX11.so.6")
           @gl = FFI::Library.new("libGL.so.1")
           @display = x(:XOpenDisplay, [P], P, 0)
@@ -61,6 +63,7 @@ module Zaniah
           x(:XFree, [P], I, configs)
           raise Error, "XCreateWindow failed" if @handle.zero?
           @atoms = {}
+          configure_decorations
           protocol = [atom("WM_DELETE_WINDOW")].pack("L!")
           x(:XSetWMProtocols, [P, L, P, I], I, @display, @handle, protocol, 1)
           property(@handle, atom("XdndAware"), 4, [5].pack("L!"), format: 32)
@@ -69,6 +72,7 @@ module Zaniah
           @scale_factor = dpi.null? ? 1.0 : (dpi.to_s[/Xft\.dpi:\s*(\d+(?:\.\d+)?)/, 1]&.to_f || 96) / 96.0
           @scale_factor = @scale_factor.clamp(1.0, 4.0)
           @content_size = Size.new(content_size.width / @scale_factor, content_size.height / @scale_factor)
+          configure_size_hints
           @device.release
           @device = create_device(gpu)
           x(:XMapWindow, [P, L], I, @display, @handle)
@@ -105,6 +109,107 @@ module Zaniah
           x(:XStoreName, [P, L, P], I, @display, @handle, title)
           property(@handle, atom("_NET_WM_NAME"), atom("UTF8_STRING"), title.encode("UTF-8"))
         end
+        def configure_decorations
+          return if decorations == :native
+          # Motif hints are understood by the X11 window managers that implement CSD.
+          property(@handle, atom("_MOTIF_WM_HINTS"), atom("_MOTIF_WM_HINTS"), [2, 0, 0, 0, 0].pack("L!5"), format: 32)
+        end
+        def configure_size_hints
+          return if resizable && !min_size
+          hints = Types::SizeHints.malloc(Fiddle::RUBY_FREE)
+          hints.to_ptr[0, Types::SizeHints.size] = "\0" * Types::SizeHints.size
+          size = resizable ? min_size : content_size
+          hints.flags = resizable ? 1 << 4 : (1 << 4) | (1 << 5)
+          hints.min_width = (size.width * @scale_factor).ceil
+          hints.min_height = (size.height * @scale_factor).ceil
+          hints.max_width = hints.min_width unless resizable
+          hints.max_height = hints.min_height unless resizable
+          x(:XSetWMNormalHints, [P, L, P], V, @display, @handle, hints)
+        end
+        def frame
+          return super if !@handle || closed?
+          root, x_pos, y_pos, width, height, border, depth = [0].pack("L!"), [0].pack("i"), [0].pack("i"), [0].pack("I"), [0].pack("I"), [0].pack("I"), [0].pack("I")
+          ok = x(:XGetGeometry, [P, L, P, P, P, P, P, P, P], I, @display, @handle, root, x_pos, y_pos, width, height, border, depth)
+          raise Error, "XGetGeometry failed" if ok.zero?
+          left, top, child = [0].pack("i"), [0].pack("i"), [0].pack("L!")
+          ok = x(:XTranslateCoordinates, [P, L, L, I, I, P, P, P], I, @display, @handle, @root, 0, 0, left, top, child)
+          raise Error, "XTranslateCoordinates failed" if ok.zero?
+          Bounds.new(left.unpack1("i") / @scale_factor, top.unpack1("i") / @scale_factor,
+                     width.unpack1("I") / @scale_factor, height.unpack1("I") / @scale_factor)
+        end
+        def frame=(bounds)
+          raise Error, "window is closed" if closed?
+          WindowState.new(frame: bounds, display_id: nil, maximized: false, fullscreen: false)
+          raise ArgumentError, "X11 frame origin must be numeric" if bounds.x.nil?
+          if @handle
+            x(:XMoveResizeWindow, [P, L, I, I, Fiddle::TYPE_UINT, Fiddle::TYPE_UINT], I, @display, @handle,
+              (bounds.x * @scale_factor).round, (bounds.y * @scale_factor).round,
+              (bounds.width * @scale_factor).round, (bounds.height * @scale_factor).round)
+            x(:XFlush, [P], I, @display)
+          end
+          super
+        end
+        def state
+          current = frame
+          center = Point.new(current.x + current.width / 2, current.y + current.height / 2)
+          display = displays.find { |candidate| candidate.bounds.contains?(center) } || displays.find(&:primary) || displays.first
+          WindowState.new(frame: current, display_id: display&.id, maximized: maximized?, fullscreen: fullscreen?)
+        end
+        def maximized?
+          return super if !@handle || closed?
+          states = wm_states
+          states.include?("_NET_WM_STATE_MAXIMIZED_VERT") && states.include?("_NET_WM_STATE_MAXIMIZED_HORZ")
+        end
+        def fullscreen? = @handle && !closed? ? wm_states.include?("_NET_WM_STATE_FULLSCREEN") : super
+        def always_on_top? = @handle && !closed? ? wm_states.include?("_NET_WM_STATE_ABOVE") : super
+        def minimized?
+          return super if !@handle || closed?
+          value = read_property(@handle, atom("WM_STATE"), delete: false)
+          value.empty? ? @minimized : value.unpack1("L!") == 3
+        end
+        def wm_states
+          read_property(@handle, atom("_NET_WM_STATE"), delete: false).unpack("L!*").map { |id| atom_name(id) }
+        end
+        def wm_state(action, *names)
+          send_wm_message("_NET_WM_STATE", [action, atom(names.fetch(0)), names[1] ? atom(names[1]) : 0, 1, 0])
+        end
+        def send_wm_message(name, data)
+          raise Error, "window is closed" if closed?
+          event = "\0".b * 192
+          event[0, 4] = [33].pack("i")
+          event[24, 8] = [@display.to_i].pack("J")
+          event[32, 8] = [@handle].pack("L!")
+          event[40, 8] = [atom(name)].pack("L!")
+          event[48, 4] = [32].pack("i")
+          event[56, 40] = data.fill(0, data.length...5).pack("L!5")
+          x(:XSendEvent, [P, L, I, L, P], I, @display, @root, 0, (1 << 19) | (1 << 20), event)
+          x(:XFlush, [P], I, @display)
+        end
+        def maximize
+          wm_state(1, "_NET_WM_STATE_MAXIMIZED_VERT", "_NET_WM_STATE_MAXIMIZED_HORZ")
+          @maximized, @minimized = true, false
+          notify_state_change
+        end
+        def minimize
+          raise Error, "window is closed" if closed?
+          x(:XIconifyWindow, [P, L, I], I, @display, @handle, @screen)
+          x(:XFlush, [P], I, @display)
+          @minimized = true
+          notify_state_change
+        end
+        def restore
+          wm_state(0, "_NET_WM_STATE_MAXIMIZED_VERT", "_NET_WM_STATE_MAXIMIZED_HORZ")
+          wm_state(0, "_NET_WM_STATE_FULLSCREEN")
+          x(:XMapRaised, [P, L], I, @display, @handle)
+          x(:XFlush, [P], I, @display)
+          @maximized = @minimized = @fullscreen = false
+          notify_state_change
+        end
+        def always_on_top=(value)
+          wm_state(value ? 1 : 0, "_NET_WM_STATE_ABOVE")
+          @always_on_top = !!value
+          notify_state_change
+        end
         def tick
           poll_events unless closed?
           poll_appearance unless closed?
@@ -139,18 +244,36 @@ module Zaniah
             when 9 then x(:XSetICFocus, [P], V, @ic) if @ic
             when 10 then x(:XUnsetICFocus, [P], V, @ic) if @ic
             when 12 then request_frame
-            when 22
-              width, height = event[56, 8].unpack("i2")
-              resize(width / @scale_factor, height / @scale_factor) if width.positive? && height.positive?
-              @on_moved&.call(event[48, 8].unpack("i2"))
-            when 28 then refresh_scale if event[40, 8].unpack1("L!") == atom("RESOURCE_MANAGER")
+            when 22 then update_native_geometry
+            when 28
+              property_event(event)
+              refresh_scale if event[40, 8].unpack1("L!") == atom("RESOURCE_MANAGER")
+              notify_state_change if [atom("_NET_WM_STATE"), atom("WM_STATE")].include?(event[40, 8].unpack1("L!"))
             when 30 then selection_request(event)
             when 31
               name = event[56, 8].unpack1("L!")
-              event[40, 8].unpack1("L!") == atom("XdndSelection") ? finish_drop(name) : @selection_received = name
+              selection = event[40, 8].unpack1("L!")
+              finish_drop(name) if selection == atom("XdndSelection")
+              @selection_received = name if selection == atom("CLIPBOARD")
             when 33 then client_message(event)
             end
           end
+          expire_outgoing_incr
+        end
+        def update_native_geometry
+          current = frame
+          old = @window_frame
+          if current.width != content_size.width || current.height != content_size.height
+            @suppress_state_change = true
+            begin
+              resize(current.width, current.height)
+            ensure
+              @suppress_state_change = false
+            end
+          end
+          @window_frame = current
+          @on_moved&.call([current.x, current.y]) if old.x != current.x || old.y != current.y
+          notify_state_change if old != current
         end
         def modifiers(state) = [[4, "ctrl"], [8, "alt"], [1, "shift"], [64, "cmd"]].filter_map { |mask, name| name unless (state & mask).zero? }
         def key_event(event, type)
@@ -179,6 +302,16 @@ module Zaniah
           px, py = event[64, 8].unpack("i2")
           position = Point.new(px / @scale_factor, py / @scale_factor)
           state, button = event[80, 8].unpack("I2")
+          if type == 4 && button == 1 && decorations != :native
+            region = window_region_at(position)
+            direction = resize_direction(position) unless region && region != :drag
+            direction ||= 8 if region == :drag
+            if direction
+              x(:XUngrabPointer, [P, L], I, @display, 0)
+              send_wm_message("_NET_WM_MOVERESIZE", [*event[72, 8].unpack("i2"), direction, button, 1])
+              return
+            end
+          end
           mods = modifiers(state)
           if type == 4 && (4..7).cover?(button)
             delta = button <= 5 ? Point.new(0, button == 4 ? -40 : 40) : Point.new(button == 6 ? -40 : 40, 0)
@@ -190,6 +323,19 @@ module Zaniah
             @last_click = [button, now, position] if type == 4
             input(type == 6 ? Input::MouseMove.new(position, mods) : type == 4 ? Input::MouseDown.new(position, button, mods, count) : Input::MouseUp.new(position, button, mods))
           end
+        end
+        def resize_direction(position)
+          return if !resizable || content_size.width <= 0 || content_size.height <= 0
+          left, right = position.x < 6, position.x >= content_size.width - 6
+          top, bottom = position.y < 6, position.y >= content_size.height - 6
+          return 0 if top && left
+          return 2 if top && right
+          return 4 if bottom && right
+          return 6 if bottom && left
+          return 1 if top
+          return 3 if right
+          return 5 if bottom
+          7 if left
         end
         def setup_ime
           libc = FFI::Library.new(nil)
@@ -272,14 +418,44 @@ module Zaniah
           @scale_factor = factor
           resize(width / factor, height / factor)
         end
-        def clipboard=(value)
-          @clipboard = value.to_s.encode("UTF-8")
+        def write_clipboard(items)
+          unless items.is_a?(Array) && items.all? { |item| item.is_a?(Clipboard::Item) }
+            raise TypeError, "clipboard items must be an Array of Clipboard::Item"
+          end
+          items.each do |item|
+            item.formats.each_value { |data| raise Error, "X11 selection exceeds 16 MiB" if data.bytesize > 16_777_216 }
+          end
+          clear_outgoing_incr
+          super
+          @clipboard_formats = items.each_with_object({}) { |item, formats| item.formats.each { |type, data| formats[type] ||= data } }
           x(:XSetSelectionOwner, [P, L, L, L], I, @display, atom("CLIPBOARD"), @handle, 0)
           x(:XFlush, [P], I, @display)
+          items
         end
-        def clipboard = selection("UTF8_STRING")
+        def clipboard=(value)
+          super
+        end
+        def clipboard = read_clipboard(types: ["text/plain"]).formats.fetch("text/plain", "")
+        def clipboard_types
+          return super if owns_clipboard?
+          offered_clipboard_targets.filter_map { |target| target_mime(target) }.uniq.freeze
+        end
+        def read_clipboard(types:)
+          raise TypeError, "clipboard types must be an Array" unless types.is_a?(Array)
+          return super if owns_clipboard?
+          offered = offered_clipboard_targets
+          formats = types.each_with_object({}) do |type, result|
+            targets = type == "text/plain" ? %w[UTF8_STRING text/plain;charset=utf-8 text/plain STRING] : [type]
+            target = targets.find { |name| offered.include?(name) }
+            if target && (data = selection(target))
+              data = data.dup.force_encoding("ISO-8859-1").encode("UTF-8") if target == "STRING"
+              result[type] = data
+            end
+          end
+          Clipboard::Content.new(formats)
+        end
         def clipboard_paths
-          self.class.file_paths(selection("text/uri-list"))
+          self.class.file_paths(selection("text/uri-list").to_s)
         end
         def self.file_paths(bytes)
           bytes.lines.filter_map do |line|
@@ -291,7 +467,8 @@ module Zaniah
           end
         end
         def selection(target)
-          return @clipboard.to_s if x(:XGetSelectionOwner, [P, L], L, @display, atom("CLIPBOARD")) == @handle
+          return own_selection(target) if owns_clipboard?
+          return nil if x(:XGetSelectionOwner, [P, L], L, @display, atom("CLIPBOARD")).zero?
           @selection_received = nil
           name = atom("ZANIAH_SELECTION")
           x(:XConvertSelection, [P, L, L, L, L, L], I, @display, atom("CLIPBOARD"), atom(target), name, @handle, 0)
@@ -301,17 +478,19 @@ module Zaniah
             poll_events
             IO.select([IO.for_fd(x(:XConnectionNumber, [P], I, @display), autoclose: false)], nil, nil, 0.01)
           end
-          return "" unless @selection_received && @selection_received != 0
-          read_property(@handle, name).force_encoding("UTF-8").scrub
+          return nil unless @selection_received && @selection_received != 0
+          read_property(@handle, name)
         end
         def read_property(window, name, delete: true)
           actual_type, format, length, remaining, pointer = [0].pack("L!"), [0].pack("i"), [0].pack("L!"), [0].pack("L!"), [0].pack("J")
-          x(:XGetWindowProperty, [P, L, L, L, L, I, L, P, P, P, P, P], I, @display, window, name, 0, 4_194_304, delete ? 1 : 0, 0, actual_type, format, length, remaining, pointer)
+          status = x(:XGetWindowProperty, [P, L, L, L, L, I, L, P, P, P, P, P], I, @display, window, name, 0, 4_194_304, delete ? 1 : 0, 0, actual_type, format, length, remaining, pointer)
+          raise Error, "XGetWindowProperty failed" unless status.zero?
           data = Fiddle::Pointer.new(pointer.unpack1("J"))
           return "" if data.null?
-          raise Error, "incremental X11 clipboard transfer is not supported" if actual_type.unpack1("L!") == atom("INCR")
+          return read_incremental_property(name) if actual_type.unpack1("L!") == atom("INCR") && window == @handle
           raise Error, "X11 selection exceeds 16 MiB" unless remaining.unpack1("L!").zero?
           size = {8 => 1, 16 => 2, 32 => Fiddle::SIZEOF_LONG}.fetch(format.unpack1("i"), 0)
+          raise Error, "X11 selection exceeds 16 MiB" if length.unpack1("L!") * size > 16_777_216
           data[0, length.unpack1("L!") * size]
         ensure
           x(:XFree, [P], I, data) if data && !data.null?
@@ -357,10 +536,22 @@ module Zaniah
         def selection_request(event)
           requestor, selection, target, prop, time = event[40, 40].unpack("L!5")
           prop = target if prop.zero?
-          if target == atom("TARGETS")
-            property(requestor, prop, 4, [atom("TARGETS"), atom("UTF8_STRING"), atom("STRING")].pack("L!3"), format: 32)
-          elsif [atom("UTF8_STRING"), atom("STRING")].include?(target)
-            property(requestor, prop, target, @clipboard.to_s)
+          name = atom_name(target)
+          data = selection == atom("CLIPBOARD") ? own_selection(name) : nil
+          release_outgoing_incr([requestor, prop]) if @outgoing_incr&.key?([requestor, prop])
+          if data
+            if data.bytesize > 65_536
+              @incr_subscriptions ||= Hash.new(0)
+              if @incr_subscriptions[requestor].zero? && requestor != @handle
+                x(:XSelectInput, [P, L, L], I, @display, requestor, 1 << 22)
+              end
+              @incr_subscriptions[requestor] += 1
+              @outgoing_incr ||= {}
+              @outgoing_incr[[requestor, prop]] = {data: data, offset: 0, type: target, deadline: Process.clock_gettime(Process::CLOCK_MONOTONIC) + 10}
+              property(requestor, prop, atom("INCR"), [data.bytesize].pack("L!"), format: 32)
+            else
+              property(requestor, prop, name == "TARGETS" ? 4 : target, data, format: name == "TARGETS" ? 32 : 8)
+            end
           else
             prop = 0
           end
@@ -370,6 +561,85 @@ module Zaniah
           reply[32, 40] = [requestor, selection, target, prop, time].pack("L!5")
           x(:XSendEvent, [P, L, I, L, P], I, @display, requestor, 0, 0, reply)
           x(:XFlush, [P], I, @display)
+        end
+        def owns_clipboard?
+          x(:XGetSelectionOwner, [P, L], L, @display, atom("CLIPBOARD")) == @handle
+        end
+        def offered_clipboard_targets
+          bytes = selection("TARGETS")
+          bytes ? bytes.unpack("L!*").map { |id| atom_name(id) } : []
+        end
+        def target_mime(target)
+          return nil if target == "TARGETS" || target == "INCR"
+          return "text/plain" if %w[UTF8_STRING STRING text/plain;charset=utf-8].include?(target)
+          target if target.include?("/")
+        end
+        def own_selection(target)
+          formats = @clipboard_formats || {}
+          if target == "TARGETS"
+            names = ["TARGETS", *formats.keys]
+            names.concat(%w[UTF8_STRING text/plain;charset=utf-8]) if formats.key?("text/plain")
+            names << "STRING" if latin1_text
+            return names.uniq.map { |name| atom(name) }.pack("L!*")
+          end
+          return latin1_text if target == "STRING"
+          return formats["text/plain"] if %w[UTF8_STRING text/plain;charset=utf-8].include?(target)
+          formats[target]
+        end
+        def latin1_text
+          @clipboard_formats&.fetch("text/plain", nil)&.encode("ISO-8859-1")&.b
+        rescue Encoding::UndefinedConversionError
+          nil
+        end
+        def atom_name(id)
+          pointer = x(:XGetAtomName, [P, L], P, @display, id)
+          return "" if pointer.null?
+          pointer.to_s
+        ensure
+          x(:XFree, [P], I, pointer) if pointer && !pointer.null?
+        end
+        def property_event(event)
+          window, name, state = event[32, 8].unpack1("L!"), event[40, 8].unpack1("L!"), event[56, 4].unpack1("i")
+          if state.zero? && window == @handle && @incremental_read && @incremental_read[:name] == name
+            chunk = read_property(@handle, name)
+            @incremental_read[:done] = true if chunk.empty?
+            @incremental_read[:data] << chunk
+            raise Error, "X11 selection exceeds 16 MiB" if @incremental_read[:data].bytesize > 16_777_216
+          elsif state == 1 && (transfer = @outgoing_incr&.[]([window, name]))
+            chunk = transfer[:data].byteslice(transfer[:offset], 65_536) || "".b
+            transfer[:offset] += chunk.bytesize
+            property(window, name, transfer[:type], chunk)
+            chunk.empty? ? release_outgoing_incr([window, name]) : transfer[:deadline] = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 10
+            x(:XFlush, [P], I, @display)
+          end
+        end
+        def release_outgoing_incr(key)
+          return unless @outgoing_incr&.delete(key)
+          requestor = key.first
+          @incr_subscriptions[requestor] -= 1
+          if @incr_subscriptions[requestor].zero?
+            @incr_subscriptions.delete(requestor)
+            x(:XSelectInput, [P, L, L], I, @display, requestor, 0) if requestor != @handle
+          end
+        end
+        def clear_outgoing_incr
+          @outgoing_incr&.keys&.each { |key| release_outgoing_incr(key) }
+        end
+        def expire_outgoing_incr(now = Process.clock_gettime(Process::CLOCK_MONOTONIC))
+          @outgoing_incr&.each { |key, transfer| release_outgoing_incr(key) if transfer[:deadline] <= now }
+        end
+        def read_incremental_property(name)
+          @incremental_read = {name: name, data: +"".b, done: false}
+          deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 2
+          io = IO.for_fd(x(:XConnectionNumber, [P], I, @display), autoclose: false)
+          until @incremental_read[:done]
+            raise Error, "X11 selection transfer timed out" if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+            poll_events
+            IO.select([io], nil, nil, 0.01) unless @incremental_read[:done]
+          end
+          @incremental_read[:data]
+        ensure
+          @incremental_read = nil
         end
         def cursor_style=(style)
           number = {arrow: 68, text: 152, pointer: 60, crosshair: 34, resize_horizontal: 108, resize_vertical: 116}.fetch(style)
@@ -392,14 +662,9 @@ module Zaniah
           true
         end
         def toggle_fullscreen
-          event = "\0".b * 192
-          event[0, 4] = [33].pack("i")
-          event[24, 8] = [@display.to_i].pack("J")
-          event[32, 8] = [@handle].pack("L!")
-          event[40, 8] = [atom("_NET_WM_STATE")].pack("L!")
-          event[48, 4] = [32].pack("i")
-          event[56, 24] = [2, atom("_NET_WM_STATE_FULLSCREEN"), 0].pack("L!3")
-          x(:XSendEvent, [P, L, I, L, P], I, @display, @root, 0, (1 << 19) | (1 << 20), event)
+          wm_state(fullscreen? ? 0 : 1, "_NET_WM_STATE_FULLSCREEN")
+          @fullscreen = !@fullscreen
+          notify_state_change
         end
         def move_to_display(display)
           validate_display!(display)
@@ -414,7 +679,11 @@ module Zaniah
           true
         end
         def close
+          return false if closed?
+          @window_frame = frame
+          @maximized, @minimized, @fullscreen, @always_on_top = maximized?, minimized?, fullscreen?, always_on_top?
           return false unless super
+          clear_outgoing_incr
           Accessibility.close(self)
           close_appearance
           x(:XDestroyIC, [P], V, @ic) if @ic

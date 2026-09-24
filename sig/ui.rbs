@@ -19,6 +19,7 @@ module Zaniah
       def test_id: () -> String?
                  | (String value) -> self
       def style: (**Layout::style_value properties) -> self
+      def window_control: (:close | :minimize | :maximize | :restore | :fullscreen kind) -> self
       def accessibility_node: (FrameContext? context) -> Accessibility::Node?
       def tui_cells: (?Bounds? bounds, ?FrameContext? context) -> String?
       def focus_handle: () -> Input::FocusHandle?
@@ -44,6 +45,12 @@ module Zaniah
     class Label < Component
       attr_reader text: String
       def initialize: (untyped text, ?tone: Symbol, ?size: Symbol, ?wrap: Symbol) -> void
+    end
+    class Kbd < Component
+      attr_reader keys: Array[String]
+      attr_reader platform: String | Symbol
+      def self.for: (Input::action action, keymap: Input::Keymap, ?platform: String | Symbol) -> Kbd?
+      def initialize: (String | Array[String] keys, ?platform: String | Symbol) -> void
     end
     class Icon < Component
       GLYPHS: Hash[Symbol, String]
@@ -171,13 +178,14 @@ module Zaniah
     end
     class Menu < OverlayComponent
       attr_reader selected_index: Integer
-      def initialize: (Array[untyped] items, ?anchor: Point | Bounds, ?open: bool, ?modal: bool) -> void
+      def initialize: (Array[untyped] | Zaniah::Menu items, ?anchor: Point | Bounds, ?open: bool, ?modal: bool, ?dispatcher: Input::Dispatcher?, ?registry: Input::ActionRegistry?, ?target_focus: Input::FocusHandle | ^() -> Input::FocusHandle?) -> void
       def popup_data: () -> Hash[Symbol, untyped]
     end
     class ContextMenu < Menu
     end
     class MenuBar < Component
-      def initialize: (Array[untyped] menus) -> void
+      def initialize: (Array[untyped] | Zaniah::Menu menus) -> void
+      def self.from: (Zaniah::Menu menu) -> MenuBar
     end
     class Dropdown < Component
       attr_reader value: untyped
@@ -330,6 +338,8 @@ module Zaniah
       def on_edit: () { (Integer, Integer, Input::MouseDown?, FrameContext?) -> void } -> self
       def on_fill: () { (Area, Area, FrameContext?) -> void } -> self
       def on_resize: () { (Symbol, Integer, Numeric, FrameContext?) -> void } -> self
+      def on_copy: () { (Array[Area], FrameContext) -> Hash[String, String] } -> self
+      def on_paste: () { (Array[Area], Clipboard::Content, FrameContext) -> void } -> self
       def set_row_height: (Integer index, Numeric height) -> self
       def set_column_width: (Integer index, Numeric width) -> self
       def hide_row: (Integer index) -> self
@@ -376,7 +386,7 @@ module Zaniah
     class CommandPalette < Modal
       attr_reader query: String
       def self.from: (Input::ActionRegistry registry, **untyped options) -> CommandPalette
-      def initialize: (Array[untyped] commands, ?open: bool, ?placeholder: String, ?matcher: Matcher::_Matcher?) -> void
+      def initialize: (Array[untyped] commands, ?open: bool, ?placeholder: String, ?matcher: Matcher::_Matcher?, ?keymap: Input::Keymap?) -> void
       def accessibility_action: (Accessibility::Node item, Symbol action) -> bool?
     end
 
@@ -397,6 +407,8 @@ module Zaniah
       def on_sort: () { (Symbol, :asc | :desc) -> void } -> self
       def on_select: () { (Set[untyped], Input::MouseDown?, FrameContext) -> void } -> self
       def on_edit: () { (untyped, Symbol, String, Integer) -> void } -> self
+      def on_copy: () { (Array[Grid::Area], FrameContext) -> Hash[String, String] } -> self
+      def on_paste: () { (Array[Grid::Area], Clipboard::Content, FrameContext) -> void } -> self
       def sort_by: (Symbol | String key, ?direction: :asc | :desc) -> self
     end
     class DataGrid < Table

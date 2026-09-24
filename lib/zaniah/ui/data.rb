@@ -22,6 +22,8 @@ module Zaniah
       def on_sort(&block) = (@on_sort = block; self)
       def on_select(&block) = (@on_select = block; self)
       def on_edit(&block) = (@on_edit = block; self)
+      def on_copy(&block) = (@on_copy = block; self)
+      def on_paste(&block) = (@on_paste = block; self)
 
       def sort_by(key, direction: nil)
         column = @columns.find { |item| item.key == key.to_sym && item.sortable }
@@ -46,7 +48,7 @@ module Zaniah
           .h([@height - @row_height, 1].max)
         Div.new.h(@height).overflow_hidden.border(1).border_color(cx.theme.colors.border)
           .rounded(cx.theme.radii[:sm]).child(header).child(@body)
-          .focusable(context: {in_table: true}) { |action| table_action(action) }
+          .focusable(context: {in_table: true}, validate: ->(action) { validate_table_action(action) }) { |action| table_action(action) }
       end
 
       def tui_cells(*)
@@ -195,6 +197,17 @@ module Zaniah
       end
 
       def table_action(action)
+        case action
+        when :copy
+          return false unless @on_copy && !@selection.empty?
+          @cx.window.write_clipboard([Clipboard::Item.new(@on_copy.call(selected_areas, @cx))])
+          return true
+        when :paste
+          return false unless @on_paste && !@selection.empty?
+          window = @cx.window
+          @on_paste.call(selected_areas, window.read_clipboard(types: window.clipboard_types), @cx)
+          return true
+        end
         return false if @display_rows.empty?
         index = case action
         when :previous_option, :extend_previous then [@active_index - 1, 0].max
@@ -220,6 +233,23 @@ module Zaniah
         @body.scroll_to(index, align: :nearest)
         @cx.window.request_frame
         true
+      end
+
+      def validate_table_action(action)
+        case action
+        when :copy then !@selection.empty? if @on_copy
+        when :paste then !@selection.empty? if @on_paste
+        when :previous_option, :next_option, :extend_previous, :extend_next,
+          :first, :last, :page_up, :page_down, :activate then !@display_rows.empty?
+        when :select_all then !@display_rows.empty? && @selection_mode == :multiple
+        end
+      end
+
+      def selected_areas
+        selected = @display_identities.each_index.select { |index| @selection.include?(identity_at(index)) }
+        selected.chunk_while { |left, right| right == left + 1 }.map do |indices|
+          Grid::Area.new(rows: indices.first...(indices.last + 1), columns: 0...@columns.length)
+        end.freeze
       end
 
       def row_identity(row, index) = @row_key.arity == 1 ? @row_key.call(row) : @row_key.call(row, index)

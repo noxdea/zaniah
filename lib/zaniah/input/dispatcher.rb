@@ -13,7 +13,7 @@ module Zaniah
     end
 
     class Dispatcher
-      attr_reader :focused, :focus_origin, :focus_tree
+      attr_reader :focused, :previous_focused, :focus_origin, :focus_tree, :keymap
       attr_accessor :window
 
       def initialize(keymap: Keymap.default_ui)
@@ -30,7 +30,7 @@ module Zaniah
           return
         end
         @focused&.on_focus&.call(false)
-        @focused, @focus_origin = handle, origin
+        @previous_focused, @focused, @focus_origin = @focused, handle, origin
         handle&.on_focus&.call(true)
         reveal(handle)
       end

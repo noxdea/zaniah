@@ -7,6 +7,7 @@ tests and non-window integrations.
 | Component family | Terminal representation |
 | --- | --- |
 | Label, Badge, Avatar | text, `[badge]`, `(initials)` |
+| Kbd | textual shortcut, such as `Ctrl+Shift+P`; multiple strokes are space-separated |
 | Icon | Unicode check/close/search/menu/info/warning symbol; unlabeled unknown icons are omitted |
 | Divider, Card | `─`/`│` and box-drawing characters |
 | Skeleton, Spinner, ProgressBar, Meter | shade cells, `◌`, or a ten-cell progress track; animation jumps to its terminal state |
@@ -16,7 +17,7 @@ tests and non-window integrations.
 | Text inputs | `[value]`; password values are masked and validation errors have `!` |
 | Select, Combobox, MultiSelect | labeled brackets, filtered menu marker, or comma-separated selected values |
 | DatePicker, TimePicker, ColorPicker | labeled ISO date, 24-hour time, or hex color in brackets |
-| Tooltip, Popover, Menu, Dropdown | status text or a box/menu with `>` selection marker |
+| Tooltip, Popover, Menu, MenuBar, Dropdown | status text or a box/menu with `>` selection marker; nested menus expose a Back row |
 | Tabs, Accordion, Collapsible | selected tab in brackets and `[+]`/`[-]` disclosure markers |
 | ScrollView, Scrollbar | clipped child content and `│`/`─` track |
 | Breadcrumb, Pagination, bars | slash-separated path, page status, space-separated content |

@@ -42,6 +42,54 @@ file drops, fullscreen, cursors, URL opening, file dialogs, appearance changes,
 and PNG capture. Platform availability differs; see [the RBS declarations](../sig/native.rbs)
 and [platform declarations](../sig/platform.rbs) for the exact API.
 
+## Clipboard representations
+
+`Clipboard::Item` holds eager MIME-keyed data. `text/*` values are UTF-8 text;
+other values are bytes. The window's `clipboard` and `clipboard=` methods remain
+shortcuts for `text/plain`.
+
+```ruby
+item = Zaniah::Clipboard::Item.new(
+  "text/plain" => "a\tb",
+  "text/html" => "<b>a</b>",
+  "image/png" => png_bytes
+)
+window.write_clipboard([item])
+window.clipboard_types                   # available MIME names, without reading data
+content = window.read_clipboard(types: ["text/html", "text/plain"])
+content.types                            # formats found, in requested order
+content.fetch("text/html")
+```
+
+Headless keeps representations in per-window memory. TUI also keeps every
+representation in memory and sends only `text/plain` writes to the terminal
+with OSC 52; it cannot read the terminal's clipboard. Native macOS, Windows,
+X11, and Wayland exchange `text/plain`, `text/html`, and `image/png` with other
+applications. macOS also preserves arbitrary MIME types under reversible
+`com.noxdea.zaniah.mime.<hex>` pasteboard identifiers; Windows, X11, and
+Wayland use their native format mechanisms. Native clipboard exchange still
+depends on a running desktop session and should be checked on each target OS.
+
+## Window state and decorations
+
+`window.frame` uses logical screen coordinates; `window.state.to_h` can be saved
+by the application and passed back to `window.restore_state`. Missing displays
+and offscreen frames are corrected toward the primary display. `maximize`,
+`minimize`, `restore`, `fullscreen?`, `always_on_top=`, and `on_state_change`
+operate on the native window where supported. `decorations: :native` is the
+default; `:hidden_titlebar` and `:none` enable a custom titlebar built from
+`window_drag_region` and `window_control` elements. `min_size:`, `resizable:`,
+and macOS-only `traffic_lights:` are creation options.
+
+X11 window managers must support EWMH for state and drag requests. On X11,
+`:hidden_titlebar` has the same no-decoration effect as `:none` through Motif
+hints. Wayland does not expose a window position: its frame origin is `nil`
+and setting a position raises. Wayland also cannot request always-on-top or
+programmatically restore a minimized window; those operations raise rather
+than claim success. Client-side decorations on Wayland depend on the compositor
+and its decoration protocol. Verify native placement and drag behavior on each
+target desktop before relying on it.
+
 ## Displays, file watching, and terminals
 
 `Zaniah::Platform.displays` returns the available displays for a backend.
@@ -73,6 +121,7 @@ ruby examples/native_smoke.rb --gl --check /tmp/zaniah-gl.png
 ruby examples/linux_smoke.rb
 ruby examples/linux_smoke.rb --wayland
 ruby examples/native_watch.rb
+ruby examples/native_menu.rb              # macOS only
 ```
 
 Linux XIM composition is exercised in CI with Xvfb and IBus/KKC. Native input,

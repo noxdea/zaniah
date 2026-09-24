@@ -19,6 +19,7 @@ module Zaniah
         attr_reader :handle
         def initialize(gpu: :opengl, **options)
           super(**options)
+          raise Error, "traffic_lights is only supported on macOS" if traffic_lights
           @connection, @globals, @outputs, @offers = FFI::Wayland.new, {}, {}, {}
           @offer_actions = {}
           @entered_outputs = []
@@ -39,15 +40,18 @@ module Zaniah
           @connection.listen(@shell_surface, [[[U], ->(surface, serial) { @connection.request(surface, 4, serial); @configured = true; request_frame }]])
           @toplevel = @connection.request(@shell_surface, 1, 0, new_interface: "xdg_toplevel")
           @connection.listen(@toplevel, [
-            [[I, I, P], ->(_toplevel, width, height, _states) { resize(width, height) if width.positive? && height.positive? }],
+            [[I, I, P], ->(_toplevel, width, height, states) { toplevel_configure(width, height, states) }],
             [[], ->(_toplevel) { @close_requested = true }]
           ])
           @connection.request(@toplevel, 2, @title)
           @connection.request(@toplevel, 3, "org.zaniah.app")
+          minimum = resizable ? min_size : content_size
+          @connection.request(@toplevel, 8, minimum.width.ceil, minimum.height.ceil) if minimum
+          @connection.request(@toplevel, 7, content_size.width.ceil, content_size.height.ceil) unless resizable
           if (manager = @globals["zxdg_decoration_manager_v1"])
             @decoration = @connection.request(manager, 1, 0, @toplevel, new_interface: "zxdg_toplevel_decoration_v1")
             @connection.listen(@decoration, [[[U], nil]])
-            @connection.request(@decoration, 1, 2)
+            @connection.request(@decoration, 1, decorations == :native ? 2 : 1)
           end
           setup_text_input
           setup_clipboard
@@ -94,6 +98,73 @@ module Zaniah
             @wayland_egl.fn(:wl_egl_window_resize, [P, I, I, I, I], V).call(@egl_window, (width * @scale_factor).round, (height * @scale_factor).round, 0, 0)
           end
           super
+        end
+        def frame = Bounds.new(nil, nil, content_size.width, content_size.height)
+        def frame=(bounds)
+          WindowState.new(frame: bounds, display_id: nil, maximized: false, fullscreen: false)
+          raise Error, "Wayland does not support arbitrary window positioning" unless bounds.x.nil? && bounds.y.nil?
+          resize(bounds.width, bounds.height)
+          bounds
+        end
+        def state
+          display_id = @outputs&.find { |_id, (output, _scale)| @entered_outputs&.include?(output.to_i) }&.first
+          WindowState.new(frame: frame, display_id: display_id, maximized: @maximized, fullscreen: @fullscreen)
+        end
+        def restore_state(saved)
+          raise Error, "Wayland cannot programmatically restore a minimized window" if @minimized
+          saved = WindowState.from_h(saved)
+          self.frame = Bounds.new(nil, nil, saved.frame.width, saved.frame.height)
+          @connection.request(@toplevel, 10)
+          @connection.request(@toplevel, 12)
+          if saved.maximized
+            @connection.request(@toplevel, 9)
+          elsif saved.fullscreen
+            @connection.request(@toplevel, 11, 0)
+          end
+          @maximized, @minimized, @fullscreen = saved.maximized, false, !saved.maximized && saved.fullscreen
+          notify_state_change
+          state
+        end
+        def maximize
+          @connection.request(@toplevel, 9)
+          @maximized, @minimized = true, false
+          notify_state_change
+        end
+        def minimize
+          @connection.request(@toplevel, 13)
+          @minimized = true
+          notify_state_change
+        end
+        def restore
+          raise Error, "Wayland cannot programmatically restore a minimized window" if @minimized
+          @connection.request(@toplevel, 10)
+          @connection.request(@toplevel, 12)
+          @maximized = @minimized = @fullscreen = false
+          notify_state_change
+        end
+        def always_on_top=(value)
+          raise Error, "Wayland does not support always-on-top windows" if value
+          @always_on_top = false
+        end
+        def toplevel_configure(width, height, states)
+          flags = if states && !states.null?
+            size, _allocation, data = Fiddle::Pointer.new(states)[0, Fiddle::SIZEOF_VOIDP * 3].unpack("J3")
+            size <= 256 && data != 0 ? Fiddle::Pointer.new(data)[0, size].unpack("L<*") : []
+          else
+            []
+          end
+          old = [content_size, @maximized, @fullscreen, @minimized]
+          @maximized, @fullscreen = flags.include?(1), flags.include?(2)
+          @minimized = false if flags.include?(4)
+          if width.positive? && height.positive? && (width != content_size.width || height != content_size.height)
+            @suppress_state_change = true
+            begin
+              resize(width, height)
+            ensure
+              @suppress_state_change = false
+            end
+          end
+          notify_state_change if old != [content_size, @maximized, @fullscreen, @minimized]
         end
         def create_device(backend)
           raise ArgumentError, "Wayland supports :opengl" unless [:gl, :opengl].include?(backend)
@@ -172,10 +243,41 @@ module Zaniah
         end
         def pointer_button(code, state)
           button = {0x110 => :left, 0x111 => :right, 0x112 => :middle}.fetch(code, :other)
+          if state == 1 && button == :left && decorations != :native && native_window_drag
+            return
+          end
           now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           count = @last_click && @last_click[0] == code && now - @last_click[1] < 0.4 && (@position.x - @last_click[2].x).abs < 4 && (@position.y - @last_click[2].y).abs < 4 ? 2 : 1
           @last_click = [code, now, @position] if state == 1
           input(state == 1 ? Input::MouseDown.new(@position, button, @modifiers, count) : Input::MouseUp.new(@position, button, @modifiers))
+        end
+        def native_window_drag
+          seat = @globals["wl_seat"]
+          return false unless seat && @serial.positive?
+          region = window_region_at(@position)
+          return false if region && region != :drag
+          edge = resize_edge(@position)
+          if edge
+            @connection.request(@toplevel, 6, seat, @serial, edge)
+          elsif region == :drag
+            @connection.request(@toplevel, 5, seat, @serial)
+          else
+            return false
+          end
+          true
+        end
+        def resize_edge(position)
+          return unless resizable && content_size.width.positive? && content_size.height.positive?
+          left, right = position.x < 6, position.x >= content_size.width - 6
+          top, bottom = position.y < 6, position.y >= content_size.height - 6
+          return 5 if top && left
+          return 9 if top && right
+          return 10 if bottom && right
+          return 6 if bottom && left
+          return 1 if top
+          return 8 if right
+          return 2 if bottom
+          4 if left
         end
         def keyboard_map(format, fd, size)
           io = IO.for_fd(fd)
@@ -259,19 +361,65 @@ module Zaniah
             [[P], ->(_device, offer) { destroy_offer(@selection); @selection = offer.null? ? nil : offer }]
           ])
         end
-        def clipboard=(text)
+        def write_clipboard(items)
           raise Error, "Wayland clipboard requires a focused input seat" unless @data_device && @serial.positive?
-          @clipboard = text.to_s.encode("UTF-8")
-          @source = @connection.request(@globals["wl_data_device_manager"], 0, 0, new_interface: "wl_data_source")
-          @connection.listen(@source, [
-            [[P], nil], [[P, I], ->(_source, _mime, fd) { io = IO.for_fd(fd); begin; io.write(@clipboard); rescue Errno::EPIPE; ensure; io.close; end }],
-            [[], ->(_source) { @clipboard = nil }], [[], nil], [[], nil], [[U], nil]
-          ])
-          @connection.request(@source, 0, "text/plain;charset=utf-8")
-          @connection.request(@source, 0, "text/plain")
-          @connection.request(@data_device, 1, @source, @serial)
+          unless items.is_a?(Array) && items.all? { |item| item.is_a?(Clipboard::Item) }
+            raise TypeError, "clipboard items must be an Array of Clipboard::Item"
+          end
+          items.each do |item|
+            item.formats.each_value { |data| raise Error, "Wayland selection exceeds 16 MiB" if data.bytesize > 16_777_216 }
+          end
+          super
+          formats = items.each_with_object({}) { |item, result| item.formats.each { |mime, data| result[mime] ||= data } }
+          source = @connection.request(@globals["wl_data_device_manager"], 0, 0, new_interface: "wl_data_source")
+          @source_formats ||= {}
+          @source_formats[source.to_i] = formats
+          listen_clipboard_source(source)
+          mimes = formats.keys
+          mimes.concat(%w[text/plain;charset=utf-8 UTF8_STRING]) if formats.key?("text/plain")
+          mimes.uniq.each { |mime| @connection.request(source, 0, mime) }
+          @connection.request(@data_device, 1, source, @serial)
+          @source = source
+          items
         end
-        def clipboard = @clipboard || read_selection(["text/plain;charset=utf-8", "UTF8_STRING", "text/plain"])
+        def listen_clipboard_source(source)
+          @connection.listen(source, [
+            [[P], nil], [[P, I], ->(_source, mime, fd) {
+              io = IO.for_fd(fd)
+              begin
+                formats = @source_formats[source.to_i] || {}
+                data = formats[mime.to_s] || (formats["text/plain"] if %w[text/plain;charset=utf-8 UTF8_STRING].include?(mime.to_s))
+                io.write(data) if data
+              rescue Errno::EPIPE
+              ensure
+                io.close
+              end
+            }],
+            [[], ->(_source) { @source_formats&.delete(source.to_i); @source = nil if @source == source; @connection.request(source, 1, destroy: true) }],
+            [[], nil], [[], nil], [[U], nil]
+          ])
+        end
+        def clipboard=(text)
+          super
+        end
+        def clipboard = read_clipboard(types: ["text/plain"]).formats.fetch("text/plain", "")
+        def clipboard_types
+          return super if @source
+          @offers.fetch(@selection&.to_i, []).filter_map do |mime|
+            %w[text/plain;charset=utf-8 UTF8_STRING].include?(mime) ? "text/plain" : mime
+          end.uniq.freeze
+        end
+        def read_clipboard(types:)
+          raise TypeError, "clipboard types must be an Array" unless types.is_a?(Array)
+          return super if @source
+          offered = @offers.fetch(@selection&.to_i, [])
+          formats = types.each_with_object({}) do |type, result|
+            candidates = type == "text/plain" ? ["text/plain;charset=utf-8", "UTF8_STRING", "text/plain"] : [type]
+            mime = candidates.find { |candidate| offered.include?(candidate) }
+            result[type] = read_offer(@selection, [mime]) if mime
+          end
+          Clipboard::Content.new(formats)
+        end
         def clipboard_paths
           Window.file_paths(read_selection(["text/uri-list"]))
         end
@@ -316,7 +464,7 @@ module Zaniah
             result << data if data.is_a?(String)
             raise Error, "clipboard exceeds 16 MiB" if result.bytesize > 16_777_216
           end
-          result.force_encoding("UTF-8").scrub
+          result
         ensure
           reader&.close
           writer&.close unless writer&.closed?
@@ -343,6 +491,7 @@ module Zaniah
         def toggle_fullscreen
           @fullscreen = !@fullscreen
           @fullscreen ? @connection.request(@toplevel, 11, 0) : @connection.request(@toplevel, 12)
+          notify_state_change
         end
         def move_to_display(display)
           validate_display!(display)
@@ -356,6 +505,7 @@ module Zaniah
 
           @fullscreen = true
           @connection.request(@toplevel, 11, output)
+          notify_state_change
           true
         end
         def close
@@ -366,6 +516,7 @@ module Zaniah
           true
         end
         def cleanup_native
+          @source_formats&.clear
           if @egl_display && !@egl_display.null?
             @egl.fn(:eglMakeCurrent, [P] * 4, U).call(@egl_display, 0, 0, 0)
             @egl.fn(:eglDestroySurface, [P, P], U).call(@egl_display, @egl_surface) if @egl_surface

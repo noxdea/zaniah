@@ -3,6 +3,7 @@
 module Zaniah
   class Element
     include LengthUnits
+    WINDOW_CONTROLS = %i[close minimize maximize restore fullscreen].freeze
 
     attr_reader :layout_node, :parent, :resolved_style
 
@@ -65,6 +66,14 @@ module Zaniah
     def tooltip_text = @tooltip
     def context_menu(items) = (@context_menu = items; self)
     def context_menu_items = @context_menu
+    def window_drag_region = (@window_drag_region = true; self)
+    def window_drag_region? = !!@window_drag_region
+    def window_control(kind)
+      raise ArgumentError, "unknown window control" unless WINDOW_CONTROLS.include?(kind)
+      @window_control_kind = kind
+      self
+    end
+    def window_control_kind = @window_control_kind
     def flex = style(display: :flex)
     def flex_row = style(flex_direction: :row)
     def flex_col = style(flex_direction: :column)
@@ -150,7 +159,7 @@ module Zaniah
         @focus_handle.focusable = !@static_flags.include?(:disabled)
         cx.dispatcher.register_focus(@focus_handle)
       end
-      unless @handlers.empty? && !@tooltip && !@context_menu && !@style_set.interactive? && !@focus_handle
+      unless @handlers.empty? && !@tooltip && !@context_menu && !@style_set.interactive? && !@focus_handle && !@window_drag_region && !@window_control_kind
         cx.dispatcher.hit(bounds, owner: self) do |event|
           if event.is_a?(Input::MouseDown) && event.button == :right && @context_menu
             cx.window.context_menu(@context_menu, position: event.position)

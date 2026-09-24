@@ -40,6 +40,8 @@ module Zaniah
       def on_edit(&block) = (@on_edit = block; self)
       def on_fill(&block) = (@on_fill = block; self)
       def on_resize(&block) = (@on_resize = block; self)
+      def on_copy(&block) = (@on_copy = block; self)
+      def on_paste(&block) = (@on_paste = block; self)
 
       def selection=(areas)
         unless areas.is_a?(Array) && areas.all? { |area| area.is_a?(Area) }
@@ -139,7 +141,7 @@ module Zaniah
         body_height = [height - frozen_height, 0].max
         root.child(pane_row(width, body_height, frozen: false, frozen_width: frozen_width)) if body_height.positive?
         root
-          .focusable(context: {in_grid: true}) { |action| grid_action(action) }
+          .focusable(context: {in_grid: true}, validate: ->(action) { validate_grid_action(action) }) { |action| grid_action(action) }
           .on_scroll_wheel { |event, context| scroll(event, context) }
       end
 
@@ -439,6 +441,17 @@ module Zaniah
       end
 
       def grid_action(action)
+        case action
+        when :copy
+          return false unless @on_copy && !@selection.empty?
+          @cx.window.write_clipboard([Clipboard::Item.new(@on_copy.call(@selection, @cx))])
+          return true
+        when :paste
+          return false unless @on_paste && !@selection.empty?
+          window = @cx.window
+          @on_paste.call(@selection, window.read_clipboard(types: window.clipboard_types), @cx)
+          return true
+        end
         row, column = @active_cell
         next_row, next_column = case action
         when :previous_option then [[row - 1, 0].max, column]
@@ -473,6 +486,16 @@ module Zaniah
         end
         scroll_to(row: next_row, column: next_column)
         true
+      end
+
+      def validate_grid_action(action)
+        case action
+        when :copy then !@selection.empty? if @on_copy
+        when :paste then !@selection.empty? if @on_paste
+        when :previous_option, :next_option, :previous_column, :next_column,
+          :extend_previous, :extend_next, :extend_column_previous, :extend_column_next,
+          :first, :last, :select_all, :activate then @rows.positive? && @columns.positive?
+        end
       end
 
       def validate_area(area)

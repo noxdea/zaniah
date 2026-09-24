@@ -7,7 +7,7 @@ require_relative "task_executor"
 
 module Zaniah
   class App
-    attr_reader :windows, :executor, :actions
+    attr_reader :windows, :executor, :actions, :menu_bar
 
     def initialize(clock: MONOTONIC_CLOCK)
       @slots, @generations, @free, @windows, @globals = [], [], [], [], {theme: Theme.dark}
@@ -129,6 +129,13 @@ module Zaniah
     ensure
       @hot_reloads&.each(&:close)
       @executor.shutdown
+    end
+
+    def menu_bar=(menu)
+      raise ArgumentError, "menu_bar must be a Zaniah::Menu or nil" unless menu.nil? || menu.is_a?(Menu)
+      @menu_bar = menu
+      @windows.each(&:request_frame)
+      menu
     end
 
     def hot_reload(paths, **options, &block)

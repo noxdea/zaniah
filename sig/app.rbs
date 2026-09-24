@@ -31,6 +31,7 @@ module Zaniah
     attr_reader windows: Array[Platform::Headless::Window]
     attr_reader executor: TaskExecutor
     attr_reader actions: Input::ActionRegistry
+    attr_reader menu_bar: Menu?
     def initialize: (?clock: clock) -> void
     def new_entity: [T] () { (EntityContext[T]) -> T } -> Entity[T]
     def read: [T] (Entity[T] entity) -> T
@@ -46,6 +47,7 @@ module Zaniah
     def flush_effects: () -> void
     def open_window: (?backend: Platform::backend, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?input: IO, ?output: IO, ?gpu: :metal | :opengl | :gl, ?display_server: :auto | :x11 | :wayland, ?keymap: Input::Keymap?, ?clock: clock) ?{ (Platform::Headless::Window) -> (Element | Scene | nil) } -> Platform::Headless::Window
     def run: () -> void
+    def menu_bar=: (Menu? menu) -> Menu?
     def hot_reload: (String | Array[String] paths, **untyped options) ?{ (Array[String]) -> void } -> DevTools::HotReload
   end
 

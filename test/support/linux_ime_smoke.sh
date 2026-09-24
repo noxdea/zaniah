@@ -12,6 +12,8 @@ Xvfb "$DISPLAY" -screen 0 800x600x24 +extension GLX >/tmp/zaniah-xvfb.log 2>&1 &
 xvfb_pid=$!
 trap 'kill "$xvfb_pid" 2>/dev/null || true' EXIT
 sleep 2
+bundle exec ruby -Ilib test/support/linux_clipboard_smoke.rb
+bundle exec ruby -Ilib test/support/linux_window_state_smoke.rb
 
 gsettings set org.freedesktop.ibus.general preload-engines "['kkc']"
 gsettings set org.freedesktop.ibus.general engines-order "['kkc']"

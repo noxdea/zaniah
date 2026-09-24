@@ -5,7 +5,7 @@ module Zaniah
         attr_reader handle: Integer
         attr_reader view: Integer
         attr_reader layer: Integer?
-        def initialize: (?gpu: :metal | :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def initialize: (?gpu: :metal | :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> void
         def create_device: (:metal | :opengl | :gl backend) -> GPU::_Device
         def tick: (?poll_events: bool) -> void
         def run: () -> void
@@ -25,8 +25,8 @@ module Zaniah
     module Linux
       class Window < Headless::Window
         attr_reader handle: Integer
-        def self.new: (?display_server: :auto | :x11 | :wayland, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> (Window | WaylandWindow)
-        def initialize: (?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def self.new: (?display_server: :auto | :x11 | :wayland, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> (Window | WaylandWindow)
+        def initialize: (?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> void
         def create_device: (:opengl | :gl backend) -> GPU::OpenGL
         def run: () -> void
         def clipboard: () -> String?
@@ -41,7 +41,7 @@ module Zaniah
         def move_to_display: (Display display) -> bool
       end
       class WaylandWindow < Headless::Window
-        def initialize: (?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def initialize: (?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> void
         def create_device: (:opengl | :gl backend) -> GPU::OpenGL
         def run: () -> void
         def clipboard: () -> String?
@@ -65,7 +65,7 @@ module Zaniah
       class Window < Headless::Window
         # Opaque native pointer; only integer conversion is portable.
         attr_reader handle: _ToI
-        def initialize: (?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric) -> void
+        def initialize: (?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> void
         def create_device: (:opengl | :gl backend) -> GPU::OpenGL
         def run: () -> void
         def clipboard: () -> String?

@@ -103,6 +103,7 @@ module Zaniah
       def load_json: (String text) -> self
       def dispatch: (String key, ?context: context, ?now: Numeric) -> (action | :pending | nil)
       def bindings: () -> Array[Binding]
+      def shortcut_for: (action action) -> String?
     end
   class FocusHandle
       attr_reader parent: FocusHandle?
@@ -129,12 +130,15 @@ module Zaniah
       def spatial: (FocusHandle from, :left | :right | :up | :down direction) -> FocusHandle?
       def trap: [T] (FocusHandle handle) ?{ () -> T } -> (FocusHandle | T)
     def restore: () -> FocusHandle?
-    def release_trap: (FocusHandle handle) -> FocusHandle?
+      def release_trap: (FocusHandle handle) -> FocusHandle?
+      def allows?: (FocusHandle handle) -> bool
     end
     class Dispatcher
       attr_reader focused: FocusHandle?
+      attr_reader previous_focused: FocusHandle?
       attr_reader focus_origin: Symbol?
       attr_reader focus_tree: FocusTree
+      attr_reader keymap: Keymap
       attr_accessor window: Platform::Headless::Window?
       def initialize: (?keymap: Keymap) -> void
       def focus: (FocusHandle? handle, ?origin: Symbol) -> void

@@ -2,6 +2,7 @@ module Zaniah
   module Platform
     type backend = :headless | :tui | :mac | :linux | :windows
     type cursor = :arrow | :text | :pointer | :crosshair | :resize_horizontal | :resize_vertical
+    type decorations = :native | :hidden_titlebar | :none
     type text_run = [Numeric, Numeric, String, color]
     type native_window = Mac::Window | Linux::Window | Linux::WaylandWindow | Windows::Window
     module Appearance
@@ -20,11 +21,11 @@ module Zaniah
     end
     def self.displays: (?backend: backend | :auto, ?display_server: :auto | :x11 | :wayland) -> Array[Display]
 
-    def self.open_window: (?backend: :headless, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> Headless::Window
-                        | (backend: :tui, ?input: IO, ?output: IO, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> TUI::Window
-                        | (backend: :mac, ?gpu: :metal | :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> Mac::Window
-                        | (backend: :linux, ?display_server: :auto | :x11 | :wayland, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> (Linux::Window | Linux::WaylandWindow)
-                        | (backend: :windows, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> Windows::Window
+    def self.open_window: (?backend: :headless, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> Headless::Window
+                        | (backend: :tui, ?input: IO, ?output: IO, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> TUI::Window
+                        | (backend: :mac, ?gpu: :metal | :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> Mac::Window
+                        | (backend: :linux, ?display_server: :auto | :x11 | :wayland, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> (Linux::Window | Linux::WaylandWindow)
+                        | (backend: :windows, ?gpu: :opengl | :gl, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> Windows::Window
 
     interface _Watcher
       def poll: (?timeout: Numeric) -> Array[FileEvent]
@@ -66,16 +67,22 @@ module Zaniah
         attr_reader frame_stats: Hash[Symbol, Numeric]
         attr_reader last_root: _Renderable?
         attr_reader frame_number: Integer
+        attr_reader decorations: decorations
+        attr_reader transparent: bool
+        attr_reader min_size: Size?
+        attr_reader resizable: bool
+        attr_reader traffic_lights: Point?
         attr_accessor text_system: TextSystem::_System?
         attr_accessor ime_state: Bounds?
         attr_accessor title: String
         attr_accessor app: App?
         attr_accessor devtools: DevTools::Inspector?
-        def initialize: (?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> void
+        def initialize: (?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> void
         def on_input: () { (Input::event) -> void } -> void
         def on_resize: () { (Size) -> void } -> void
         def on_close: () { () -> (bool | nil) } -> void
         def on_moved: () { ([Numeric, Numeric]) -> void } -> void
+        def on_state_change: () { (WindowState) -> void } -> void
         def on_tick: () { () -> void } -> void
         def on_frame: () { (_Renderable, color) -> void } -> void
         def draw: () { (Window) -> (_Renderable | Scene | nil) } -> void
@@ -91,6 +98,20 @@ module Zaniah
         def displays: () -> Array[Display]
         # Raises Error for backends without native physical-display placement.
         def move_to_display: (Display display) -> bool
+        def window_region_at: (Point position) -> (:drag | :close | :minimize | :maximize | :restore | :fullscreen)?
+        def frame: () -> Bounds
+        def frame=: (Bounds bounds) -> Bounds
+        def maximized?: () -> bool
+        def minimized?: () -> bool
+        def fullscreen?: () -> bool
+        def always_on_top?: () -> bool
+        def always_on_top=: (bool value) -> void
+        def state: () -> WindowState
+        def maximize: () -> void
+        def minimize: () -> void
+        def restore: () -> void
+        def toggle_fullscreen: () -> void
+        def restore_state: (WindowState | Hash[Symbol | String, untyped] saved) -> WindowState
         def popup: () -> Popup?
         def tooltip_state: () -> { text: String, position: Point, at: Numeric, shown: bool }?
         def resize: (Numeric width, Numeric height) -> void
@@ -113,7 +134,7 @@ module Zaniah
         def flush_escape: () -> bool
       end
       class Window < Headless::Window
-        def initialize: (?input: IO, ?output: IO, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock) -> void
+        def initialize: (?input: IO, ?output: IO, ?width: Numeric, ?height: Numeric, ?title: String, ?scale_factor: Numeric, ?keymap: Input::Keymap?, ?clock: clock, ?decorations: decorations, ?transparent: bool, ?min_size: Size?, ?resizable: bool, ?traffic_lights: Point?) -> void
         def run: () -> void
         def feed_input: (String bytes) -> void
       end

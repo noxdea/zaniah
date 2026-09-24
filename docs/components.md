@@ -31,6 +31,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L0 | `Spacer` | `(size = nil)` | fixed or flexible | none |
 | L0 | `Card` | `(*children)`, `child` | theme surface | group |
 | L0 | `Badge` | `(text, variant:)` | neutral/accent/success/warning/danger | text |
+| L0 | `Kbd` | `(keys, platform:)`; `.for(action, keymap:)` | OS shortcut notation, including multi-stroke bindings | text |
 | L0 | `Avatar` | `(name, image:, size:)` | initials or PNG | image |
 | L0 | `Skeleton` | `(width:, height:)` | pulsing loading placeholder | progressbar/busy |
 | L0 | `EmptyState` | `(title, message:, icon:, action:)` | compositional | group |
@@ -50,7 +51,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L2 | `Tooltip` | `(text, anchor:, side:, open:)` | top/bottom/left/right | tooltip |
 | L2 | `Popover` | `(content, anchor:, side:, width:, height:, open:, modal:)` | flipped and viewport-clamped | group |
 | L2 | `ContextMenu`, `Menu` | `(items, anchor:, open:)` | pointer + arrows/Home/End/Enter/Esc | menu/menuitem |
-| L2 | `MenuBar` | `(menus)` | compositional | menubar |
+| L2 | `MenuBar` | `(menus)` or `.from(app.menu_bar)` | declarative menu model or legacy pairs | menubar |
 | L2 | `Dropdown` | `(label, items:, value:)`; `on_change` | menu-backed | button |
 | L2 | `TextField` | `(value, placeholder:, label:, prefix:, suffix:, error:, max_length:, clearable:)` | IME, selection, counter | textbox |
 | L2 | `TextArea` | TextField plus `rows:` | multiline/wrapped | textbox/multiline |
@@ -83,8 +84,8 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L3 | `Resizable` | `(content, width:, height:, min_width:, min_height:, max_width:, max_height:)`; `on_resize` | drag or keyboard resize | group/separator |
 | L3 | `DockPanel` | `(center:, top:, right:, bottom:, left:)` | five-region layout | group |
 | L3 | `ListView` | `(items, height:, row_height:, selected:)`; `on_select` | virtual rows and keyboard selection | list/listitem |
-| L4 | `Table`, `DataGrid` | `(rows, columns:, height:, selection:, row_key:)`; `on_sort`, `on_select`, `on_edit` | virtual rows, sorting, resizing, editing | table/row/cell |
-| L4 | `Grid` | `(rows:, columns:, row_height:, column_width:, frozen_rows:, frozen_columns:)`; `scroll_to`, range `selection`, `on_select`, `on_edit`, `on_fill`, `on_resize` | two-axis virtualization, frozen panes, visible-cell resize/fill callbacks | table |
+| L4 | `Table`, `DataGrid` | `(rows, columns:, height:, selection:, row_key:)`; `on_sort`, `on_select`, `on_edit`, `on_copy`, `on_paste` | virtual rows, sorting, resizing, editing, typed clipboard hooks | table/row/cell |
+| L4 | `Grid` | `(rows:, columns:, row_height:, column_width:, frozen_rows:, frozen_columns:)`; `scroll_to`, range `selection`, `on_select`, `on_edit`, `on_fill`, `on_resize`, `on_copy`, `on_paste` | two-axis virtualization, frozen panes, visible-cell resize/fill and typed clipboard hooks | table |
 | L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, `replace`, `replace_children`, `invalidate`, lazy `children` proc | arrows/Home/End | tree/treeitem |
 | L5 | `Sparkline` | `(values, width:, height:, color:, label:)` | line + tooltip | image |
 | L5 | `LineChart`, `BarChart`, `StackedBarChart`, `AreaChart` | `(series, width:, height:, colors:, label:)`; `AreaChart(stacked:)` | shared axes, ticks, grid lines, color-keyed legend, tooltip | image |
@@ -106,8 +107,8 @@ input order. Pass `matcher:` to either component, or set a default with
 `match(query, labels)` and returns `UI::Matcher::Match` values with an original
 label `index`, descending `score`, and half-open UTF-8 byte `ranges` for highlighting.
 It may also implement `refine(previous_matches, query)` for incremental queries.
-`CommandPalette.from(app.actions)` uses registered action titles and disables
-unavailable actions; shortcuts will be added with `UI::Kbd` in the menu phase.
+`CommandPalette.from(app.actions)` uses registered action titles, disables
+unavailable actions, and displays shortcuts with `UI::Kbd`. See [Menus](menus.md).
 
 `UI::RichText` accepts UTF-8 byte ranges at grapheme boundaries. Inline styles are
 `bold`, `italic`, `size`, `color`, `font`, and `link`; paragraphs support start,
@@ -143,7 +144,9 @@ viewport.
 In a table, Up/Down/Home/End/Page keys move and select rows, Shift+Up/Down extends
 a range, and Cmd/Ctrl+A selects every row in multiple-selection mode. Sortable
 headers and resize handles are separate Tab stops; Enter sorts and arrow/Page keys
-resize. Tree views use Up/Down to select, Right to expand or enter the first child,
+resize. Grid and Table clipboard hooks receive half-open `Grid::Area` ranges;
+Table areas follow the current display order without changing its stable-ID
+selection. See [Layout](layout.md#two-axis-virtual-grid). Tree views use Up/Down to select, Right to expand or enter the first child,
 and Left to collapse or return to the parent.
 
 Run `bundle exec ruby tools/generate_component_gallery.rb` to rebuild the dark,

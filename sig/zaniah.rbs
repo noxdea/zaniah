@@ -5,7 +5,7 @@ module Zaniah
   type clock = ^() -> Numeric
   type dimension = Numeric | Length | :auto
   type radius = Numeric | [Numeric, Numeric, Numeric, Numeric]
-  type menu = Array[[String, (^( ) -> void)?]]
+  type menu = Array[[String, (^( ) -> void)?]] | Menu
 
   class Error < StandardError
   end
