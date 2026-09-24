@@ -19,16 +19,20 @@ module Zaniah
         raise ArgumentError, "text orientation must be mixed or upright" unless %i[mixed upright].include?(text_orientation)
         @writing_mode, @text_orientation = writing_mode, text_orientation
         @text, @limit, @size, @font = text.dup.freeze, Float(width), size, font
-        byte = 0
-        resolved_rows = {}
-        rows = @text.empty? ? [""] : @text.split("\n", -1)
-        @row_bidi = rows.map do |row|
-          result = resolved_rows[row] ||= Unicode::Bidi.resolve(row, direction: direction)
-          item = [byte, byte + row.bytesize, row, result]
-          byte += row.bytesize + 1
-          item
+        if @text.ascii_only? && direction != :rtl
+          @row_bidi, @direction = nil, :ltr
+        else
+          byte = 0
+          resolved_rows = {}
+          rows = @text.empty? ? [""] : @text.split("\n", -1)
+          @row_bidi = rows.map do |row|
+            result = resolved_rows[row] ||= Unicode::Bidi.resolve(row, direction: direction)
+            item = [byte, byte + row.bytesize, row, result]
+            byte += row.bytesize + 1
+            item
+          end
+          @direction = @row_bidi.first.last.direction
         end
-        @direction = @row_bidi.first.last.direction
         raise ArgumentError, "width must be finite or infinity and nonnegative" if @limit.nan? || @limit.negative?
         @typesetter, @letter_spacing, @align, @ellipsis = typesetter, letter_spacing.to_f, align, ellipsis
         if @typesetter
@@ -55,7 +59,7 @@ module Zaniah
           overlays = overlays_for(range.begin, range.end).select { |overlay| overlay.offset - range.begin <= visible }
           line = spaced(layout_with_overlays(source, range.begin, overlays))
           line = justified(line) if @align == :justify && index < ranges.length - 1 && !line.visual_carets
-          row_direction = @writing_mode == :vertical_rl ? :ltr : row_for(range.begin).last.direction
+          row_direction = @row_bidi && @writing_mode != :vertical_rl ? row_for(range.begin).last.direction : :ltr
           height = [@line_height, overlays.map(&:height).max || 0].max
           x = case @align
           when :center then [(@limit - line.width) / 2.0, 0].max
@@ -201,26 +205,35 @@ module Zaniah
       end
 
       def layout(value, start)
+        if @typesetter && !@row_bidi && @writing_mode == :horizontal_tb
+          return @typesetter.layout_line(value, font: @font, size: @size)
+        end
         if @typesetter
           kwargs = {font: @font, size: @size}
           kwargs[:writing_mode] = @writing_mode if @accepts_writing_mode
-          row_first, row_last, row_text, row_result = row_for(start)
-          kwargs[:direction] = row_result.direction if @accepts_direction
-          if @accepts_bidi && start + value.bytesize <= row_last && @text.byteslice(start, value.bytesize) == value
-            first = start == row_first ? 0 : row_text.byteslice(0...(start - row_first)).length
-            kwargs[:bidi] = Unicode::Bidi.line_result(row_result, row_text, first, first + value.length)
+          if @row_bidi
+            row_first, row_last, row_text, row_result = row_for(start)
+            kwargs[:direction] = row_result.direction if @accepts_direction
+            if @accepts_bidi && start + value.bytesize <= row_last && @text.byteslice(start, value.bytesize) == value
+              first = start == row_first ? 0 : row_text.byteslice(0...(start - row_first)).length
+              kwargs[:bidi] = Unicode::Bidi.line_result(row_result, row_text, first, first + value.length)
+            end
+          else
+            kwargs[:direction] = :ltr if @accepts_direction
           end
           result = @typesetter.layout_line(value, **kwargs)
           return @writing_mode == :vertical_rl && result.writing_mode != :vertical_rl ? result.with(writing_mode: :vertical_rl) : result
         end
-        row_first, row_last, row_text, row_result = row_for(start)
-        bidi = if start + value.bytesize <= row_last && @text.byteslice(start, value.bytesize) == value
-          first = start == row_first ? 0 : row_text.byteslice(0...(start - row_first)).length
-          Unicode::Bidi.line_result(row_result, row_text, first, first + value.length)
-        else
-          Unicode::Bidi.resolve(value, direction: row_result.direction)
+        if @row_bidi
+          row_first, row_last, row_text, row_result = row_for(start)
+          bidi = if start + value.bytesize <= row_last && @text.byteslice(start, value.bytesize) == value
+            first = start == row_first ? 0 : row_text.byteslice(0...(start - row_first)).length
+            Unicode::Bidi.line_result(row_result, row_text, first, first + value.length)
+          else
+            Unicode::Bidi.resolve(value, direction: row_result.direction)
+          end
+          return approximate_bidi_layout(value, bidi) if bidi.levels.any? { |level| level&.odd? }
         end
-        return approximate_bidi_layout(value, bidi) if bidi.levels.any? { |level| level&.odd? }
         byte, x, carets = 0, 0.0, [[0, 0.0]]
         value.grapheme_clusters.each do |cluster|
           byte += cluster.bytesize

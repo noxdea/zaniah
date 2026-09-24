@@ -64,6 +64,16 @@ class BidiLayoutTest < Minitest::Test
     assert_equal [8, :upstream], start.hit_test_with_affinity(Zaniah::Point.new(6, 0))
   end
 
+  def test_ascii_paragraph_fast_path_preserves_explicit_rtl_alignment
+    plain = @typesetter.layout_paragraph("abc", width: 10, size: 1)
+    forced = @typesetter.layout_paragraph("abc", width: 10, size: 1, direction: :rtl)
+
+    assert_equal :ltr, plain.direction
+    assert_equal 0, plain.lines.first.x
+    assert_equal :rtl, forced.direction
+    assert_equal 7, forced.lines.first.x
+  end
+
   def test_mirroring_keeps_original_byte_offsets
     line = @typesetter.layout_line("א(", size: 1)
     bracket = line.glyphs.find { |glyph| glyph.start == 2 }
