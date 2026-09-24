@@ -2,7 +2,7 @@ module Zaniah
   module TextSystem
     class Shaper
       def initialize: () -> void
-      def shape: (Array[Glyph] glyphs, size: Numeric, ?text: String?, ?script: String?, ?language: String?) -> Array[Glyph]
+      def shape: (Array[Glyph] glyphs, size: Numeric, ?text: String?, ?script: String?, ?language: String?, ?direction: :ltr | :rtl, ?features: Hash[String, bool], ?writing_mode: :horizontal_tb | :vertical_rl) -> Array[Glyph]
     end
   end
 end

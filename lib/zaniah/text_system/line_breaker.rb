@@ -4,8 +4,12 @@ module Zaniah
   module TextSystem
     class LineBreaker
       # ponytail: simplified UAX #14; add property tables when unsupported scripts require them.
-      def initialize(text, wrap: :word, kinsoku: :push)
+      def initialize(text, wrap: :word, kinsoku: :push, atomic_ranges: [])
         raise ArgumentError, "wrap must be none, word, or anywhere" unless %i[none word anywhere].include?(wrap)
+        raise ArgumentError, "atomic ranges must be nonoverlapping byte ranges" unless atomic_ranges.is_a?(Array) &&
+          atomic_ranges.all? { |range| range.is_a?(Range) && range.exclude_end? && range.begin.is_a?(Integer) && range.end.is_a?(Integer) && range.begin >= 0 && range.end <= text.bytesize && range.end > range.begin }
+        @atomic_ranges = atomic_ranges.sort_by(&:begin)
+        raise ArgumentError, "atomic ranges overlap" if @atomic_ranges.each_cons(2).any? { |first, following| first.end > following.begin }
         @text, @wrap, @kinsoku = text, wrap, kinsoku
       end
 
@@ -31,6 +35,24 @@ module Zaniah
         return [base...base] if segment.empty?
         return [base...(base + segment.bytesize)] if @wrap == :none || width.infinite?
         clusters = segment.grapheme_clusters
+        if @atomic_ranges.any?
+          raw_bytes, total = [0], 0
+          clusters.each { |cluster| raw_bytes << (total += cluster.bytesize) }
+          grouped, index = [], 0
+          while index < clusters.length
+            range = @atomic_ranges.find { |item| item.begin == base + raw_bytes[index] }
+            if range
+              ending = raw_bytes.index(range.end - base)
+              raise ArgumentError, "atomic range must follow grapheme boundaries within one line" unless ending && ending > index
+              grouped << clusters[index...ending].join
+              index = ending
+            else
+              grouped << clusters[index]
+              index += 1
+            end
+          end
+          clusters = grouped
+        end
         bytes, total = [0], 0
         clusters.each { |cluster| bytes << (total += cluster.bytesize) }
         ranges, first = [], 0

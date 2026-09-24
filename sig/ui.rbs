@@ -462,9 +462,59 @@ module Zaniah
       def initialize: (Hash[untyped, Array[Numeric]] | Array[Numeric] series, ?width: Numeric, ?height: Numeric, ?colors: Array[color]?, ?stacked: bool, ?label: String) -> void
     end
     class CodeEditor < Component
-      attr_reader buffer: TextBuffer
-      def initialize: (?String | TextBuffer value, ?language: Symbol?, ?line_numbers: bool, ?read_only: bool) -> void
+      interface _Buffer
+        def line_count: () -> Integer
+        def line: (Integer index) -> String
+        def line_start: (Integer index) -> Integer
+        def line_of: (Integer offset) -> Integer
+        def replace: (Range[Integer] range, String text) -> untyped
+        def undo: () -> untyped
+        def redo: () -> untyped
+      end
+      interface _Highlighter
+        def tokens: (Integer index, String text) -> Array[[Range[Integer], Symbol | String]]
+        def edited: (Range[Integer] range, String text) -> untyped
+      end
+      class TextBufferAdapter
+        attr_reader source: TextBuffer
+        def initialize: (TextBuffer source) -> void
+        def line_count: () -> Integer
+        def line: (Integer index) -> String
+        def line_start: (Integer index) -> Integer
+        def line_of: (Integer offset) -> Integer
+        def replace: (Range[Integer] range, String text) -> self
+        def undo: () -> self
+        def redo: () -> self
+        def can_undo?: () -> bool
+        def can_redo?: () -> bool
+        def to_s: () -> String
+      end
+      class Surface < Element
+        attr_reader visible_range: Range[Integer]
+        attr_reader scroll_state: ScrollState
+        attr_reader heights: List::HeightIndex
+        def initialize: (CodeEditor owner) -> void
+        def scroll_y: () -> Numeric
+        def scroll_y=: (Numeric value) -> Numeric
+        def hit_test: (Point point) -> Integer
+        def ensure_caret_visible: () -> void
+      end
+      attr_reader buffer: _Buffer
+      attr_reader highlighter: _Highlighter?
+      attr_reader selection: TextSelection
+      def initialize: (?String | TextBuffer | _Buffer value, ?buffer: _Buffer?, ?highlighter: _Highlighter?, ?language: Symbol?, ?line_numbers: bool, ?read_only: bool, ?wrap: bool) -> void
       def value: () -> String
+      def line_numbers?: () -> bool
+      def read_only?: () -> bool
+      def wrap?: () -> bool
+      def revision: () -> Integer
+      def selection=: (TextSelection selection) -> TextSelection
+      def replace: (Range[Integer] range, String replacement) -> self
+      def replace_selection: (String value) -> self
+      def validate_text_action: (Symbol action) -> bool?
+      def text_action: (Symbol action) -> bool
+      def input: (Input::TextInput | Input::Composition event) -> bool
+      def composition: () -> String?
       def on_change: () { (String, FrameContext?) -> void } -> self
     end
     class RichText < Component
@@ -473,13 +523,24 @@ module Zaniah
         attr_reader finish: Integer
         attr_reader style: Hash[Symbol, untyped]
       end
+      class Embed < Data
+        attr_reader key: Object
+        attr_reader offset: Integer
+        attr_reader width: Float
+        attr_reader height: Float
+        attr_reader factory: Proc
+      end
       attr_reader buffer: TextBuffer
       attr_reader selection: TextSelection
       attr_reader paragraph_styles: Array[Hash[Symbol, untyped]]
-      def initialize: (String | Array[untyped] runs, ?selectable: bool, ?editable: bool) -> void
+      attr_reader embeds: Array[Embed]
+      attr_reader writing_mode: :horizontal_tb | :vertical_rl
+      attr_reader text_orientation: :mixed | :upright
+      def initialize: (String | Array[untyped] runs, ?selectable: bool, ?editable: bool, ?writing_mode: :horizontal_tb | :vertical_rl, ?text_orientation: :mixed | :upright) -> void
       def text: () -> String
       def runs: () -> Array[Hash[Symbol, untyped]]
       def spans: () -> Array[Span]
+      def ruby_reading: () -> String
       def editable?: () -> bool
       def validate_text_action: (Symbol action) -> bool?
       def selection=: (TextSelection value) -> TextSelection
@@ -489,7 +550,9 @@ module Zaniah
       def insert: (Integer offset, String value, ?style: Hash[Symbol, untyped]?) -> self
       def delete: (Range[Integer] range) -> self
       def replace: (Range[Integer] range, String value, ?style: Hash[Symbol, untyped]?) -> self
-      def paragraph_style: (Range[Integer] range, ?align: :start | :center | :end | :justify?, ?list: :none | :bullet | :ordered?, ?level: Integer?) -> self
+      def append: (String value, ?style: Hash[Symbol, untyped]?) -> self
+      def insert_embed: (Integer offset, key: Object, width: Numeric, height: Numeric) { (FrameContext) -> (Element | Component) } -> self
+      def paragraph_style: (Range[Integer] range, ?align: :start | :center | :end | :justify?, ?list: :none | :bullet | :ordered?, ?level: Integer?, ?indent: Numeric?, ?quote: (bool | color)?, ?background: color?, ?spacing_before: Numeric?, ?spacing_after: Numeric?) -> self
     end
 
     class Validation

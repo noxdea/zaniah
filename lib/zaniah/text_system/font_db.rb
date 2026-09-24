@@ -27,6 +27,7 @@ module Zaniah
 
       def refresh
         @faces, @fonts, @data, @fallback, @probes, @matches, @normalized = nil, {}, {}, {}, {}, {}, {}
+        @font_paths = {}.compare_by_identity
         self
       end
 
@@ -55,8 +56,12 @@ module Zaniah
 
       def open(path, index: 0)
         path = File.expand_path(path)
-        @fonts[[path, index]] ||= Alhena::Font.new(@data[path] ||= File.binread(path).freeze, index: index)
+        font = (@fonts[[path, index]] ||= Alhena::Font.new(@data[path] ||= File.binread(path).freeze, index: index))
+        @font_paths[font] = path
+        font
       end
+
+      def path_for(font) = @font_paths[font]
 
       def find(family: nil, weight: 400, width: 5, style: :normal)
         raise ArgumentError, "family must be a string" unless family.nil? || family.is_a?(String)

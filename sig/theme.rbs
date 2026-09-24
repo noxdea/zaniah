@@ -48,6 +48,21 @@ module Zaniah
       attr_reader reduced: bool
       def reduced?: () -> bool
     end
+    class Syntax < Data
+      attr_reader keyword: Color
+      attr_reader string: Color
+      attr_reader comment: Color
+      attr_reader number: Color
+      attr_reader function: Color
+      attr_reader type: Color
+      attr_reader constant: Color
+      attr_reader punctuation: Color
+      attr_reader operator: Color
+      attr_reader variable: Color
+      attr_reader text: Color
+      def self.from_colors: (Colors colors) -> Syntax
+      def color: (String | Symbol scope) -> Color
+    end
     attr_reader name: Symbol
     attr_reader appearance: :light | :dark
     attr_reader colors: Colors
@@ -56,6 +71,9 @@ module Zaniah
     attr_reader shadows: Hash[Symbol, Shadow]
     attr_reader typography: Typography
     attr_reader motion: Motion
+    attr_reader syntax: Syntax
+    def initialize: (Symbol name, :light | :dark appearance, Colors colors, Hash[Integer, Numeric] spacing, Hash[Symbol, Numeric] radii, Hash[Symbol, Shadow] shadows, Typography typography, Motion motion, ?syntax: Syntax?) -> void
+                  | (name: Symbol, appearance: :light | :dark, colors: Colors, spacing: Hash[Integer, Numeric], radii: Hash[Symbol, Numeric], shadows: Hash[Symbol, Shadow], typography: Typography, motion: Motion, ?syntax: Syntax?) -> void
     def self.dark: () -> Theme
     def self.light: () -> Theme
     def self.high_contrast: () -> Theme

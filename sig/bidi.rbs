@@ -1,0 +1,18 @@
+module Zaniah
+  module Unicode
+    module Bidi
+      class Result < Data
+        attr_reader paragraph_level: Integer
+        attr_reader levels: Array[Integer?]
+        attr_reader visual_order: Array[Integer]
+        attr_reader types: Array[Symbol]
+        def direction: () -> (:ltr | :rtl)
+      end
+      def self.bidi_class: (Integer codepoint) -> Symbol
+      def self.mirrored: (Integer codepoint) -> Integer
+      def self.control?: (Integer codepoint) -> bool
+      def self.resolve: (String text, ?direction: :auto | :ltr | :rtl) -> Result
+      def self.line_result: (Result result, String text, Integer first, Integer finish) -> Result
+    end
+  end
+end

@@ -8,11 +8,19 @@ module Zaniah
     attr_reader :text, :font_size, :selection, :buffer
 
     def initialize(text, size: 14, color: "#ddd", font: nil, wrap: :none,
-      line_height: nil, letter_spacing: 0, align: :start, ellipsis: false, kinsoku: :push)
+      line_height: nil, letter_spacing: 0, align: :start, ellipsis: false, kinsoku: :push,
+      text_direction: :auto, caret_movement: :visual, writing_mode: :horizontal_tb,
+      text_orientation: :mixed)
       super()
+      raise ArgumentError, "text direction must be auto, ltr, or rtl" unless %i[auto ltr rtl].include?(text_direction)
+      raise ArgumentError, "caret movement must be visual or logical" unless %i[visual logical].include?(caret_movement)
+      raise ArgumentError, "writing mode must be horizontal_tb or vertical_rl" unless %i[horizontal_tb vertical_rl].include?(writing_mode)
+      raise ArgumentError, "text orientation must be mixed or upright" unless %i[mixed upright].include?(text_orientation)
       @text, @font_size, @color, @font = text, size, color, font
       @wrap, @line_height, @letter_spacing = wrap, line_height, letter_spacing
       @text_align, @ellipsis, @kinsoku = align, ellipsis, kinsoku
+      @text_direction, @caret_movement, @caret_affinity = text_direction, caret_movement, :downstream
+      @writing_mode, @text_orientation = writing_mode, text_orientation
       @inline_overlays, @block_overlays, @row_layout_cache = [], [], []
     end
 
@@ -56,18 +64,22 @@ module Zaniah
     end
 
     def hit_test(point)
-      raise Error, "text must be laid out before coordinate conversion" unless @paragraph || @line
-      offset = @paragraph ? @paragraph.hit_test(point) : @line.index_for_x(point.x)
-      display_to_logical_offset(offset)
+      hit_test_with_affinity(point).first
     end
 
-    def offset_to_point(offset)
+    def hit_test_with_affinity(point)
+      raise Error, "text must be laid out before coordinate conversion" unless @paragraph || @line
+      offset, affinity = @paragraph ? @paragraph.hit_test_with_affinity(point) : @line.hit_test(point.x)
+      [display_to_logical_offset(offset), affinity]
+    end
+
+    def offset_to_point(offset, affinity: :downstream)
       raise Error, "text must be laid out before coordinate conversion" unless @paragraph || @line
       offset = Integer(offset)
       raise RangeError, "offset is outside the text" unless offset.between?(0, @text.bytesize)
       raise ArgumentError, "offset splits a grapheme cluster" unless Unicode.grapheme_boundary?(@text, offset)
       display_offset = logical_to_display_offset(offset)
-      @paragraph ? @paragraph.offset_to_point(display_offset) : Point.new(@line.x_for_index(display_offset), 0)
+      @paragraph ? @paragraph.offset_to_point(display_offset, affinity: affinity) : Point.new(@line.caret_x(display_offset, affinity: affinity), 0)
     end
 
     def selection=(value)
@@ -75,6 +87,7 @@ module Zaniah
       raise ArgumentError, "selection is outside the text" unless value.anchor <= @text.bytesize && value.head <= @text.bytesize
       raise ArgumentError, "selection splits a grapheme cluster" unless [value.anchor, value.head].all? { |offset| Unicode.grapheme_boundary?(@text, offset) }
       @selection = value
+      @caret_affinity = :downstream
     end
 
     def wrap(mode = :word, line_height: @line_height, letter_spacing: @letter_spacing,
@@ -111,14 +124,23 @@ module Zaniah
       value = display_text
       @paragraph, @line = nil, nil
       overlays = !@inline_overlays.empty? || !@block_overlays.empty?
-      unless overlays
-        @line = cx.text_system ? cx.text_system.layout_line(value, font: @font, size: @font_size) : approximate_line(value)
+      unless overlays || @writing_mode == :vertical_rl
+        @line = if cx.text_system
+          params = cx.text_system.method(:layout_line).parameters
+          kwargs = {font: @font, size: @font_size}
+          kwargs[:direction] = @text_direction if params.include?([:key, :direction]) || params.any? { |kind, _| kind == :keyrest }
+          cx.text_system.layout_line(value, **kwargs)
+        else
+          approximate_line(value)
+        end
       end
       line_height = @line ? @line.ascent + @line.descent : 0
-      unless @wrap == :none && !@ellipsis && !overlays
-        available = @style[:width]
-        available = available.resolve(cx.window.content_size.width) if available.is_a?(Length)
-        available = cx.window.content_size.width unless available.is_a?(Numeric)
+      rtl = Unicode::Bidi.resolve(value, direction: @text_direction).direction == :rtl
+      unless @wrap == :none && !@ellipsis && !overlays && !rtl && @writing_mode != :vertical_rl
+        extent = @writing_mode == :vertical_rl ? cx.window.content_size.height : cx.window.content_size.width
+        available = @style[@writing_mode == :vertical_rl ? :height : :width]
+        available = available.resolve(extent) if available.is_a?(Length)
+        available = extent unless available.is_a?(Numeric)
         @paragraph = overlays ? nil : paragraph(value, available, cx.text_system)
       end
       overlay_nodes = overlay_elements.to_h do |element|
@@ -139,11 +161,11 @@ module Zaniah
           end
           @measure.call(width, height)
         end
-      elsif @wrap == :none && !@ellipsis && !overlays
+      elsif @wrap == :none && !@ellipsis && !overlays && @writing_mode != :vertical_rl
         ->(_width, _height) { [@line ? @line.width : value.length * @font_size * 0.6, [@font_size * 1.4, line_height].max, @font_size] }
       else
-        lambda do |width, _height|
-          limit = effective_width(width)
+        lambda do |width, height|
+          limit = @writing_mode == :vertical_rl ? effective_inline_height(height) : effective_width(width)
           @paragraph = if overlays
             overlay_paragraph(value, limit, cx.text_system, overlay_nodes, overlay_styles)
           else
@@ -196,12 +218,13 @@ module Zaniah
     def display_text
       value = @buffer&.composition ? @buffer.preview(@selection.head) : @text
       value = @placeholder if value.empty? && @placeholder
-      @secure && !value.equal?(@placeholder) ? "*" * value.bytesize : value
+      value = @secure && !value.equal?(@placeholder) ? "*" * value.bytesize : value
+      value.ascii_only? && value.encoding != Encoding::UTF_8 ? value.encode(Encoding::UTF_8) : value
     end
 
     def begin_selection(event)
       return if overlay_at(local_point(event.position))
-      offset = offset_at(event.position)
+      offset, @caret_affinity = hit_test_with_affinity(local_point(event.position))
       @selection = if event.click_count >= 3 && @paragraph
         range = @paragraph.line_range_at(logical_to_display_offset(offset))
         TextSelection.new(display_to_logical_offset(range.begin), display_to_logical_offset(range.end))
@@ -214,7 +237,8 @@ module Zaniah
     end
 
     def extend_selection(event)
-      @selection = TextSelection.new(@selection.anchor, [offset_at(event.position), @text.bytesize].min)
+      offset, @caret_affinity = hit_test_with_affinity(local_point(event.position))
+      @selection = TextSelection.new(@selection.anchor, [offset, @text.bytesize].min)
     end
 
     def offset_at(position)
@@ -235,16 +259,22 @@ module Zaniah
         delete_range(@selection.range)
       when :paste then replace_selection(@cx.window.clipboard.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace))
       when :undo, :redo then history(action)
-      when :move_left then @selection = TextSelection.new(@selection.collapsed? ? Unicode.previous_boundary(@text, head) : @selection.range.begin)
-      when :move_right then @selection = TextSelection.new(@selection.collapsed? ? Unicode.next_boundary(@text, head) : @selection.range.end)
-      when :select_left then @selection = TextSelection.new(@selection.anchor, Unicode.previous_boundary(@text, head))
-      when :select_right then @selection = TextSelection.new(@selection.anchor, Unicode.next_boundary(@text, head))
+      when :move_left, :move_right, :select_left, :select_right
+        step = action.to_s.end_with?("left") ? -1 : 1
+        target = @paragraph.is_a?(TextSystem::Paragraph) && @paragraph.writing_mode == :vertical_rl ?
+          vertical_column_offset(head, step) : move_caret(head, step)
+        @selection = action.to_s.start_with?("select") ? TextSelection.new(@selection.anchor, target) : TextSelection.new(target)
       when :word_left, :word_right, :select_word_left, :select_word_right
         direction = action.to_s.end_with?("left") ? :left : :right
         target = Unicode.word_boundary(@text, head, direction)
         @selection = action.to_s.start_with?("select") ? TextSelection.new(@selection.anchor, target) : TextSelection.new(target)
       when :line_up, :line_down
-        @selection = TextSelection.new(Unicode.neighbor_line_offset(@text, head, action == :line_up ? -1 : 1))
+        target = if @paragraph.is_a?(TextSystem::Paragraph) && @paragraph.writing_mode == :vertical_rl
+          move_caret(head, action == :line_up ? -1 : 1)
+        else
+          Unicode.neighbor_line_offset(@text, head, action == :line_up ? -1 : 1)
+        end
+        @selection = TextSelection.new(target)
       when :document_start then @selection = TextSelection.new(0)
       when :document_end then @selection = TextSelection.new(@text.bytesize)
       when :line_start, :select_line_start then move_to_line_edge(action, :start)
@@ -271,6 +301,43 @@ module Zaniah
         :line_up, :line_down, :document_start, :document_end,
         :line_start, :line_end, :select_line_start, :select_line_end then true
       end
+    end
+
+    def move_caret(head, step)
+      logical = -> { step.negative? ? Unicode.previous_boundary(@text, head) : Unicode.next_boundary(@text, head) }
+      return logical.call if @caret_movement == :logical || @buffer&.composition
+      vertical = @paragraph.is_a?(TextSystem::Paragraph) && @paragraph.writing_mode == :vertical_rl
+      rows = if @paragraph
+        @paragraph.lines.map { |item| [item.layout, item.start, vertical ? item.x : item.y] }
+      elsif @line
+        [[@line, 0, 0]]
+      else
+        []
+      end
+      return logical.call unless rows.any? { |layout, _, _| layout.visual_carets }
+      entries = rows.flat_map do |layout, start, y|
+        (layout.visual_carets || layout.carets.map { |byte, x| [byte, :downstream, x] })
+          .map { |byte, affinity, x| [display_to_logical_offset(start + byte), affinity, x, y] }
+      end
+      boundaries = Unicode.grapheme_boundaries(@text).to_h { |byte| [byte, true] }
+      entries.select! { |byte, _, _, _| boundaries[byte] }
+      entries.sort_by! { |_, _, x, column| vertical ? [-column, x] : [column, x] }
+      entries.uniq! { |byte, _, x, y| [byte, x, y] }
+      position = entries.index { |byte, affinity, _, _| byte == head && affinity == @caret_affinity } ||
+        entries.index { |byte, _, _, _| byte == head }
+      return logical.call unless position
+      target = entries[(position + step).clamp(0, entries.length - 1)]
+      @caret_affinity = target[1]
+      target[0]
+    end
+
+    def vertical_column_offset(head, step)
+      display_head = logical_to_display_offset(head)
+      point = @paragraph.offset_to_point(display_head, affinity: @caret_affinity)
+      line = @paragraph.lines.find { |item| display_head.between?(item.start, item.finish) } || @paragraph.lines.last
+      x = step.negative? ? line.x - 1 : line.x + line.height + 1
+      display, @caret_affinity = @paragraph.hit_test_with_affinity(Point.new(x, point.y))
+      display_to_logical_offset(display)
     end
 
     def history(action)
@@ -338,31 +405,42 @@ module Zaniah
 
     def paint_selection(bounds, cx)
       range = @selection.range
+      if @paragraph.is_a?(TextSystem::Paragraph) && @paragraph.writing_mode == :vertical_rl
+        cx.scene.layer(Scene::LAYER_SELECTION) do
+          @paragraph.selection_rects(range).each do |rect|
+            cx.scene.quad(bounds.x + rect.x, bounds.y + rect.y, rect.width, rect.height,
+              color: cx.theme.colors.selection)
+          end
+        end
+        return
+      end
       selection_lines.each_with_index do |(line, start, finish, x, y, height), line_index|
         first, last = [range.begin, start].max, [range.end, finish].min
         next if last <= first
-        left = line.x_for_index(first - start)
-        right = line.x_for_index(last - start)
+        rectangles = line.selection_rects((first - start)...(last - start))
         gaps = if @paragraph.respond_to?(:inline_placements)
           @paragraph.inline_placements.select { |placement| placement.line == line_index }
             .map { |placement| [placement.x - x, placement.x - x + placement.width] }
         else
           []
         end
-        segments = gaps.sort.each_with_object([[left, right]]) do |(gap_start, gap_finish), values|
-          segment_start, segment_finish = values.pop
-          if gap_finish <= segment_start || gap_start >= segment_finish
-            values << [segment_start, segment_finish]
-          else
-            values << [segment_start, gap_start] if gap_start > segment_start
-            values << [gap_finish, segment_finish] if gap_finish < segment_finish
-          end
-        end
         cx.scene.layer(Scene::LAYER_SELECTION) do
-          segments.each do |segment_start, segment_finish|
-            next unless segment_finish > segment_start
-            cx.scene.quad(bounds.x + x + segment_start, bounds.y + y,
-              segment_finish - segment_start, height, color: cx.theme.colors.selection)
+          rectangles.each do |rect|
+            segments = [[rect.x, rect.x + rect.width]]
+            gaps.sort.each do |gap_start, gap_finish|
+              segments = segments.flat_map do |segment_start, segment_finish|
+                if gap_finish <= segment_start || gap_start >= segment_finish
+                  [[segment_start, segment_finish]]
+                else
+                  [[segment_start, gap_start], [gap_finish, segment_finish]].select { |a, b| b > a }
+                end
+              end
+            end
+            segments.each do |segment_start, segment_finish|
+              next unless segment_finish > segment_start
+              cx.scene.quad(bounds.x + x + segment_start, bounds.y + y,
+                segment_finish - segment_start, height, color: cx.theme.colors.selection)
+            end
           end
         end
       end
@@ -382,24 +460,38 @@ module Zaniah
         opacity = cx.animator.value(animation_key, 1.0)
       end
       cx.scene.layer(Scene::LAYER_FOCUS_RING) do
-        cx.scene.quad(bounds.x + point.x, bounds.y + point.y, 1, height,
-          color: @resolved_style[:text_color] || @color, opacity: opacity)
+        if @paragraph.is_a?(TextSystem::Paragraph) && @paragraph.writing_mode == :vertical_rl
+          cx.scene.quad(bounds.x + point.x, bounds.y + point.y, height, 1,
+            color: @resolved_style[:text_color] || @color, opacity: opacity)
+        else
+          cx.scene.quad(bounds.x + point.x, bounds.y + point.y, 1, height,
+            color: @resolved_style[:text_color] || @color, opacity: opacity)
+        end
       end
-      cx.window.ime_state = Bounds.new(bounds.x + point.x, bounds.y + point.y, 1, height)
+      cx.window.ime_state = if @paragraph.is_a?(TextSystem::Paragraph) && @paragraph.writing_mode == :vertical_rl
+        Bounds.new(bounds.x + point.x, bounds.y + point.y, height, 1)
+      else
+        Bounds.new(bounds.x + point.x, bounds.y + point.y, 1, height)
+      end
     end
 
     def paint_composition(bounds, cx)
       start = @selection.head
       first, last = point_at(start), point_at(start + @buffer.composition.text.bytesize)
       cx.scene.layer(Scene::LAYER_FOCUS_RING) do
-        cx.scene.underline(bounds.x + first.x, bounds.y + first.y + @font_size * 1.25,
-          [last.x - first.x, 1].max, color: @resolved_style[:text_color] || @color)
+        if @paragraph.is_a?(TextSystem::Paragraph) && @paragraph.writing_mode == :vertical_rl
+          cx.scene.quad(bounds.x + first.x + @font_size * 1.25, bounds.y + [first.y, last.y].min,
+            1, [(last.y - first.y).abs, 1].max, color: @resolved_style[:text_color] || @color)
+        else
+          cx.scene.underline(bounds.x + [first.x, last.x].min, bounds.y + first.y + @font_size * 1.25,
+            [(last.x - first.x).abs, 1].max, color: @resolved_style[:text_color] || @color)
+        end
       end
     end
 
     def point_at(offset)
-      return @paragraph.offset_to_point(offset) if @paragraph
-      Point.new(@line ? @line.x_for_index(offset) : 0, 0)
+      return @paragraph.offset_to_point(offset, affinity: @caret_affinity) if @paragraph
+      Point.new(@line ? @line.caret_x(offset, affinity: @caret_affinity) : 0, 0)
     end
 
     def selection_lines
@@ -420,7 +512,8 @@ module Zaniah
     def paragraph(value, width, typesetter)
       TextSystem::Paragraph.new(value, width: width, size: @font_size, font: @font,
         wrap: @wrap, line_height: @line_height, letter_spacing: @letter_spacing,
-        align: @text_align, ellipsis: @ellipsis, kinsoku: @kinsoku, typesetter: typesetter)
+        align: @text_align, ellipsis: @ellipsis, kinsoku: @kinsoku, typesetter: typesetter,
+        direction: @text_direction, writing_mode: @writing_mode, text_orientation: @text_orientation)
     end
 
     def add_overlay(element)
@@ -440,6 +533,13 @@ module Zaniah
       width = configured.resolve(width) if configured.is_a?(Length)
       width = configured if configured.is_a?(Numeric)
       width.finite? ? [width, 0].max : Float::INFINITY
+    end
+
+    def effective_inline_height(height)
+      configured = @style[:height]
+      height = configured.resolve(height) if configured.is_a?(Length)
+      height = configured if configured.is_a?(Numeric)
+      height.finite? ? [height, 0].max : Float::INFINITY
     end
 
     def source_rows(value)

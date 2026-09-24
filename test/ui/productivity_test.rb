@@ -250,6 +250,19 @@ class ProductivityComponentsTest < Minitest::Test
     assert_operator lines.last.width, :<, 80
   end
 
+  def test_rich_text_reorders_styled_rtl_fragments_without_changing_storage_order
+    @window.text_system = T::TextSystem::Renderer.new(font_db: T::TextSystem::FontDB.new(paths: []))
+    rich = T::UI::RichText.new([
+      {text: "A ", color: "#fff"}, {text: "של", color: "#f00"},
+      {text: "ום", color: "#0f0"}, {text: " B", color: "#fff"}
+    ]).w(240)
+    render(rich)
+    runs = rich.root.instance_variable_get(:@lines).first.runs
+    assert_equal ["A ", "ום", "של", " B"], runs.map { |run| rich.text.byteslice(run.start...run.finish) }
+    assert_equal "A שלום B", rich.text
+    assert_equal runs.map(&:x).sort, runs.map(&:x)
+  end
+
   def test_rich_text_composition_replaces_selected_text_in_preview_and_commit
     rich = T::UI::RichText.new("ABCD", editable: true)
     render(rich)

@@ -24,6 +24,9 @@ module Zaniah
         when :freetype
           require_relative "../platform/linux/free_type"
           @rasters = Platform::Linux::FreeType.new
+        when :directwrite, :direct_write
+          require_relative "../platform/windows/direct_write"
+          @rasters = Platform::Windows::DirectWrite.new(font_db: @font_db)
         else
           raise ArgumentError, "unknown font rasterizer" unless font_raster.respond_to?(:rasterize)
           @rasters = font_raster
@@ -31,7 +34,7 @@ module Zaniah
         @atlas = Atlas.new
         @color_atlas, @color_rasters, @scale_factor = Atlas.new(format: :rgba8), {}, 1.0
         @paint_cache, @paint_colors, @paint_span_cache, @paint_bytes = {}, {}, {}, 0
-        @paint_lookup = Array.new(6)
+        @paint_lookup = Array.new(7)
         if cache_dir
           raise ArgumentError, "cache_dir must be a nonempty path string" unless cache_dir.is_a?(String) && !cache_dir.empty? && !cache_dir.include?("\0")
           require_relative "atlas_cache"
@@ -47,21 +50,23 @@ module Zaniah
         end
       end
 
-      def paint_line(scene, line, x:, y:, color: "#ddd", spans: nil)
+      def paint_line(scene, line, x:, y:, color: "#ddd", spans: nil, text_orientation: :mixed)
         scale = @scale_factor.to_f
         raise ArgumentError, "scale factor must be positive" unless scale.positive? && scale.finite?
         raise ArgumentError, "text origin must be finite" unless x.is_a?(Numeric) && x.finite? && y.is_a?(Numeric) && y.finite?
+        raise ArgumentError, "text orientation must be mixed or upright" unless %i[mixed upright].include?(text_orientation)
         color = paint_color(color)
         spans = paint_spans(spans)
         refresh_paint_cache
         @paint_lookup[0], @paint_lookup[1], @paint_lookup[2] = line.object_id, x, y
         @paint_lookup[3], @paint_lookup[4], @paint_lookup[5] = color, spans, scale
+        @paint_lookup[6] = text_orientation
         cached = @paint_cache.delete(@paint_lookup)
         if cached
           @paint_cache[cached[3]] = cached
           batches = cached[1]
         else
-          batches = pack_line(line, x, y, color, spans, scale)
+          batches = pack_line(line, x, y, color, spans, scale, text_orientation)
           refresh_paint_cache
           length = batches.sum { |batch| batch.bytes.bytesize }
           if length <= MAX_PAINT_BYTES
@@ -69,12 +74,12 @@ module Zaniah
               @paint_bytes -= @paint_cache.shift.last[2]
             end
             # Retaining the line prevents object_id reuse while cached.
-            key = [line.object_id, x, y, color, spans, scale].freeze
+            key = [line.object_id, x, y, color, spans, scale, text_orientation].freeze
             @paint_cache[key] = [line, batches, length, key]
             @paint_bytes += length
           end
         end
-        if scene.vector_sink && line.glyphs.none? { |glyph| color_font?(glyph.font) }
+        if scene.vector_sink && line.writing_mode != :vertical_rl && line.glyphs.none? { |glyph| color_font?(glyph.font) }
           record_glyph_runs(scene, line, x, y, color, spans)
           scene.without_vector_recording { batches.each { |batch| scene.sprite_batch(batch) } }
         else
@@ -85,9 +90,14 @@ module Zaniah
 
       def paint_paragraph(scene, paragraph, x:, y:, color: "#ddd")
         paragraph.lines.each do |line|
-          paint_line(scene, line.layout, x: x + line.x,
-            y: y + line.y + (line.height - line.layout.ascent - line.layout.descent) / 2.0 + line.layout.ascent,
-            color: color)
+          if paragraph.respond_to?(:writing_mode) && paragraph.writing_mode == :vertical_rl
+            paint_line(scene, line.layout, x: x + line.x, y: y + line.y,
+              color: color, text_orientation: paragraph.text_orientation)
+          else
+            paint_line(scene, line.layout, x: x + line.x,
+              y: y + line.y + (line.height - line.layout.ascent - line.layout.descent) / 2.0 + line.layout.ascent,
+              color: color)
+          end
         end
         scene
       end
@@ -192,12 +202,13 @@ module Zaniah
         @paint_span_cache[snapshot] = snapshot.map { |first, last, tint| [first, last, paint_color(tint)].freeze }.freeze
       end
 
-      def pack_line(line, x, y, color, spans, scale)
+      def pack_line(line, x, y, color, spans, scale, text_orientation = :mixed)
         span_index, batches, values, texture = 0, [], [], nil
         line.glyphs.each do |glyph|
           span_index += 1 while spans && span_index < spans.length && glyph.start >= spans[span_index][1]
           tint = spans && spans[span_index] && glyph.start >= spans[span_index][0] ? spans[span_index][2] : color
-          position = (x + glyph.x) * scale
+          vertical = line.writing_mode == :vertical_rl
+          position = (vertical ? x : x + glyph.x) * scale
           bucket = ((position - position.floor) * 4).round % 4
           key = [font_identity(glyph.font), glyph.id, (line.size * scale).to_f, bucket]
           colored = glyph.font.tables.key?("COLR") || glyph.font.tables.key?("sbix") || glyph.font.tables.key?("CBDT")
@@ -222,12 +233,32 @@ module Zaniah
             texture = entry.texture
           end
           tint = paint_color("#fff") if color_glyph
-          values.push((position.floor + entry.left) / scale, ((y * scale).floor - entry.top) / scale, entry.width / scale, entry.height / scale,
+          if vertical
+            source = line.text.byteslice(glyph.start...glyph.finish)
+            rotate = text_orientation == :mixed && source &&
+              ((source.ascii_only? && source.match?(/[!-~]/)) || source.match?(/[\p{Latin}\p{Greek}\p{Cyrillic}]/))
+            glyph_width, glyph_height = entry.width / scale, entry.height / scale
+            cross = [line.ascent + line.descent, line.size].max
+            if rotate
+              sprite_x, sprite_y = 0.0, 0.0
+              transform = [0, 1, -1, 0,
+                x + (cross - glyph_height) / 2.0 + glyph_height,
+                y + glyph.x + (glyph.advance - glyph_width) / 2.0]
+            else
+              sprite_x = x + (cross - glyph_width) / 2.0
+              sprite_y = y + glyph.x + (glyph.advance - glyph_height) / 2.0
+              transform = [1, 0, 0, 1, 0, 0]
+            end
+          else
+            sprite_x, sprite_y = (position.floor + entry.left) / scale, ((y * scale).floor - entry.top) / scale
+            transform = [1, 0, 0, 1, 0, 0]
+          end
+          values.push(sprite_x, sprite_y, entry.width / scale, entry.height / scale,
             tint.r, tint.g, tint.b, tint.a, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             entry.x.to_f / texture.width, entry.y.to_f / texture.height,
             entry.width.to_f / texture.width, entry.height.to_f / texture.height,
             0, 0, 0, 0, 0, 0, 0, texture.format == :r8 ? 1 : 2,
-            1, 0, 0, 1, 0, 0, 0, 0)
+            *transform, 0, 0)
         end
         batches << Scene::SpriteBatch.new(values.pack("f*").freeze, texture) unless values.empty?
         batches.freeze

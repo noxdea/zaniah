@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.0 — 2026-09-24
+
+- Add Unicode bidirectional text layout, caret affinity, and Arabic joining.
+- Add vertical writing, ruby annotations, inline embeds, and richer text decoration.
+- Add a viewport-based code editor with optional buffer and syntax-highlighter adapters.
+- Use DirectWrite shaping on Windows while retaining portable text fallback.
+
 ## 0.9.0 — 2026-09-24
 
 - Add semantic vector recording for UI scenes, including text, images, and raster fallbacks for unsupported drawing.

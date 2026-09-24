@@ -1,0 +1,8 @@
+module Zaniah
+  module Unicode
+    module ArabicJoining
+      def self.type: (Integer codepoint) -> String
+      def self.forms: (String text) -> Hash[Integer, String]
+    end
+  end
+end

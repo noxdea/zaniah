@@ -63,7 +63,7 @@ module Zaniah
       def self.adjust: (Array[String] clusters, Integer first, Integer cut, :hanging | :push | :none mode) -> Integer
     end
     class LineBreaker
-      def initialize: (String text, ?wrap: :none | :word | :anywhere, ?kinsoku: :hanging | :push | :none) -> void
+      def initialize: (String text, ?wrap: :none | :word | :anywhere, ?kinsoku: :hanging | :push | :none, ?atomic_ranges: Array[Range[Integer]]) -> void
       def ranges: (Numeric width) { (String) -> Numeric } -> Array[Range[Integer]]
       def ranges_with_offsets: (Numeric width) { (String, Integer, Integer) -> Numeric } -> Array[Range[Integer]]
     end
@@ -104,9 +104,14 @@ module Zaniah
       attr_reader width: Numeric
       attr_reader height: Numeric
       attr_reader inline_placements: Array[Placement]
-      def initialize: (String text, width: Numeric, ?size: Numeric, ?font: _Font?, ?wrap: :none | :word | :anywhere, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none, ?typesetter: _LineTypesetter?, ?inline_overlays: Array[InlineOverlay]) -> void
+      attr_reader direction: :ltr | :rtl
+      attr_reader writing_mode: :horizontal_tb | :vertical_rl
+      attr_reader text_orientation: :mixed | :upright
+      def initialize: (String text, width: Numeric, ?size: Numeric, ?font: _Font?, ?wrap: :none | :word | :anywhere, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none, ?typesetter: _LineTypesetter?, ?inline_overlays: Array[InlineOverlay], ?direction: :auto | :ltr | :rtl, ?writing_mode: :horizontal_tb | :vertical_rl, ?text_orientation: :mixed | :upright) -> void
       def hit_test: (Point point) -> Integer
-      def offset_to_point: (Integer offset) -> Point
+      def hit_test_with_affinity: (Point point) -> [Integer, :upstream | :downstream]
+      def offset_to_point: (Integer offset, ?affinity: :upstream | :downstream) -> Point
+      def selection_rects: (Range[Integer] range) -> Array[Bounds]
       def line_range_at: (Integer offset) -> Range[Integer]
     end
     class OverlayParagraph
@@ -134,7 +139,8 @@ module Zaniah
       attr_reader block_placements: Array[Paragraph::Placement]
       def initialize: (String text, rows: Array[Row], blocks: Array[Block], width: Numeric) -> void
       def hit_test: (Point point) -> Integer
-      def offset_to_point: (Integer offset) -> Point
+      def hit_test_with_affinity: (Point point) -> [Integer, :upstream | :downstream]
+      def offset_to_point: (Integer offset, ?affinity: :upstream | :downstream) -> Point
       def line_range_at: (Integer offset) -> Range[Integer]
     end
     class FontDB
@@ -154,6 +160,7 @@ module Zaniah
       attr_reader paths: Array[String]
       def initialize: (?paths: Array[String]?) -> void
       def open: (String path, ?index: Integer) -> _Font
+      def path_for: (_Font font) -> String?
       def find: (?family: String?, ?weight: Integer, ?width: Integer, ?style: :normal | :italic | :oblique) -> _Font
       def faces: () -> Array[Face]
       def refresh: () -> self
@@ -198,10 +205,15 @@ module Zaniah
       attr_reader descent: Numeric
       attr_reader size: Numeric
       attr_reader carets: Array[[Integer, Numeric]]
-      def self.new: (String text, Array[Glyph] glyphs, Numeric width, Numeric ascent, Numeric descent, Numeric size, Array[[Integer, Numeric]] carets) -> LineLayout
-                  | (text: String, glyphs: Array[Glyph], width: Numeric, ascent: Numeric, descent: Numeric, size: Numeric, carets: Array[[Integer, Numeric]]) -> LineLayout
+      attr_reader visual_carets: Array[[Integer, :upstream | :downstream, Numeric]]?
+      attr_reader writing_mode: :horizontal_tb | :vertical_rl
+      def self.new: (String text, Array[Glyph] glyphs, Numeric width, Numeric ascent, Numeric descent, Numeric size, Array[[Integer, Numeric]] carets, ?Array[[Integer, :upstream | :downstream, Numeric]]? visual_carets, ?:horizontal_tb | :vertical_rl writing_mode) -> LineLayout
+                  | (text: String, glyphs: Array[Glyph], width: Numeric, ascent: Numeric, descent: Numeric, size: Numeric, carets: Array[[Integer, Numeric]], ?visual_carets: Array[[Integer, :upstream | :downstream, Numeric]]?, ?writing_mode: :horizontal_tb | :vertical_rl) -> LineLayout
       def index_for_x: (Numeric x) -> Integer
       def x_for_index: (Integer index) -> Numeric
+      def caret_x: (Integer offset, ?affinity: :upstream | :downstream) -> Numeric
+      def hit_test: (Numeric x) -> [Integer, :upstream | :downstream]
+      def selection_rects: (Range[Integer] range) -> Array[Bounds]
     end
     class Typesetter
       class CopyError < Error
@@ -211,8 +223,8 @@ module Zaniah
       attr_reader shaper: _Shaper
       attr_reader segmenter: _Segmenter
       def initialize: (?font: _Font?, ?font_db: :native | _FontDB, ?capacity: Integer, ?shaper: :native | _Shaper, ?segmenter: :native | _Segmenter) -> void
-      def layout_line: (String text, ?font: _Font?, ?size: Numeric) -> LineLayout
-      def layout_paragraph: (String text, width: Numeric, ?size: Numeric, ?font: _Font?, ?wrap: :none | :word | :anywhere, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none, ?inline_overlays: Array[Paragraph::InlineOverlay]) -> Paragraph
+      def layout_line: (String text, ?font: _Font?, ?size: Numeric, ?direction: :auto | :ltr | :rtl, ?features: Hash[String, bool], ?script: String?, ?language: String?, ?bidi: Unicode::Bidi::Result?, ?writing_mode: :horizontal_tb | :vertical_rl) -> LineLayout
+      def layout_paragraph: (String text, width: Numeric, ?size: Numeric, ?font: _Font?, ?wrap: :none | :word | :anywhere, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none, ?inline_overlays: Array[Paragraph::InlineOverlay], ?direction: :auto | :ltr | :rtl, ?writing_mode: :horizontal_tb | :vertical_rl, ?text_orientation: :mixed | :upright) -> Paragraph
       def fork: (?capacity: Integer) -> Typesetter
       def close: () -> void
     end
@@ -226,9 +238,9 @@ module Zaniah
       attr_reader font: _Font
       attr_reader cache_dir: String?
       attr_accessor scale_factor: Numeric
-      def initialize: (?font: _Font?, ?font_db: :native | _FontDB, ?capacity: Integer, ?font_raster: :native | :alhena | :core_text | :coretext | :freetype | _Rasterizer, ?shaper: :native | _Shaper, ?segmenter: :native | _Segmenter, ?cache_dir: String?) -> void
-      def layout_line: (String text, ?font: _Font?, ?size: Numeric) -> LineLayout
-      def paint_line: (Scene scene, LineLayout line, x: Numeric, y: Numeric, ?color: color, ?spans: spans?) -> void
+      def initialize: (?font: _Font?, ?font_db: :native | _FontDB, ?capacity: Integer, ?font_raster: :native | :alhena | :core_text | :coretext | :freetype | :directwrite | :direct_write | _Rasterizer, ?shaper: :native | _Shaper, ?segmenter: :native | _Segmenter, ?cache_dir: String?) -> void
+      def layout_line: (String text, ?font: _Font?, ?size: Numeric, ?direction: :auto | :ltr | :rtl, ?features: Hash[String, bool], ?script: String?, ?language: String?, ?bidi: Unicode::Bidi::Result?, ?writing_mode: :horizontal_tb | :vertical_rl) -> LineLayout
+      def paint_line: (Scene scene, LineLayout line, x: Numeric, y: Numeric, ?color: color, ?spans: spans?, ?text_orientation: :mixed | :upright) -> void
       def paint_paragraph: (Scene scene, Paragraph | OverlayParagraph paragraph, x: Numeric, y: Numeric, ?color: color) -> Scene
       def end_frame: () -> void
       def prewarm: (?String text, ?size: Numeric) -> self

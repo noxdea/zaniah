@@ -115,7 +115,7 @@ module Zaniah
     attr_reader selection: TextSelection?
     def selection=: (TextSelection value) -> TextSelection
     attr_reader buffer: TextBuffer?
-    def initialize: (String text, ?size: Numeric, ?color: color, ?font: TextSystem::_Font?, ?wrap: :none | :word | :anywhere, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none) -> void
+    def initialize: (String text, ?size: Numeric, ?color: color, ?font: TextSystem::_Font?, ?wrap: :none | :word | :anywhere, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none, ?text_direction: :auto | :ltr | :rtl, ?caret_movement: :visual | :logical, ?writing_mode: :horizontal_tb | :vertical_rl, ?text_orientation: :mixed | :upright) -> void
     def measured: () { (Numeric width, Numeric height) -> Layout::measurement } -> self
     def on_change: () { (String value) -> void } -> self
     def placeholder: (String text, ?color: color?) -> self
@@ -124,7 +124,8 @@ module Zaniah
     def block_overlay: (line: Integer, element: _Renderable, ?position: :above | :below, height: Numeric) -> self
     def remove_overlay: (_Renderable element) -> self
     def hit_test: (Point point) -> Integer
-    def offset_to_point: (Integer offset) -> Point
+    def hit_test_with_affinity: (Point point) -> [Integer, :upstream | :downstream]
+    def offset_to_point: (Integer offset, ?affinity: :upstream | :downstream) -> Point
     def wrap: (?:none | :word | :anywhere mode, ?line_height: Numeric?, ?letter_spacing: Numeric, ?align: :start | :center | :end | :justify, ?ellipsis: bool, ?kinsoku: :hanging | :push | :none) -> self
     def selectable: (?bool value) -> self
     def editable: (?TextBuffer? buffer) -> self
@@ -133,6 +134,7 @@ module Zaniah
     def initialize: (String path) -> void
     def self.from_bytes: (String bytes, ?format: :auto | :png | :jpeg | :jpg | :gif) -> Image
     attr_reader frames: Array[GIF::Frame]?
+    attr_reader texture: GPU::Texture
   end
   class Canvas < Element
     def initialize: () { (Bounds, FrameContext) -> void } -> void
@@ -198,7 +200,9 @@ module Zaniah
     attr_reader width: Numeric
     attr_reader height: Numeric
     attr_reader view_box: Array[Numeric]
-    def self.rasterize_outline: (_Outline outline, ?stroke_width: Numeric?) -> [Bounds, GPU::Texture?]
+    def self.rasterize_outline: (_Outline outline, ?stroke_width: Numeric?,
+      ?stroke_cap: :butt | :round | :square, ?stroke_join: :miter | :round | :bevel,
+      ?stroke_miter: Numeric, ?fill_rule: :nonzero | :evenodd, ?transform: Transform?) -> [Bounds, GPU::Texture?]
     def self.parse: (String source, ?color: String) -> SVG
     def self.open: (String path, ?color: String) -> SVG
     def initialize: (String source, ?color: String) -> void

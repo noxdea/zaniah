@@ -1,14 +1,20 @@
 # frozen_string_literal: true
 
+require_relative "../unicode/arabic_joining"
+
 module Zaniah
   module TextSystem
-    # Horizontal Latin/CJK/kana shaping, not complex-script reordering.
+    # Horizontal OpenType shaping. Arabic joining is based on Unicode Joining_Type.
     # OpenType GSUB 1/4/6/7; GPOS 2/9; GDEF lookup filtering; legacy kern.
     class Shaper
       def initialize = (@lookups, @filters = {}, {})
 
-      def shape(glyphs, size:, text: nil, script: nil, language: nil)
+      def shape(glyphs, size:, text: nil, script: nil, language: nil, direction: :ltr, features: {}, writing_mode: :horizontal_tb)
         raise ArgumentError, "font size must be finite and positive" unless size.is_a?(Numeric) && size.finite? && size.positive?
+        raise ArgumentError, "direction must be ltr or rtl" unless %i[ltr rtl].include?(direction)
+        raise ArgumentError, "writing mode must be horizontal_tb or vertical_rl" unless %i[horizontal_tb vertical_rl].include?(writing_mode)
+        raise ArgumentError, "features must map OpenType tags to booleans" unless features.is_a?(Hash) && features.all? { |tag, enabled| tag.is_a?(String) && tag.bytesize == 4 && [true, false].include?(enabled) }
+        substitutions = %w[liga calt].select { |tag| features.fetch(tag, true) }
         runs, previous = [], nil
         inferred = glyphs.map { |glyph| script || (text && script_for(text.byteslice(glyph.start...glyph.finish))) }
         inherited = inferred.compact.first || "latn"
@@ -20,25 +26,81 @@ module Zaniah
           previous = key
         end
         x = 0.0
+        arabic_forms = text && runs.any? { |(font, tag), _| tag == "arab" } ? Unicode::ArabicJoining.forms(text) : {}
         runs.flat_map do |(font, tag), run|
           if font.tables.key?("GSUB")
             data = font.table("GSUB")
-            lookups(data, font, "GSUB", %w[liga calt], tag, language).each do |lookup|
-              index = 0
-              index = substitute(data, lookup, run, index, size, 0, []) || index + 1 while index < run.length
+            if tag == "arab"
+              # Form features are per character, not blanket run-wide features.
+              # Apply Arabic stages in shaping order, then optional ligatures.
+              seen = {}
+              stages = %w[ccmp isol fina medi init]
+              stages += [nil, "rlig", "calt", "liga"]
+              stages.each do |stage|
+                next if stage && !features.fetch(stage, true)
+                lookups(data, font, "GSUB", stage ? [stage] : [], tag, language,
+                  include_required: stage.nil?).each do |lookup|
+                  form_stage = %w[isol fina medi init].include?(stage)
+                  next if !form_stage && seen[lookup]
+                  seen[lookup] = true unless form_stage
+                  index = 0
+                  while index < run.length
+                    if !form_stage || arabic_forms[run[index].start] == stage
+                      index = substitute(data, lookup, run, index, size, 0, []) || index + 1
+                    else
+                      index += 1
+                    end
+                  end
+                end
+              end
+            else
+              lookups(data, font, "GSUB", substitutions, tag, language).each do |lookup|
+                index = 0
+                index = substitute(data, lookup, run, index, size, 0, []) || index + 1 while index < run.length
+              end
             end
           end
-          placements, advances = positioning(run, size, tag, language)
+          if writing_mode == :vertical_rl && font.tables.key?("GSUB")
+            data = font.table("GSUB")
+            %w[vert vrt2].each do |feature|
+              next unless features.fetch(feature, true)
+              lookups(data, font, "GSUB", [feature], tag, language, include_required: false).each do |lookup|
+                index = 0
+                index = substitute(data, lookup, run, index, size, 0, []) || index + 1 while index < run.length
+              end
+            end
+          end
+          placements, advances = writing_mode == :vertical_rl ? [Array.new(run.length, 0.0), Array.new(run.length, 0.0)] : positioning(run, size, tag, language, features)
           run.each_with_index.map do |glyph, i|
-            advance = glyph.advance + advances[i]
+            base = writing_mode == :vertical_rl ? vertical_advance(glyph, size) : glyph.advance
+            advance = base + advances[i]
             placed = Glyph.new(font, glyph.id, glyph.start, glyph.finish, x + placements[i], advance)
             x += advance
+            placed
+          end
+        end.tap do |shaped|
+          next unless direction == :rtl
+          x = 0.0
+          shaped.reverse!
+          shaped.map! do |glyph|
+            placed = glyph.with(x: x)
+            x += glyph.advance
             placed
           end
         end
       end
 
       private
+
+      def vertical_advance(glyph, size)
+        font = glyph.font
+        if font.tables.key?("vmtx") && font.tables.key?("vhea") &&
+            font.method(:advance).parameters.any? { |kind, name| name == :vertical && %i[key keyreq].include?(kind) }
+          font.advance(glyph.id, size: size, vertical: true)
+        else
+          glyph.advance
+        end
+      end
 
       def script_for(text)
         return unless text
@@ -49,6 +111,8 @@ module Zaniah
         when /\p{Hangul}/ then "hang"
         when /\p{Greek}/ then "grek"
         when /\p{Cyrillic}/ then "cyrl"
+        when /\p{Hebrew}/ then "hebr"
+        when /\p{Arabic}/ then "arab"
         end
       end
 
@@ -63,8 +127,8 @@ module Zaniah
         Array.new(count) { |i| [data.bytes(offset + 2 + i * 6, 4), base + data.u16(offset + 6 + i * 6)] }.to_h
       end
 
-      def lookups(data, font, tag, features, script, language)
-        @lookups[[font, tag, script, language, features]] ||= begin
+      def lookups(data, font, tag, features, script, language, include_required: true)
+        @lookups[[font, tag, script, language, features, include_required]] ||= begin
           raise Error, "unsupported OpenType layout version" unless data.u16(0) == 1 && data.u16(2) <= 1
           scripts = records(data, data.u16(4))
           selected = scripts[script] || scripts["DFLT"]
@@ -82,7 +146,7 @@ module Zaniah
               candidates.uniq.each do |index|
                 raise Error, "invalid OpenType feature index" if index >= count
                 at = feature_list + 2 + index * 6
-                next unless index == required || features.include?(data.bytes(at, 4))
+                next unless (include_required && index == required) || features.include?(data.bytes(at, 4))
                 feature = feature_list + data.u16(at + 4)
                 indices.concat(words(data, feature + 4, data.u16(feature + 2)))
               end
@@ -307,14 +371,14 @@ module Zaniah
         nil
       end
 
-      def positioning(glyphs, size, script, language)
+      def positioning(glyphs, size, script, language, features)
         placements, advances = Array.new(glyphs.length, 0.0), Array.new(glyphs.length, 0.0)
         return [placements, advances] if glyphs.empty?
         font, active = glyphs.first.font, []
         factor = size.to_f / font.units_per_em
         if font.tables.key?("GPOS")
           data = font.table("GPOS")
-          active = lookups(data, font, "GPOS", ["kern"], script, language)
+          active = lookups(data, font, "GPOS", features.fetch("kern", true) ? ["kern"] : [], script, language)
           active.each do |lookup|
             ignored = filter(data, lookup, font)
             index = 0
@@ -340,7 +404,7 @@ module Zaniah
             end
           end
         end
-        if active.empty?
+        if active.empty? && features.fetch("kern", true)
           glyphs.each_cons(2).with_index { |(left, right), i| advances[i] += legacy_kern(font, left.id, right.id) * factor }
         end
         [placements, advances]

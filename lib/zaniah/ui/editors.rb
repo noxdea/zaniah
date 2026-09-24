@@ -3,48 +3,218 @@
 module Zaniah
   module UI
     class CodeEditor < Component
-      attr_reader :buffer
+      class TextBufferAdapter
+        attr_reader :source
 
-      def initialize(value = "", language: nil, line_numbers: true, read_only: false)
-        super()
-        @buffer = value.is_a?(TextBuffer) ? value : TextBuffer.new(value.to_s)
-        @language, @line_numbers, @read_only = language&.to_sym, !!line_numbers, !!read_only
+        def initialize(source)
+          @source = source
+          reindex
+        end
+
+        def line_count = @starts.length
+        def line_start(index) = @starts.fetch(index)
+        def line_of(offset) = (@starts.bsearch_index { |start| start > offset } || @starts.length) - 1
+        def line(index)
+          first = line_start(index)
+          finish = index + 1 < @starts.length ? @starts[index + 1] - 1 : @text.bytesize
+          @text.byteslice(first...finish)
+        end
+
+        def replace(range, value) = (@source.replace(range, value); reindex; self)
+        def undo = (@source.undo; reindex; self)
+        def redo = (@source.redo; reindex; self)
+        def can_undo? = @source.can_undo?
+        def can_redo? = @source.can_redo?
+        def to_s = @text.dup
+
+        private
+
+        def reindex
+          @text = @source.to_s
+          @starts = [0]
+          @text.each_byte.with_index { |byte, index| @starts << index + 1 if byte == 10 }
+          @starts.freeze
+        end
       end
 
-      def value = @buffer.to_s
-      def focus_handle = @editor&.focus_handle
+      BUFFER_METHODS = %i[line_count line line_start line_of replace undo redo].freeze
+      attr_reader :buffer, :highlighter, :selection
+
+      def initialize(value = "", buffer: nil, highlighter: nil, language: nil,
+        line_numbers: true, read_only: false, wrap: true)
+        super()
+        raise ArgumentError, "pass either a value or a buffer" if buffer && value != ""
+        source = buffer || value
+        @buffer = case source
+        when TextBuffer then TextBufferAdapter.new(source)
+        when String then TextBufferAdapter.new(TextBuffer.new(source.encode(Encoding::UTF_8)))
+        else
+          raise ArgumentError, "buffer must implement the CodeEditor buffer interface" unless BUFFER_METHODS.all? { |method| source.respond_to?(method) }
+          source
+        end
+        if highlighter && (!highlighter.respond_to?(:tokens) || !highlighter.respond_to?(:edited))
+          raise ArgumentError, "highlighter must implement tokens and edited"
+        end
+        @highlighter = highlighter
+        @language, @line_numbers, @read_only = language&.to_sym, !!line_numbers, !!read_only
+        @wrap, @selection, @revision = !!wrap, TextSelection.new(0), 0
+      end
+
+      def value
+        return @buffer.to_s if @buffer.respond_to?(:to_s)
+        Array.new(@buffer.line_count) { |index| @buffer.line(index) }.join("\n")
+      end
+
+      def line_numbers? = @line_numbers
+      def read_only? = @read_only
+      def wrap? = @wrap
+      def revision = @revision
+      def focus_handle = @surface&.focus_handle
       def on_change(&block) = (@on_change = block; self)
 
       def build(cx)
-        @editor = Text.new(value, size: cx.theme.typography.size_sm, color: cx.theme.colors.text).wrap(:word)
-        @editor.editable(@buffer).on_change { |text| @on_change&.call(text, @cx) } unless @read_only
         @cx = cx
-        content = Div.new.flex_row.gap(cx.theme.spacing[2])
-        if @line_numbers
-          numbers = (1..[value.count("\n") + 1, 1].max).to_a.join("\n").encode(Encoding::UTF_8)
-          content.child(Text.new(numbers, size: cx.theme.typography.size_sm, color: cx.theme.colors.text_muted).wrap(:word))
-        end
-        content.child(Div.new.flex_1.child(@editor))
-        ScrollView.new(scrollbar: :overlay).child(content)
+        @surface ||= CodeEditor::Surface.new(self)
       end
 
-      def tui_cells(*) = value.lines.map.with_index(1) { |line, number| @line_numbers ? format("%4d  %s", number, line.chomp) : line.chomp }.join("\n")
+      def tui_cells(*)
+        count = @buffer.line_count
+        count -= 1 if @buffer.line(count - 1).empty?
+        Array.new(count) do |index|
+          @line_numbers ? format("%4d  %s", index + 1, @buffer.line(index)) : @buffer.line(index)
+        end.join("\n")
+      end
       def accessibility_node(_cx) = node(:textbox, label: @language ? "#{@language} code editor" : "Code editor", value: value,
         states: {multiline: true, readonly: @read_only}, actions: @read_only ? [] : %i[focus set_value])
+
+      def selection=(selection)
+        raise ArgumentError, "selection must be a TextSelection" unless selection.is_a?(TextSelection)
+        last = @buffer.line_count - 1
+        limit = @buffer.line_start(last) + @buffer.line(last).bytesize
+        unless selection.anchor.between?(0, limit) && selection.head.between?(0, limit)
+          raise ArgumentError, "selection is outside the buffer"
+        end
+        @selection = selection
+        @cx&.window&.request_frame
+        selection
+      end
+
+      def replace(range, replacement)
+        raise Error, "editor is read-only" if @read_only
+        raise ArgumentError, "replacement must be valid UTF-8" unless replacement.is_a?(String) && replacement.encoding == Encoding::UTF_8 && replacement.valid_encoding?
+        @buffer.replace(range, replacement)
+        @highlighter&.edited(range, replacement)
+        @selection = TextSelection.new(range.begin + replacement.bytesize)
+        @composition = nil
+        @revision += 1
+        @surface.ensure_caret_visible if @surface&.heights && @surface.heights.count == @buffer.line_count
+        @on_change&.call(value, @cx)
+        @cx&.window&.request_frame
+        self
+      end
+
+      def replace_selection(value) = replace(@selection.range, value)
+
+      def validate_text_action(action)
+        return !@read_only && (!@buffer.respond_to?(:can_undo?) || @buffer.can_undo?) if action == :undo
+        return !@read_only && (!@buffer.respond_to?(:can_redo?) || @buffer.can_redo?) if action == :redo
+        return !@selection.collapsed? if action == :copy
+        return !@read_only if %i[cut paste delete_backward delete_forward insert_newline insert_tab].include?(action)
+        return true if %i[copy select_all move_left move_right select_left select_right line_up line_down
+          line_start line_end select_line_start select_line_end document_start document_end word_left word_right
+          select_word_left select_word_right].include?(action)
+        nil
+      end
+
+      def text_action(action)
+        head = @selection.head
+        case action
+        when :select_all then self.selection = TextSelection.new(0, value.bytesize)
+        when :copy then @cx.window.clipboard = value.byteslice(@selection.range)
+        when :cut
+          @cx.window.clipboard = value.byteslice(@selection.range)
+          replace_selection("")
+        when :paste then replace_selection(@cx.window.clipboard.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace))
+        when :undo, :redo
+          @buffer.public_send(action)
+          @revision += 1
+          current = value
+          @selection = TextSelection.new([head, current.bytesize].min)
+          @highlighter&.edited(0...current.bytesize, current)
+          @on_change&.call(current, @cx)
+          @cx&.window&.request_frame
+        when :move_left, :move_right, :select_left, :select_right,
+          :word_left, :word_right, :select_word_left, :select_word_right
+          target = if action.to_s.include?("word")
+            Unicode.word_boundary(value, head, action.to_s.end_with?("left") ? :left : :right)
+          elsif action.to_s.end_with?("left")
+            Unicode.previous_boundary(value, head)
+          else
+            Unicode.next_boundary(value, head)
+          end
+          self.selection = action.to_s.start_with?("select") ? TextSelection.new(@selection.anchor, target) : TextSelection.new(target)
+        when :line_start, :line_end, :select_line_start, :select_line_end, :line_up, :line_down
+          line = @buffer.line_of(head)
+          target = case action
+          when :line_start, :select_line_start then @buffer.line_start(line)
+          when :line_end, :select_line_end then @buffer.line_start(line) + @buffer.line(line).bytesize
+          else
+            destination = (line + (action == :line_up ? -1 : 1)).clamp(0, @buffer.line_count - 1)
+            column = head - @buffer.line_start(line)
+            @buffer.line_start(destination) + [column, @buffer.line(destination).bytesize].min
+          end
+          self.selection = action.to_s.start_with?("select") ? TextSelection.new(@selection.anchor, target) : TextSelection.new(target)
+        when :document_start then self.selection = TextSelection.new(0)
+        when :document_end then self.selection = TextSelection.new(value.bytesize)
+        when :delete_backward
+          first = @selection.collapsed? ? Unicode.previous_boundary(value, head) : @selection.range.begin
+          replace(first...@selection.range.end, "")
+        when :delete_forward
+          finish = @selection.collapsed? ? Unicode.next_boundary(value, head) : @selection.range.end
+          replace(@selection.range.begin...finish, "")
+        when :insert_newline then replace_selection("\n")
+        when :insert_tab then replace_selection("  ")
+        else return false
+        end
+        true
+      end
+
+      def input(event)
+        case event
+        when Input::TextInput
+          return false if @read_only
+          replace_selection(event.text)
+        when Input::Composition
+          return false if @read_only
+          @composition = event.text
+        else return false
+        end
+        @cx&.window&.request_frame
+        true
+      end
+
+      def composition = @composition
     end
 
     class RichText < Component
       Span = Data.define(:start, :finish, :style)
-      STYLE_KEYS = %i[bold italic size color font link].freeze
+      Embed = Data.define(:key, :offset, :width, :height, :factory)
+      STYLE_KEYS = %i[bold italic size color font link underline underline_color strikethrough background baseline letter_spacing ruby combine_upright].freeze
       LIST_STYLES = %i[none bullet ordered].freeze
+      BASELINES = %i[normal superscript subscript].freeze
+      UNDERLINES = %i[single double wavy].freeze
 
-      attr_reader :buffer, :selection, :paragraph_styles
+      attr_reader :buffer, :selection, :paragraph_styles, :embeds, :writing_mode, :text_orientation
 
-      def initialize(runs, selectable: true, editable: false)
+      def initialize(runs, selectable: true, editable: false, writing_mode: :horizontal_tb, text_orientation: :mixed)
         super()
+        raise ArgumentError, "writing mode must be horizontal_tb or vertical_rl" unless %i[horizontal_tb vertical_rl].include?(writing_mode)
+        raise ArgumentError, "text orientation must be mixed or upright" unless %i[mixed upright].include?(text_orientation)
+        @writing_mode, @text_orientation = writing_mode, text_orientation
         text, @spans = normalize_runs(runs)
         @buffer = TextBuffer.new(text)
         @paragraph_styles = Array.new(text.count("\n") + 1) { {} }
+        @embeds = []
         @selection, @selectable, @editable = TextSelection.new(0), !!selectable, !!editable
         @undo_states, @redo_states = [], []
       end
@@ -83,6 +253,10 @@ module Zaniah
       def apply(range, style)
         first, finish = checked_range(range)
         changes = normalize_style(style)
+        raise ArgumentError, "atomic span cannot cross a newline" if (changes[:ruby] || changes[:combine_upright]) && text.byteslice(first...finish).include?("\n")
+        if @spans.any? { |span| (span.style[:ruby] || span.style[:combine_upright]) && span.start < finish && span.finish > first && (first > span.start || finish < span.finish) }
+          raise ArgumentError, "atomic span must be styled as one cluster"
+        end
         return self if first == finish || changes.empty?
         record_edit
         boundaries = [0, text.bytesize, first, finish, *@spans.flat_map { |span| [span.start, span.finish] }].uniq.sort
@@ -104,6 +278,7 @@ module Zaniah
         inherited = style ? normalize_style(style) : style_at(offset)
         size, newlines = value.bytesize, value.count("\n")
         @buffer.insert(offset, value)
+        @embeds = @embeds.map { |embed| embed.offset >= offset ? embed.with(offset: embed.offset + size) : embed }
         @spans = merge_spans(@spans.flat_map do |span|
           if span.finish <= offset
             [span]
@@ -130,6 +305,10 @@ module Zaniah
         first_line = @buffer.line_at(first)
         removed_lines = old.byteslice(first...finish).count("\n")
         @buffer.delete(first...finish)
+        @embeds = @embeds.filter_map do |embed|
+          next if embed.offset >= first && embed.offset < finish
+          embed.offset >= finish ? embed.with(offset: embed.offset - (finish - first)) : embed
+        end
         delta = finish - first
         @spans = merge_spans(@spans.filter_map do |span|
           from = map_offset(span.start, first, finish, delta)
@@ -153,6 +332,10 @@ module Zaniah
         paragraph_style = @paragraph_styles.fetch(first_line, {}).dup.freeze
         after_styles = @paragraph_styles.drop(last_line + 1)
         @buffer.replace(first...finish, value)
+        @embeds = @embeds.filter_map do |embed|
+          next if embed.offset >= first && embed.offset < finish
+          embed.offset >= finish ? embed.with(offset: embed.offset - (finish - first) + value.bytesize) : embed
+        end
         delta = finish - first
         size = value.bytesize
         replacement_spans = @spans.flat_map do |span|
@@ -184,25 +367,52 @@ module Zaniah
         changed
       end
 
-      def paragraph_style(range, align: nil, list: nil, level: nil)
+      def paragraph_style(range, align: nil, list: nil, level: nil, indent: nil, quote: nil,
+        background: nil, spacing_before: nil, spacing_after: nil)
         first, finish = checked_range(range)
         raise ArgumentError, "align must be start, center, end, or justify" if align && !%i[start center end justify].include?(align)
         raise ArgumentError, "list must be none, bullet, or ordered" if list && !LIST_STYLES.include?(list)
         raise ArgumentError, "level must be a nonnegative integer" if level && (!level.is_a?(Integer) || level.negative?)
+        raise ArgumentError, "indent must be nonnegative" if indent && (!indent.is_a?(Numeric) || !indent.finite? || indent.negative?)
+        raise ArgumentError, "quote must be boolean or a color" if quote && quote != true && !quote.is_a?(String) && !quote.is_a?(Color)
+        [spacing_before, spacing_after].compact.each do |spacing|
+          raise ArgumentError, "paragraph spacing must be nonnegative" unless spacing.is_a?(Numeric) && spacing.finite? && !spacing.negative?
+        end
         first_line, last_line = @buffer.line_at(first), @buffer.line_at(finish)
         last_line = [last_line, @paragraph_styles.length - 1].min
-        values = {align: align, list: list, level: level}.compact
+        values = {align: align, list: list, level: level, indent: indent, quote: quote,
+          background: background, spacing_before: spacing_before, spacing_after: spacing_after}.compact
         return self if values.empty?
         record_edit
+        @append_start = nil
         (first_line..last_line).each { |index| @paragraph_styles[index] = @paragraph_styles[index].merge(values).freeze }
         @on_change&.call(text, self)
         @cx&.window&.request_frame
         self
       end
 
+      def append(value, style: nil)
+        start = text.rindex("\n")&.+(1) || 0
+        insert(@buffer.bytesize, value, style: style)
+        @append_start = start
+        self
+      end
+
+      def insert_embed(offset, key:, width:, height:, &factory)
+        raise ArgumentError, "embed requires a block" unless factory
+        raise ArgumentError, "embed key is already present" if @embeds.any? { |embed| embed.key == key }
+        [width, height].each do |dimension|
+          raise ArgumentError, "embed dimensions must be finite and nonnegative" unless dimension.is_a?(Numeric) && dimension.finite? && !dimension.negative?
+        end
+        offset = checked_offset(offset)
+        insert(offset, "\uFFFC")
+        @embeds << Embed.new(key, offset, width.to_f, height.to_f, factory)
+        self
+      end
+
       def build(cx) = (@cx = cx; RichTextSurface.new(self))
-      def tui_cells(*) = text
-      def accessibility_node(_cx) = node(@editable ? :textbox : :text, label: "Rich text", value: text,
+      def tui_cells(*) = ruby_reading
+      def accessibility_node(_cx) = node(@editable ? :textbox : :text, label: "Rich text", value: ruby_reading,
         states: {multiline: true, readonly: !@editable}, actions: @editable ? %i[focus set_value] : [])
 
       def display_text
@@ -221,16 +431,17 @@ module Zaniah
           delete(@selection.range)
         when :paste then replace_selection(@cx.window.clipboard.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace))
         when :undo, :redo then restore_edit(action)
-        when :move_left then self.selection = TextSelection.new(@selection.collapsed? ? Unicode.previous_boundary(text, head) : @selection.range.begin)
-        when :move_right then self.selection = TextSelection.new(@selection.collapsed? ? Unicode.next_boundary(text, head) : @selection.range.end)
-        when :select_left then self.selection = TextSelection.new(@selection.anchor, Unicode.previous_boundary(text, head))
-        when :select_right then self.selection = TextSelection.new(@selection.anchor, Unicode.next_boundary(text, head))
+        when :move_left then self.selection = TextSelection.new(@selection.collapsed? ? previous_text_boundary(head) : @selection.range.begin)
+        when :move_right then self.selection = TextSelection.new(@selection.collapsed? ? next_text_boundary(head) : @selection.range.end)
+        when :select_left then self.selection = TextSelection.new(@selection.anchor, previous_text_boundary(head))
+        when :select_right then self.selection = TextSelection.new(@selection.anchor, next_text_boundary(head))
         when :word_left, :word_right, :select_word_left, :select_word_right
           direction = action.to_s.end_with?("left") ? :left : :right
-          target = Unicode.word_boundary(text, head, direction)
+          target = snap_atomic(Unicode.word_boundary(text, head, direction), direction)
           self.selection = action.to_s.start_with?("select") ? TextSelection.new(@selection.anchor, target) : TextSelection.new(target)
         when :line_up, :line_down
-          self.selection = TextSelection.new(Unicode.neighbor_line_offset(text, head, action == :line_up ? -1 : 1))
+          direction = action == :line_up ? :left : :right
+          self.selection = TextSelection.new(snap_atomic(Unicode.neighbor_line_offset(text, head, direction == :left ? -1 : 1), direction))
         when :document_start then self.selection = TextSelection.new(0)
         when :document_end then self.selection = TextSelection.new(text.bytesize)
         when :line_start, :select_line_start then move_line_edge(action, :start)
@@ -272,6 +483,7 @@ module Zaniah
       end
 
       def changed
+        @append_start = nil
         @on_change&.call(text, self)
         @cx&.window&.request_frame
         self
@@ -291,9 +503,20 @@ module Zaniah
         @paragraph_styles.fetch(@buffer.line_at([offset, text.bytesize].min), {})
       end
 
+      def ruby_reading
+        result, offset = +"", 0
+        @spans.each do |span|
+          next unless span.style[:ruby]
+          result << text.byteslice(offset...span.finish)
+          result << "（#{span.style[:ruby]}）"
+          offset = span.finish
+        end
+        result << text.byteslice(offset..)
+      end
+
       private
 
-      def edit_state = [text, @spans, @paragraph_styles.dup, @selection]
+      def edit_state = [text, @spans, @paragraph_styles.dup, @selection, @embeds.dup]
 
       def record_edit
         @undo_states << edit_state
@@ -304,7 +527,7 @@ module Zaniah
         from, to = action == :undo ? [@undo_states, @redo_states] : [@redo_states, @undo_states]
         return false if from.empty?
         to << edit_state
-        value, @spans, @paragraph_styles, @selection = from.pop
+        value, @spans, @paragraph_styles, @selection, @embeds = from.pop
         @buffer.replace(0...@buffer.bytesize, value)
         changed
       end
@@ -316,6 +539,7 @@ module Zaniah
           raise ArgumentError, "rich text runs require text" unless run.key?(:text)
           part = run[:text].to_s.encode(Encoding::UTF_8)
           style = normalize_style(run.reject { |key, _| key.to_sym == :text })
+          raise ArgumentError, "atomic span cannot cross a newline" if (style[:ruby] || style[:combine_upright]) && part.include?("\n")
           first = text.bytesize
           text << part
           spans << Span.new(first, text.bytesize, style.freeze) unless part.empty? || style.empty?
@@ -331,6 +555,18 @@ module Zaniah
         if style[:size] && (!style[:size].is_a?(Numeric) || !style[:size].finite? || !style[:size].positive?)
           raise ArgumentError, "font size must be finite and positive"
         end
+        raise ArgumentError, "invalid underline style" if style[:underline] && !UNDERLINES.include?(style[:underline])
+        raise ArgumentError, "invalid baseline" if style[:baseline] && !BASELINES.include?(style[:baseline])
+        if style[:letter_spacing] && (!style[:letter_spacing].is_a?(Numeric) || !style[:letter_spacing].finite?)
+          raise ArgumentError, "letter spacing must be finite"
+        end
+        if style[:ruby] && (!style[:ruby].is_a?(String) || style[:ruby].encoding != Encoding::UTF_8 || style[:ruby].empty? || !style[:ruby].valid_encoding? || style[:ruby].include?("\n"))
+          raise ArgumentError, "ruby must be a nonempty UTF-8 annotation without newlines"
+        end
+        if style.key?(:combine_upright) && ![true, false].include?(style[:combine_upright])
+          raise ArgumentError, "combine_upright must be boolean"
+        end
+        raise ArgumentError, "ruby and combine_upright cannot be combined" if style[:ruby] && style[:combine_upright]
         style
       end
 
@@ -338,7 +574,7 @@ module Zaniah
         spans.sort_by(&:start).each_with_object([]) do |span, result|
           next if span.start == span.finish
           previous = result.last
-          if previous && previous.finish == span.start && previous.style == span.style
+          if previous && previous.finish == span.start && previous.style == span.style && !span.style[:ruby] && !span.style[:combine_upright]
             result[-1] = Span.new(previous.start, span.finish, span.style)
           else
             result << span
@@ -359,6 +595,7 @@ module Zaniah
       def checked_offset(offset)
         raise ArgumentError, "offset is outside text" unless offset.is_a?(Integer) && offset.between?(0, text.bytesize)
         raise ArgumentError, "offset splits a grapheme cluster" unless Unicode.grapheme_boundary?(text, offset)
+        raise ArgumentError, "offset splits an atomic text cluster" if @spans.any? { |span| (span.style[:ruby] || span.style[:combine_upright]) && offset > span.start && offset < span.finish }
         offset
       end
 
@@ -388,20 +625,38 @@ module Zaniah
       end
 
       def delete_backward
-        range = @selection.collapsed? ? Unicode.previous_boundary(text, @selection.head)...@selection.head : @selection.range
+        range = @selection.collapsed? ? previous_text_boundary(@selection.head)...@selection.head : @selection.range
         delete(range)
       end
 
       def delete_forward
-        range = @selection.collapsed? ? @selection.head...Unicode.next_boundary(text, @selection.head) : @selection.range
+        range = @selection.collapsed? ? @selection.head...next_text_boundary(@selection.head) : @selection.range
         delete(range)
+      end
+
+      def previous_text_boundary(offset)
+        previous = Unicode.previous_boundary(text, offset)
+        span = @spans.find { |item| (item.style[:ruby] || item.style[:combine_upright]) && previous > item.start && previous < item.finish }
+        span ? span.start : previous
+      end
+
+      def next_text_boundary(offset)
+        following = Unicode.next_boundary(text, offset)
+        span = @spans.find { |item| (item.style[:ruby] || item.style[:combine_upright]) && following > item.start && following < item.finish }
+        span ? span.finish : following
+      end
+
+      def snap_atomic(offset, direction)
+        span = @spans.find { |item| (item.style[:ruby] || item.style[:combine_upright]) && offset > item.start && offset < item.finish }
+        return offset unless span
+        direction == :left ? span.start : span.finish
       end
 
       def move_line_edge(action, edge)
         line = @buffer.line_at(@selection.head)
         start = @buffer.offset_at(line, 0)
         finish = text.index("\n", start) || text.bytesize
-        target = edge == :start ? start : finish
+        target = snap_atomic(edge == :start ? start : finish, edge == :start ? :left : :right)
         self.selection = action.to_s.start_with?("select") ? TextSelection.new(@selection.anchor, target) : TextSelection.new(target)
       end
     end

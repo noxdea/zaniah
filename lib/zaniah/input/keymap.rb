@@ -23,6 +23,7 @@ module Zaniah
           primary = mac ? "cmd" : "ctrl"
           map = new(**options)
             .bind("tab", :focus_next)
+            .bind("tab", :insert_tab, context: "in_code_editor")
             .bind("shift-tab", :focus_previous)
             .bind("left", :focus_left, context: "!in_text_field && !in_list")
             .bind("right", :focus_right, context: "!in_text_field && !in_list")

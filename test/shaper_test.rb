@@ -10,7 +10,10 @@ class ShaperTest < Minitest::Test
     def initialize(**tables) = @tables = tables.transform_keys(&:to_s).transform_values { |value| Alhena::Binary.new(value) }
     def table(tag) = @tables.fetch(tag)
     def units_per_em = 1000
-    def advance(_id, size:) = size.to_f
+    def advance(_id, size:, vertical: false) = vertical ? size.to_f * 2 : size.to_f
+    def ascent = 800
+    def descent = -200
+    def glyph_id(point, variation_selector: nil) = {"ل".ord => 2, "ا".ord => 3}.fetch(point, point)
   end
 
   def u16(*values) = values.flatten.map { |v| v & 0xffff }.pack("n*")
@@ -168,6 +171,64 @@ class ShaperTest < Minitest::Test
     assert_equal [1], shape(font, [1], script: "hani").map(&:id)
     required = Font.new(GSUB: layout([lookup(1, single(1 => 9))], features: {"rlig" => [0]}, scripts: {"DFLT" => {nil => []}}, required: 0))
     assert_equal [9], shape(required, [1], script: "hani").map(&:id)
+  end
+
+  def arabic_glyphs(font, text, ids)
+    offset = 0
+    text.each_char.zip(ids).map do |character, id|
+      glyph = T::Glyph.new(font, id, offset, offset + character.bytesize, 0, 10)
+      offset += character.bytesize
+      glyph
+    end
+  end
+
+  def test_arabic_joining_forms_apply_only_to_eligible_glyphs
+    features = {"isol" => [0], "fina" => [1], "medi" => [2], "init" => [3]}
+    tables = [10, 20, 30, 40].map { |id| lookup(1, single(1 => id)) }
+    font = Font.new(GSUB: layout(tables, features: features, scripts: {"arab" => {nil => [0, 1, 2, 3]}}))
+    text = "ببب"
+    shaped = T::Shaper.new.shape(arabic_glyphs(font, text, [1, 1, 1]), size: 10, text: text, direction: :rtl)
+    assert_equal [20, 30, 40], shaped.map(&:id)
+    assert_equal [0, 10, 20], shaped.map(&:x)
+    assert_equal [10], T::Shaper.new.shape(arabic_glyphs(font, "ب", [1]), size: 10, text: "ب").map(&:id)
+    assert_equal [20, 99, 40], T::Shaper.new.shape(arabic_glyphs(font, "بَت", [1, 99, 1]), size: 10, text: "بَت", direction: :rtl).map(&:id)
+  end
+
+  def test_arabic_required_ligature_runs_after_contextual_forms
+    features = {"init" => [0], "fina" => [1], "rlig" => [2]}
+    tables = [lookup(1, single(2 => 12)), lookup(1, single(3 => 13)), lookup(4, ligature([12, 13], 90))]
+    font = Font.new(GSUB: layout(tables, features: features, scripts: {"arab" => {nil => [0, 1, 2]}}, required: 2))
+    text = "لا"
+    shaped = T::Shaper.new.shape(arabic_glyphs(font, text, [2, 3]), size: 10, text: text, direction: :rtl)
+    assert_equal [90], shaped.map(&:id)
+    assert_equal [0, text.bytesize], [shaped.first.start, shaped.first.finish]
+
+    database = Object.new
+    database.define_singleton_method(:find) { font }
+    database.define_singleton_method(:fallback) { |_point, _primary| font }
+    line = T::Typesetter.new(font: font, font_db: database, shaper: T::Shaper.new).layout_line(text, size: 10)
+    assert_equal [90], line.glyphs.map(&:id)
+    assert_equal [0, text.bytesize], [line.glyphs.first.start, line.glyphs.first.finish]
+    assert_equal [0, 2, 4], line.carets.map(&:first)
+  end
+
+  def test_vertical_substitutions_and_vmtx_advance
+    font = Font.new(GSUB: layout([lookup(1, single(1 => 2)), lookup(1, single(2 => 3))],
+      features: {"vert" => [0], "vrt2" => [1]}, scripts: {"kana" => {nil => [0, 1]}}),
+      vhea: "", vmtx: "")
+    shaped = shape(font, [1], script: "kana", writing_mode: :vertical_rl)
+    assert_equal [3], shaped.map(&:id)
+    assert_equal [20.0], shaped.map(&:advance)
+    assert_equal [1], shape(font, [1], script: "kana", writing_mode: :vertical_rl,
+      features: {"vert" => false, "vrt2" => false}).map(&:id)
+
+    database = Object.new
+    database.define_singleton_method(:find) { font }
+    database.define_singleton_method(:fallback) { |_point, _primary| font }
+    line = T::Typesetter.new(font: font, font_db: database).layout_line("あ", size: 10, writing_mode: :vertical_rl)
+    assert_equal :vertical_rl, line.writing_mode
+    assert_equal 20, line.width
+    assert_equal [[0, 0.0], [3, 20.0]], line.carets
   end
 
   def pair(first, second, values1, values2 = [], first_format: 4, second_format: 0)

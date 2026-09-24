@@ -1,7 +1,7 @@
 # Themes and state styles
 
 `Zaniah::Theme.dark`, `.light`, and `.high_contrast` provide semantic color,
-spacing, radius, shadow, typography, and motion tokens. `App` installs the dark
+spacing, radius, shadow, typography, syntax, and motion tokens. `App` installs the dark
 theme by default and follows native window appearance changes. Read the active
 theme with `FrameContext#theme` or `EntityContext#theme`.
 
@@ -32,6 +32,9 @@ themes' raw color values.
 - `spacing`: a compact 4-pixel scale indexed by token number.
 - `radii` and `shadows`: semantic `none`, `sm`, `md`, `lg`, and `full` values.
 - `typography`: sans/mono families, six sizes, four weights, and three line heights.
+- `syntax`: keyword, string, comment, number, function, type, constant,
+  punctuation, operator, variable, and fallback text colors. `syntax.color(scope)`
+  accepts dotted highlighter scopes such as `"keyword.control"`.
 - `motion`: fast/base/slow durations, easing names, and `reduced?`.
 
 Records support `with`, so a local override does not mutate the shared theme:
@@ -44,6 +47,9 @@ quiet = base.with(
 )
 app.global(:theme, quiet)
 ```
+
+Omitting `syntax:` in `Theme.new` derives readable syntax colors from `colors`.
+Pass a `Theme::Syntax` value to override them explicitly.
 
 Native windows select dark or light initially and refresh the application theme
 when system appearance changes. A system reduced-motion preference sets

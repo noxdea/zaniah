@@ -149,5 +149,13 @@ module Zaniah
         def paint_line: (Scene scene, TextSystem::LineLayout line, x: Numeric, y: Numeric, ?color: color, ?spans: TextSystem::spans?) -> void
       end
     end
+    module Windows
+      class DirectWrite
+        def initialize: (?font_db: TextSystem::_FontDB?) -> void
+        def cache_key: () -> String
+        def rasterize: (TextSystem::_Font font, Integer glyph, size: Numeric, ?subpixel_x: Numeric, ?antialias: :grayscale | :cleartype) -> TextSystem::_Bitmap
+        def close: () -> void
+      end
+    end
   end
 end

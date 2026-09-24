@@ -1,7 +1,26 @@
 # frozen_string_literal: true
 
 module Zaniah
-  Theme = Data.define(:name, :appearance, :colors, :spacing, :radii, :shadows, :typography, :motion) do
+  Theme = Data.define(:name, :appearance, :colors, :spacing, :radii, :shadows, :typography, :motion, :syntax) do
+    def initialize(*values, syntax: nil, **keywords)
+      names = %i[name appearance colors spacing radii shadows typography motion]
+      if values.empty?
+        raise ArgumentError, "unknown theme members" unless (keywords.keys - names - [:syntax]).empty?
+        syntax = keywords.delete(:syntax) if keywords.key?(:syntax)
+        values = names.map { |name| keywords.fetch(name) }
+      end
+      raise ArgumentError, "wrong number of theme members" unless values.length == 8 || (values.length == 9 && syntax.nil?)
+      syntax = values.pop if values.length == 9
+      syntax = Theme::Syntax.from_colors(values[2]) if syntax.nil?
+      raise ArgumentError, "syntax must be a Theme::Syntax" unless syntax.is_a?(Theme::Syntax)
+      if Data == Struct
+        super(*values, syntax)
+      else
+        super(**names.zip(values).to_h.merge(syntax: syntax))
+      end
+      freeze
+    end
+
     class << self
       def dark = @dark ||= build(:dark, :dark, %w[#181b20 #202936 #29364a #345477 #6b7c93 #6ea8fe #edf2f7 #b7c2d0 #111827 #2563a8 #1f5592 #ffffff #4ade80 #fbbf24 #fb7185 #60a5fa #00000099 #345477 #6ea8fe])
       def light = @light ||= build(:light, :light, %w[#f8fafc #ffffff #f1f5f9 #e2e8f0 #64748b #1d4ed8 #0f172a #475569 #ffffff #1d4ed8 #1e40af #ffffff #15803d #a16207 #b91c1c #0369a1 #0f172a80 #bfdbfe #1d4ed8])
@@ -30,6 +49,21 @@ module Zaniah
     :size_lg, :size_xl, :size_2xl, :weight_normal, :weight_medium,
     :weight_semibold, :weight_bold, :line_height_tight, :line_height_normal,
     :line_height_relaxed))
+
+  syntax = Data.define(:keyword, :string, :comment, :number, :function, :type,
+    :constant, :punctuation, :operator, :variable, :text) do
+    def self.from_colors(colors)
+      new(colors.accent, colors.success, colors.text_muted, colors.warning,
+        colors.info, colors.accent_hover, colors.danger, colors.text,
+        colors.text, colors.text, colors.text)
+    end
+
+    def color(scope)
+      token = scope.to_s.split(".", 2).first.to_sym
+      members.include?(token) ? public_send(token) : text
+    end
+  end
+  Theme.const_set(:Syntax, syntax)
 
   motion = Data.define(:duration_fast, :duration_base, :duration_slow,
     :easing_standard, :easing_decelerate, :easing_accelerate, :reduced) do

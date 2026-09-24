@@ -13,19 +13,50 @@ samples += Array.new(100) { Array.new(60) { "abcxyz012:!=<>-+*/.&|"[random.rand(
 checks = 0
 paths.each do |path|
   font, shaper = Alhena::Font.open(path), Zaniah::TextSystem::Shaper.new
-  samples.each do |text|
+  cases = samples.map { |text| [text, :ltr, "latn"] }
+  # Abel (the bundled default) has no Hebrew cmap. Passing a Hebrew-capable
+  # font path enables these development-only RTL comparisons.
+  cases.concat(["שלום", "אבג 123"].map { |text| [text, :rtl, "hebr"] }) if font.glyph_id("ש".ord).positive?
+  # Use an Arabic-capable font such as Arial.ttf to compare joining and rlig.
+  if font.glyph_id("ب".ord).positive? && font.tables.key?("GSUB")
+    letters = %w[ب ت ث ج ح خ د ر س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي ا]
+    arabic = ["ب", "ببب", "باب", "لا", "سلام", "مكتب", "بَت", "ب‌ت", "ب‍ت", "‍ب", "ب‍"]
+    arabic += Array.new(40) { Array.new(random.rand(2..8)) { letters.sample(random: random) }.join }
+    cases.concat(arabic.map { |text| [text, :rtl, "arab"] })
+  end
+  if font.glyph_id("あ".ord).positive? && font.tables.key?("GSUB") && font.tables.key?("vmtx")
+    cases.concat(["あ、い", "（かな）", "アイウ", "漢字。", "あ！い？", "こんにちは"].map { |text| [text, :ttb, "kana"] })
+  end
+  cases.each do |text, direction, script|
     glyphs, offset = [], 0
     text.each_char do |char|
       id = font.glyph_id(char.ord)
       glyphs << Zaniah::TextSystem::Glyph.new(font, id, offset, offset + char.bytesize, 0, font.advance(id, size: font.units_per_em))
       offset += char.bytesize
     end
-    result = shaper.shape(glyphs, size: font.units_per_em, text: text)
-    output, status = Open3.capture2("hb-shape", "--shapers=ot", "--direction=ltr", "--script=latn", "--font-size=#{font.units_per_em}", "--no-glyph-names", "--output-format=json", "--utf8-clusters", "--features=liga=1,calt=1,kern=1,ccmp=0,locl=0,rlig=0,mark=0,mkmk=0", "--", path, text)
+    vertical = direction == :ttb
+    result = shaper.shape(glyphs, size: font.units_per_em, text: text,
+      direction: vertical ? :ltr : direction, script: script,
+      writing_mode: vertical ? :vertical_rl : :horizontal_tb)
+    feature_flags = if vertical
+      "vert=1,vrt2=1,liga=1,calt=1,kern=0"
+    elsif script == "arab"
+      "liga=1,calt=1,kern=1,ccmp=1,locl=0,rlig=1,mark=0,mkmk=0"
+    else
+      "liga=1,calt=1,kern=1,ccmp=0,locl=0,rlig=0,mark=0,mkmk=0"
+    end
+    output, status = Open3.capture2("hb-shape", "--shapers=ot", "--direction=#{direction}", "--script=#{script}", "--font-size=#{font.units_per_em}", "--no-glyph-names", "--output-format=json", "--utf8-clusters", "--preserve-default-ignorables", "--features=#{feature_flags}", "--", path, text)
     raise "hb-shape failed" unless status.success?
     expected = JSON.parse(output)
     ids = result.map(&:id)
     raise "glyph mismatch #{File.basename(path)} #{text.inspect}\n#{ids.inspect}\n#{expected.map { |g| g.fetch('g') }.inspect}" unless ids == expected.map { |g| g.fetch("g") }
+    if vertical
+      expected_advances = expected.map { |glyph| -glyph.fetch("ay") }
+      actual_advances = result.map(&:advance)
+      raise "vertical advance mismatch #{File.basename(path)} #{text.inspect}\n#{actual_advances.inspect}\n#{expected_advances.inspect}" unless actual_advances.zip(expected_advances).all? { |actual, target| (actual - target).abs <= 2 }
+      checks += 1
+      next
+    end
     oracle_x = 0.0
     result.zip(expected).each do |actual, oracle|
       # HarfBuzz distributes legacy kern deltas across both glyph advances;

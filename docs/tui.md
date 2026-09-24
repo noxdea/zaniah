@@ -29,7 +29,8 @@ tests and non-window integrations.
 | TreeView | indentation with `▸`/`▾` expansion markers |
 | Sparkline and all chart types | eight-level Unicode sparkline summary |
 | Form, FormField | labeled values, `!` errors, and a submit button |
-| CodeEditor, RichText | numbered plain-text lines or concatenated text runs |
+| CodeEditor | numbered logical lines; wrap, syntax colors, and inline IME underline degrade to plain cells |
+| RichText | concatenated text runs; ruby readings appear in parentheses; inline embeds appear as U+FFFC and decoration/paragraph backgrounds and vertical geometry degrade to plain cells |
 
 Rounded corners, shadows, gradients, and alpha scrims reduce to solid cells. Focus is
 reported by the terminal cursor/reverse-video capability; motion introduced in M7 is

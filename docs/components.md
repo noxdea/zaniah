@@ -94,8 +94,8 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L5 | `Validation` | `required`, `format`, `length`, `number`, `rule` | composable rules | n/a |
 | L5 | `FormField` | `(name, value:, label:, control:, validation:, hint:)` | errors + describedby | group/control/alert |
 | L5 | `Form` | `field`, `on_change`, `on_submit`, `values`, `valid?` | validates before submit | form |
-| L5 | `CodeEditor` | `(value, language:, line_numbers:, read_only:)`; `on_change` | multiline editor with scrolling | textbox |
-| L5 | `RichText` | `(runs, selectable:, editable:)`; `apply`, `insert`, `delete`, `replace`, `paragraph_style` | styled editing, IME, range selection and caret | text/textbox |
+| L5 | `CodeEditor` | `(value, buffer:, highlighter:, wrap:, language:, line_numbers:, read_only:)`; `on_change` | viewport-only multiline editor with syntax scopes and Tab indentation | textbox |
+| L5 | `RichText` | `(runs, selectable:, editable:, writing_mode:, text_orientation:)`; `apply`, `insert`, `delete`, `replace`, `append`, `insert_embed`, `paragraph_style` | styled editing, inline embeds, ruby, vertical text, IME, range selection and caret | text/textbox |
 
 All input components are keyboard operable. Disabled controls remain visible but are
 removed from focus traversal. Overlay components close on Esc; modal overlays restore
@@ -111,9 +111,30 @@ It may also implement `refine(previous_matches, query)` for incremental queries.
 unavailable actions, and displays shortcuts with `UI::Kbd`. See [Menus](menus.md).
 
 `UI::RichText` accepts UTF-8 byte ranges at grapheme boundaries. Inline styles are
-`bold`, `italic`, `size`, `color`, `font`, and `link`; paragraphs support start,
-center, end, and non-final-line justification, plus bullet/ordered lists and levels.
-It is read-only by default; set `editable: true` to enable keyboard editing and IME.
+`bold`, `italic`, `size`, `color`, `font`, `link`, `underline` (`:single`, `:double`,
+`:wavy`), `underline_color`, `strikethrough`, `background`, `baseline`
+(`:superscript` or `:subscript`), `letter_spacing`, `ruby: "reading"`, and
+`combine_upright: true`. Ruby parent text is one unbreakable selection cluster;
+copying omits the annotation, while accessibility and TUI expose it in
+parentheses. Ruby and combine-upright cannot be set together on one run.
+`writing_mode: :vertical_rl` uses top-to-bottom lines and right-to-left columns;
+`text_orientation: :mixed` rotates ordinary Latin by default, whereas `:upright`
+keeps it upright. Paragraph styles include
+alignment, lists, levels, `indent`, `quote`, `background`, and before/after spacing.
+`insert_embed(offset, key:, width:, height:) { |cx| element }` stores U+FFFC in the
+text and lays the element out at that inline position. `append(text, style:)` reuses
+cached layouts for unchanged earlier fragments. RichText is read-only by default;
+set `editable: true` to enable keyboard editing and IME.
+
+`UI::CodeEditor` keeps the legacy positional constructor and also accepts a
+line-addressable `buffer:` with `line_count`, `line(index)`, `line_start(index)`,
+`line_of(offset)`, `replace(range, text)`, `undo`, and `redo`. A plain string or
+`TextBuffer` uses the bundled adapter. Optional `highlighter:` provides
+`tokens(line_index, text)` byte ranges with scopes and receives
+`edited(range, new_text)` notifications. Scopes use `theme.syntax` colors. Only
+visible logical lines are shaped; wrapped display rows share one line number.
+The editor supports one caret/selection, standard text actions, IME placement,
+and Tab indentation. See [ADR 020](adr/020-lightweight-code-editor-providers.md).
 
 ## Image decoding
 
