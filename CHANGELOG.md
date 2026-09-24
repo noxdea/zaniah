@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 — 2026-09-24
+
+- Add a stable frame inspection API with accessibility queries and DevTools integration.
+- Unify focused and application commands with validation, availability, and checked state.
+- Add headless and TUI clipboard support, including OSC 52 output.
+- Add desktop editing shortcuts and copy, cut, paste, undo, and redo for plain and rich text while leaving conflicting TUI shortcuts unbound.
+- Add configurable matching and accessible, highlighted results to the command palette and combobox.
+
 ## 0.6.4 — 2026-09-24
 
 - Share Cartesian chart scales, axes, grid lines, ticks, and color-keyed legends across chart types.
