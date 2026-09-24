@@ -37,4 +37,27 @@ module Zaniah
     class Content < Item
     end
   end
+
+  class DragData
+    OPERATIONS = %i[copy move link].freeze
+    attr_reader :items, :image, :operations, :on_move
+
+    def initialize(items:, image: nil, operations: [:copy], on_move: nil)
+      raise TypeError, "drag items must be an Array of Clipboard::Item" unless items.is_a?(Array) && !items.empty? && items.all? { |item| item.is_a?(Clipboard::Item) }
+      raise ArgumentError, "invalid drag operations" unless operations.is_a?(Array) && !operations.empty? && operations.all? { |operation| OPERATIONS.include?(operation) }
+      raise ArgumentError, "move operations require an on_move callback" if operations.include?(:move) && !on_move.respond_to?(:call)
+      @items, @image, @operations, @on_move = items.dup.freeze, image, operations.uniq.freeze, on_move
+      freeze
+    end
+
+    def types = @items.flat_map(&:types).uniq.freeze
+    def content(types: self.types)
+      raise TypeError, "drag types must be an Array" unless types.is_a?(Array)
+      formats = types.each_with_object({}) do |type, result|
+        item = @items.find { |entry| entry.types.include?(type) }
+        result[type] = item.fetch(type) if item
+      end
+      Clipboard::Content.new(formats)
+    end
+  end
 end

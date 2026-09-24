@@ -14,12 +14,32 @@ module Zaniah
     end
   end
 
+  class DragData
+    OPERATIONS: Array[Symbol]
+    attr_reader items: Array[Clipboard::Item]
+    attr_reader image: untyped
+    attr_reader operations: Array[Symbol]
+    attr_reader on_move: Proc?
+    def initialize: (items: Array[Clipboard::Item], ?image: untyped, ?operations: Array[Symbol], ?on_move: Proc?) -> void
+    def types: () -> Array[String]
+    def content: (?types: Array[String]) -> Clipboard::Content
+  end
+
   module Platform
     module Headless
       class Window
         def write_clipboard: (Array[Clipboard::Item] items) -> Array[Clipboard::Item]
         def read_clipboard: (types: Array[String]) -> Clipboard::Content
         def clipboard_types: () -> Array[String]
+        attr_reader drag_data: DragData?
+        attr_reader drag_result: Symbol?
+        attr_reader drag_history: Array[untyped]
+        def begin_drag: (DragData data, ?event: Input::MouseDown?) -> DragData
+        def drag_over: (types: Array[String], position: Point, ?operations: Array[Symbol]) -> Symbol
+        def deliver_drop: (content: Clipboard::Content, position: Point, ?operation: Symbol, ?paths: Array[String]?) -> Symbol
+        def complete_drag: (position: Point, ?operation: Symbol?, ?content: Clipboard::Content?) -> Symbol
+        def finish_drag_source: (Symbol operation, ?position: Point?) -> Symbol
+        def commit_drag_move: () -> bool
       end
     end
   end

@@ -70,6 +70,41 @@ applications. macOS also preserves arbitrary MIME types under reversible
 Wayland use their native format mechanisms. Native clipboard exchange still
 depends on a running desktop session and should be checked on each target OS.
 
+## Typed drag and drop
+
+An element can declare the MIME types it accepts and optionally offer a drag
+source. `on_drag_over` returns `:copy`, `:move`, `:link`, or `:none`; the chosen
+operation must be offered by the source. A drop carries `Clipboard::Content`,
+its logical window position, and the operation. File drops also emit the older
+`Input::FileDrop` event so existing listeners continue to work.
+Offering `:move` requires `on_move:` to remove the source data; it runs once
+after a successful move, or when an X11 target acknowledges the `DELETE` selection.
+
+```ruby
+target.on_drop(types: ["image/png", "text/plain"]) do |drop, _cx|
+  insert(drop.content)
+end
+target.on_drag_over { |drag, _cx| drag.accepts?("image/png") ? :copy : :none }
+source.draggable do |_mouse, _cx|
+  Zaniah::DragData.new(items: [Zaniah::Clipboard::Item.new("text/plain" => "hello")], operations: [:copy])
+end
+```
+
+Headless records the source in `drag_history`; tests may call `drag_over` and
+`complete_drag` to deliver it deterministically. macOS uses AppKit dragging
+sessions; X11 uses XDND (Ctrl requests copy, Shift move, Ctrl+Shift link when
+offered); Wayland uses `wl_data_device`. A target needs `on_drop` and a matching
+MIME type before it can accept a drag. Wayland cannot offer
+link-only drags because its standard data-device action set has only copy and
+move. All desktop protocols depend on another application accepting the MIME
+type and operation. Windows currently preserves file drops through
+`WM_DROPFILES` compatibility and also uses OLE `IDataObject`/`IDropTarget` and
+`IDropSource` for typed data and native drag sources. A preview image is used
+on macOS; Windows, X11, and Wayland currently use the native default cursor
+without a custom preview. TUI has no cross-process drag protocol and only the
+in-process Headless test path.
+X11 XDND proxy windows are not supported.
+
 ## Window state and decorations
 
 `window.frame` uses logical screen coordinates; `window.state.to_h` can be saved

@@ -7,8 +7,8 @@ module Zaniah
     type button = :left | :middle | :right | Integer
     type context = Hash[String | Symbol, String | Symbol | Numeric | bool | nil]
     type action = String | Symbol | Hash[String, untyped] | Array[untyped]
-    type event = KeyDown | KeyUp | TextInput | Composition | mouse_event | FileDrop
-    type mouse_event = MouseDown | MouseUp | MouseMove | ScrollWheel
+    type event = KeyDown | KeyUp | TextInput | Composition | mouse_event | FileDrop | DataDrop
+    type mouse_event = MouseDown | MouseUp | MouseMove | ScrollWheel | Magnify | DragOver
 
     class Hit < Data
       attr_reader bounds: Bounds
@@ -69,6 +69,13 @@ module Zaniah
       def self.new: (Point position, Point delta, Symbol phase, modifiers modifiers) -> ScrollWheel
                   | (position: Point, delta: Point, phase: Symbol, modifiers: modifiers) -> ScrollWheel
     end
+    class Magnify < Data
+      attr_reader position: Point
+      attr_reader delta: Numeric
+      attr_reader phase: Symbol | Integer
+      def self.new: (Point position, Numeric delta, Symbol | Integer phase) -> Magnify
+                  | (position: Point, delta: Numeric, phase: Symbol | Integer) -> Magnify
+    end
     class Composition < Data
       attr_reader text: String
       attr_reader selection: [Integer, Integer]
@@ -80,6 +87,22 @@ module Zaniah
       attr_reader position: Point
       def self.new: (Array[String] paths, Point position) -> FileDrop
                   | (paths: Array[String], position: Point) -> FileDrop
+    end
+    class DataDrop < Data
+      attr_reader content: Clipboard::Content
+      attr_reader position: Point
+      attr_reader operation: Symbol
+      def self.new: (Clipboard::Content content, Point position, Symbol operation) -> DataDrop
+                  | (content: Clipboard::Content, position: Point, operation: Symbol) -> DataDrop
+    end
+    class DragOver
+      attr_reader types: Array[String]
+      attr_reader position: Point
+      attr_reader operations: Array[Symbol]
+      attr_reader operation: Symbol
+      def initialize: (types: Array[String], position: Point, ?operations: Array[Symbol]) -> void
+      def accepts?: (String type) -> bool
+      def operation=: (Symbol value) -> Symbol
     end
     module Keystroke
       def self.normalize: (String value) -> String
@@ -150,13 +173,14 @@ module Zaniah
       def register_focus: (FocusHandle handle) -> FocusTree
       def input: (event event) -> bool
       def clear_hits: () -> void
+      def release_mouse_capture: () -> void
       def hits: () -> Array[Hit]
       def hit_regions: () -> Array[HitRegion]
       def hover_chain: (Point? position) -> Array[untyped]
-      def hit: (Bounds bounds, ?clip: Bounds?, ?owner: Element?, ?transform: Transform) { (mouse_event | FileDrop) -> (bool | :capture | nil) } -> void
+      def hit: (Bounds bounds, ?clip: Bounds?, ?owner: Element?, ?transform: Transform) { (mouse_event | FileDrop | DataDrop) -> (bool | :capture | nil) } -> void
       def clip: [T] (Bounds bounds) { () -> T } -> T
       def push_transform: [T] (Transform transform) { () -> T } -> T
-      def mouse: (mouse_event | FileDrop event) -> bool
+      def mouse: (mouse_event | FileDrop | DataDrop event) -> bool
     end
     class ActionRegistry
       def initialize: () -> void

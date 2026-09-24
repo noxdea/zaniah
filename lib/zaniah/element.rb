@@ -105,9 +105,26 @@ module Zaniah
       define_method(method) { |value| style(**{property => value}) }
     end
 
-    %i[click hover drag scroll_wheel mouse_down mouse_up].each do |kind|
+    %i[click hover drag scroll_wheel magnify mouse_down mouse_up].each do |kind|
       define_method("on_#{kind}") { |&block| @handlers[kind] = block; self }
     end
+    def on_drop(types:, &block)
+      raise TypeError, "drop types must be an Array of MIME names" unless types.is_a?(Array) && !types.empty? && types.all? { |type| type.is_a?(String) && type.match?(%r{\A[^\s/]+/[^\s/]+\z}) }
+      raise ArgumentError, "drop handler required" unless block
+      @drop_types, @handlers[:drop] = types.uniq.freeze, block
+      self
+    end
+    def on_drag_over(&block)
+      raise ArgumentError, "drag-over handler required" unless block
+      @handlers[:drag_over] = block
+      self
+    end
+    def draggable(&block)
+      raise ArgumentError, "drag source required" unless block
+      @drag_source = block
+      self
+    end
+    def drop_types = @drop_types || []
 
     def request_layout(cx)
       @state = cx.state(@key, &@state_initializer) if @key && @state_initializer
@@ -159,8 +176,31 @@ module Zaniah
         @focus_handle.focusable = !@static_flags.include?(:disabled)
         cx.dispatcher.register_focus(@focus_handle)
       end
-      unless @handlers.empty? && !@tooltip && !@context_menu && !@style_set.interactive? && !@focus_handle && !@window_drag_region && !@window_control_kind
+      unless @handlers.empty? && !@tooltip && !@context_menu && !@style_set.interactive? && !@focus_handle && !@window_drag_region && !@window_control_kind && !@drag_source
         cx.dispatcher.hit(bounds, owner: self) do |event|
+          if @pending_drag && event.is_a?(Input::MouseMove)
+            original = @pending_drag
+            if (event.position.x - original.position.x).abs >= 4 || (event.position.y - original.position.y).abs >= 4
+              @pending_drag = nil
+              cx.dispatcher.release_mouse_capture
+              cx.window.begin_drag(@drag_source.call(original, cx), event: original)
+              next true
+            end
+          end
+          @pending_drag = nil if event.is_a?(Input::MouseUp)
+          if event.is_a?(Input::DragOver)
+            next false unless @handlers[:drop] && @drop_types.any? { |type| event.accepts?(type) }
+            operation = @handlers[:drag_over]&.call(event, cx)
+            operation ||= event.operations.first
+            operation = :none unless event.operations.include?(operation)
+            event.operation = operation
+            next operation != :none
+          end
+          if event.is_a?(Input::DataDrop)
+            next false unless @handlers[:drop] && @drop_types.any? { |type| event.content.types.include?(type) }
+            @handlers[:drop].call(event, cx)
+            next true
+          end
           if event.is_a?(Input::MouseDown) && event.button == :right && @context_menu
             cx.window.context_menu(@context_menu, position: event.position)
             next true
@@ -172,11 +212,16 @@ module Zaniah
           when Input::MouseMove then @dragging && @handlers.key?(:drag) ? :drag : :hover
           when Input::MouseUp then :mouse_up
           when Input::ScrollWheel then :scroll_wheel
+          when Input::Magnify then :magnify
           end
           handler = @handlers[kind]
           @dragging = true if event.is_a?(Input::MouseDown) && @handlers[:drag]
           @dragging = false if event.is_a?(Input::MouseUp)
           handler&.call(event, cx)
+          if event.is_a?(Input::MouseDown) && event.button == :left && @drag_source
+            @pending_drag = event
+            next :capture
+          end
           @dragging && event.is_a?(Input::MouseDown) ? :capture : !!handler || !!(@focus_handle && event.is_a?(Input::MouseDown)) || !!(@tooltip && event.is_a?(Input::MouseMove))
         end
       end

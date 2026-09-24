@@ -22,6 +22,7 @@ module Zaniah
           raise Error, "traffic_lights is only supported on macOS" if traffic_lights
           @connection, @globals, @outputs, @offers = FFI::Wayland.new, {}, {}, {}
           @offer_actions = {}
+          @offer_source_actions = {}
           @entered_outputs = []
           @position, @modifiers, @serial = Point.new(0, 0), [], 0
           registry = @connection.request(@connection.display, 1, 0, new_interface: "wl_registry", version: 1)
@@ -353,10 +354,10 @@ module Zaniah
           return unless manager && seat
           @data_device = @connection.request(manager, 1, 0, seat, new_interface: "wl_data_device")
           @connection.listen(@data_device, [
-            [[P], ->(_device, offer) { @offers[offer.to_i] = []; @connection.listen(offer, [[[P], ->(_offer, mime) { @offers[offer.to_i] << mime.to_s }], [[U], nil], [[U], ->(_offer, action) { @offer_actions[offer.to_i] = action }]]) }],
+            [[P], ->(_device, offer) { @offers[offer.to_i] = []; @connection.listen(offer, [[[P], ->(_offer, mime) { @offers[offer.to_i] << mime.to_s }], [[U], ->(_offer, actions) { @offer_source_actions[offer.to_i] = actions }], [[U], ->(_offer, action) { @offer_actions[offer.to_i] = action }]]) }],
             [[U, P, I, I, P], ->(_device, serial, _surface, x, y, offer) { drag_enter(serial, x, y, offer) }],
             [[], ->(_device) { destroy_offer(@drag_offer) unless @pending_drop; @drag_offer = nil unless @pending_drop }],
-            [[U, I, I], ->(_device, _time, x, y) { @drag_position = Point.new(x / 256.0, y / 256.0) }],
+            [[U, I, I], ->(_device, _time, x, y) { drag_motion(x, y) }],
             [[], ->(_device) { @pending_drop = !!@drag_offer }],
             [[P], ->(_device, offer) { destroy_offer(@selection); @selection = offer.null? ? nil : offer }]
           ])
@@ -395,9 +396,38 @@ module Zaniah
                 io.close
               end
             }],
-            [[], ->(_source) { @source_formats&.delete(source.to_i); @source = nil if @source == source; @connection.request(source, 1, destroy: true) }],
-            [[], nil], [[], nil], [[U], nil]
+            [[], ->(_source) { finish_wayland_drag(source, :none) if @drag_source == source; @source_formats&.delete(source.to_i); @source = nil if @source == source; @connection.request(source, 1, destroy: true) }],
+            [[], nil], [[], ->(_source) { finish_wayland_drag(source, @drag_action || :none); @source_formats&.delete(source.to_i); @connection.request(source, 1, destroy: true) }], [[U], ->(_source, action) {
+              if @drag_source == source
+                operation = {0 => :none, 1 => :copy, 2 => :move}.fetch(action, :none)
+                @drag_action = @drag_data.operations.include?(operation) ? operation : :none
+              end
+            }]
           ])
+        end
+        def finish_wayland_drag(source, operation)
+          return unless @drag_source == source
+          finish_drag_source(operation)
+          @drag_source = nil
+          @drag_action = nil
+        end
+        def begin_drag(data, event: nil)
+          raise Error, "Wayland drag requires a focused pointer" unless @data_device && @serial.positive?
+          raise Error, "Wayland drag cannot offer link-only operation" if data.operations == [:link]
+          super
+          source = @connection.request(@globals["wl_data_device_manager"], 0, 0, new_interface: "wl_data_source")
+          @source_formats ||= {}
+          @source_formats[source.to_i] = data.content.formats
+          listen_clipboard_source(source)
+          mimes = data.types.dup
+          mimes.concat(%w[text/plain;charset=utf-8 UTF8_STRING]) if mimes.include?("text/plain")
+          mimes.uniq.each { |mime| @connection.request(source, 0, mime) }
+          mask = data.operations.reduce(0) { |bits, operation| bits | {copy: 1, move: 2, link: 0}.fetch(operation) }
+          @connection.request(source, 2, mask) if @connection.version(source) >= 3
+          @drag_source = source
+          @drag_action = data.operations.find { |operation| %i[copy move].include?(operation) }
+          @connection.request(@data_device, 0, source, @handle, 0, @serial)
+          data
         end
         def clipboard=(text)
           super
@@ -426,25 +456,65 @@ module Zaniah
         def drag_enter(serial, x, y, offer)
           return if offer.null?
           @drag_offer, @drag_position = offer, Point.new(x / 256.0, y / 256.0)
-          accept = @offers.fetch(offer.to_i, []).include?("text/uri-list")
-          @connection.request(offer, 0, serial, accept ? "text/uri-list" : 0)
-          @connection.request(offer, 4, accept ? 1 : 0, accept ? 1 : 0) if @connection.version(offer) >= 3
+          @drag_serial = serial
+          update_drag_accept
+        end
+        def drag_motion(x, y)
+          @drag_position = Point.new(x / 256.0, y / 256.0)
+          update_drag_accept if @drag_offer
+        end
+        def update_drag_accept
+          offer = @drag_offer
+          types = @offers.fetch(offer.to_i, [])
+          canonical = types.map { |mime| %w[text/plain;charset=utf-8 UTF8_STRING].include?(mime) ? "text/plain" : mime }.uniq
+          mask = @connection.version(offer) < 3 ? 1 : (@offer_source_actions || {}).fetch(offer.to_i, 3)
+          operations = {copy: 1, move: 2}.filter_map { |name, bit| name unless (mask & bit).zero? }
+          if operations.empty?
+            @accepted_drag_operation = :none
+            @connection.request(offer, 0, @drag_serial, 0)
+            @connection.request(offer, 4, 0, 0) if @connection.version(offer) >= 3
+            return
+          end
+          chosen = @dispatcher ? drag_over(types: canonical, position: @drag_position, operations: operations) : :none
+          chosen = :copy if chosen == :none && canonical.include?("text/uri-list") && operations.include?(:copy)
+          @accepted_drag_operation = chosen
+          wanted = @dispatcher&.hit_regions&.reverse_each&.find do |hit|
+            hit.owner.respond_to?(:drop_types) && (hit.owner.drop_types & canonical).any? && hit.contains?(@drag_position)
+          end
+          wanted_type = wanted && (wanted.owner.drop_types & canonical).first
+          mime = wanted_type == "text/plain" ? (["text/plain;charset=utf-8", "UTF8_STRING", "text/plain"] & types).first : wanted_type
+          mime = "text/uri-list" if !mime && chosen != :none && types.include?("text/uri-list")
+          @connection.request(offer, 0, @drag_serial, mime || 0)
+          action = chosen == :none ? 0 : chosen == :move ? 2 : 1
+          @connection.request(offer, 4, action, action) if @connection.version(offer) >= 3
         end
         def finish_drop
           @pending_drop = false
           offer = @drag_offer
-          accepted = @connection.version(offer) < 3 || @offer_actions[offer.to_i] == 1
-          paths = accepted ? Window.file_paths(read_offer(offer, ["text/uri-list"])) : []
-          @connection.request(offer, 3) if @connection.version(offer) >= 3 && !paths.empty?
+          return unless offer
+          action = @offer_actions[offer.to_i]
+          operation = action == 0 ? :none : action == 2 ? :move : action == 1 ? :copy : @accepted_drag_operation
+          if operation && operation != :none
+            types = @offers.fetch(offer.to_i, [])
+            formats = {}
+            types.each do |mime|
+              type = %w[text/plain;charset=utf-8 UTF8_STRING].include?(mime) ? "text/plain" : mime
+              formats[type] ||= read_offer(offer, [mime])
+            end
+            content = Clipboard::Content.new(formats)
+            paths = types.include?("text/uri-list") ? Window.file_paths(content.fetch("text/uri-list")) : []
+            delivered = deliver_drop(content: content, position: @drag_position, operation: operation, paths: paths)
+            @connection.request(offer, 3) if delivered != :none && @connection.version(offer) >= 3
+          end
           destroy_offer(offer)
           @drag_offer = nil
-          input(Input::FileDrop.new(paths.freeze, @drag_position)) unless paths.empty?
         end
         def destroy_offer(offer)
           return unless offer
           @connection.request(offer, 2, destroy: true)
           @offers.delete(offer.to_i)
           @offer_actions.delete(offer.to_i)
+          @offer_source_actions&.delete(offer.to_i)
         end
         def read_selection(types) = read_offer(@selection, types)
         def read_offer(offer, types)

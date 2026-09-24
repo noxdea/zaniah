@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "uri"
+
 module Zaniah
   module Platform
     module Headless
@@ -9,7 +11,7 @@ module Zaniah
         include Appearance
         DEFAULT_CLEAR = "#181b20"
 
-        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style, :animator, :clock, :accessibility_tree, :accessibility_revision, :frame_stats, :last_root, :frame_number, :decorations, :transparent, :min_size, :resizable, :traffic_lights
+        attr_reader :content_size, :scene, :device, :dispatcher, :scale_factor, :text_runs, :pointer_position, :cursor_style, :animator, :clock, :accessibility_tree, :accessibility_revision, :frame_stats, :last_root, :frame_number, :decorations, :transparent, :min_size, :resizable, :traffic_lights, :drag_data, :drag_result, :drag_history
         attr_accessor :text_system, :ime_state, :title, :app, :devtools
 
         def initialize(width: 800, height: 600, title: "Zaniah UI", scale_factor: 1,
@@ -34,6 +36,7 @@ module Zaniah
           @window_frame = Bounds.new(0, 0, width, height)
           @maximized = @minimized = @fullscreen = @always_on_top = false
           @dirty, @closed, @pointer_down, @cursor_style = true, false, false, :arrow
+          @drag_history = []
         end
 
         def on_input(&block) = @on_input = block
@@ -79,6 +82,70 @@ module Zaniah
           value = text.to_s
           write_clipboard([Clipboard::Item.new("text/plain" => value)])
           value
+        end
+        def begin_drag(data, event: nil)
+          raise TypeError, "drag source must return DragData" unless data.is_a?(DragData)
+          @drag_data, @drag_result = data, nil
+          @drag_move_committed = false
+          @drag_history << [:begin, data, event].freeze
+          data
+        end
+
+        def drag_over(types:, position:, operations: [:copy])
+          event = Input::DragOver.new(types: types, position: position, operations: operations)
+          @dispatcher.mouse(event)
+          event.operation
+        end
+
+        def deliver_drop(content:, position:, operation: :copy, paths: nil)
+          raise TypeError, "drop content must be Clipboard::Content" unless content.is_a?(Clipboard::Content)
+          raise TypeError, "drop position must be a Point" unless position.is_a?(Point)
+          raise ArgumentError, "invalid drop operation" unless DragData::OPERATIONS.include?(operation)
+          handled = input(Input::DataDrop.new(content, position, operation))
+          paths ||= file_paths_in_drop(content)
+          input(Input::FileDrop.new(paths.freeze, position)) unless paths.empty?
+          handled ? operation : :none
+        end
+
+        def complete_drag(position:, operation: nil, content: nil)
+          raise Error, "no drag is active" unless @drag_data
+          data = @drag_data
+          operation ||= drag_over(types: data.types, position: position, operations: data.operations)
+          raise ArgumentError, "drag operation was not offered" unless operation == :none || data.operations.include?(operation)
+          operation = deliver_drop(content: content || data.content, position: position, operation: operation) unless operation == :none
+          finish_drag_source(operation, position: position)
+        end
+
+        def finish_drag_source(operation, position: nil)
+          raise ArgumentError, "drag operation was not offered" unless operation == :none || @drag_data&.operations&.include?(operation)
+          operation = :none if operation == :move && !commit_drag_move
+          @drag_result = operation
+          @drag_history << [:complete, operation, position].freeze
+          @drag_data = nil
+          operation
+        end
+
+        def commit_drag_move
+          return false unless @drag_data&.on_move
+          return true if @drag_move_committed
+          @drag_data.on_move.call
+          @drag_move_committed = true
+        rescue StandardError
+          false
+        end
+
+        def file_paths_in_drop(content)
+          source = content.formats["text/uri-list"]
+          return [] unless source
+          source.each_line.filter_map do |line|
+            next if line.start_with?("#") || line.strip.empty?
+            uri = URI.parse(line.strip)
+            next unless uri.scheme == "file" && [nil, "", "localhost"].include?(uri.host) && uri.query.nil? && uri.fragment.nil?
+            path = URI::DEFAULT_PARSER.unescape(uri.path).force_encoding(Encoding::UTF_8)
+            path if path.start_with?("/") && path.valid_encoding? && !path.include?("\0")
+          rescue URI::InvalidURIError
+            nil
+          end
         end
         def set_cursor(style)
           raise ArgumentError, "unknown cursor #{style}" unless %i[arrow text pointer crosshair resize_horizontal resize_vertical].include?(style)
@@ -224,7 +291,7 @@ module Zaniah
           @tooltip = nil if event.is_a?(Input::MouseDown) || event.is_a?(Input::KeyDown)
           @on_input&.call(event)
           @devtools&.handle_input(event)
-          if event.respond_to?(:position)
+          handled = if event.respond_to?(:position)
             @dispatcher.mouse(event)
           elsif event.is_a?(Input::KeyDown)
             @dispatcher.key(event.keystroke)
@@ -233,6 +300,7 @@ module Zaniah
           end
           @tooltip = nil if event.is_a?(Input::MouseMove) && !@tooltip_offered
           request_frame
+          handled
         end
 
         def offer_tooltip(text, position:, delay: 0.5)

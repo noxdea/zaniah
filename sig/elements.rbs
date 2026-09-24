@@ -85,8 +85,13 @@ module Zaniah
     def on_hover: () { (Input::MouseMove, FrameContext) -> void } -> self
     def on_drag: () { (Input::MouseMove, FrameContext) -> void } -> self
     def on_scroll_wheel: () { (Input::ScrollWheel, FrameContext) -> void } -> self
+    def on_magnify: () { (Input::Magnify, FrameContext) -> void } -> self
     def on_mouse_down: () { (Input::MouseDown, FrameContext) -> void } -> self
     def on_mouse_up: () { (Input::MouseUp, FrameContext) -> void } -> self
+    def on_drop: (types: Array[String]) { (Input::DataDrop, FrameContext) -> void } -> self
+    def on_drag_over: () { (Input::DragOver, FrameContext) -> Symbol } -> self
+    def draggable: () { (Input::MouseDown, FrameContext) -> DragData } -> self
+    def drop_types: () -> Array[String]
     def request_layout: (FrameContext context) -> Layout::Node
     def prepaint: (Bounds bounds, Object? state, FrameContext context) -> void
     def paint: (Bounds bounds, Object? state, Object? prepaint, FrameContext context) -> void

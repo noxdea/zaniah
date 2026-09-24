@@ -57,19 +57,43 @@ module Gallery
       .child(Zaniah::Div.new.flex_row.gap(12).children([
         Zaniah::UI::DatePicker.new("2026-09-13"), Zaniah::UI::TimePicker.new("14:30"),
         Zaniah::UI::ColorPicker.new("#2563eb")]))
+    feedback_dates = Zaniah::Div.new.w_full.gap(12)
+      .child(Zaniah::Div.new.flex_row.items_center.gap(16).children([
+        Zaniah::UI::SegmentedControl.new([["Day", :day], ["Week", :week], ["Month", :month]], value: :week),
+        Zaniah::UI::DateRangePicker.new(value: ["2026-09-01", "2026-09-30"])]))
+      .child(Zaniah::UI::Alert.new("Export complete", message: "Your file is ready", variant: :success, dismissible: true))
+      .child(Zaniah::UI::Calendar.new(value: "2026-09-24", week_start: 1))
+    dock_layout = Zaniah::UI::DockLayout.split(id: :work, orientation: :horizontal, ratio: 0.42,
+      first: Zaniah::UI::DockLayout.tabs(id: :left, panels: %i[Files Search]),
+      second: Zaniah::UI::DockLayout.tabs(id: :right, panels: %i[Editor Preview]))
+    property_schema = [
+      {key: :title, label: "Title", type: :text},
+      {key: :count, label: "Count", type: :number},
+      {key: :visible, label: "Visible", type: :boolean}
+    ]
     workspaces = Zaniah::Div.new.w_full.gap(12)
       .child(Zaniah::Div.new.flex_row.gap(12).children([
         Zaniah::UI::SplitPane.new(Zaniah::UI::Label.new("Left pane"), Zaniah::UI::Label.new("Right pane")).w(300).h(100),
         Zaniah::UI::Resizable.new(Zaniah::UI::Label.new("Resize me"), width: 180, height: 100),
         Zaniah::UI::ListView.new(%w[Alpha Beta Gamma Delta], height: 100, selected: 1).w(180)]))
-      .child(Zaniah::UI::DockPanel.new(
-        center: Zaniah::UI::Label.new("Editor"), top: Zaniah::UI::StatusBar.new(Zaniah::UI::Label.new("Top", size: :sm)),
-        left: Zaniah::UI::Sidebar.new(Zaniah::UI::Label.new("Files", size: :sm), width: 90),
-        bottom: Zaniah::UI::StatusBar.new(Zaniah::UI::Label.new("Ready", size: :sm))).w(420).h(120))
+      .child(Zaniah::Div.new.flex_row.gap(12).children([
+        Zaniah::UI::DockPanel.new(
+          center: Zaniah::UI::Label.new("Editor"), top: Zaniah::UI::StatusBar.new(Zaniah::UI::Label.new("Top", size: :sm)),
+          left: Zaniah::UI::Sidebar.new(Zaniah::UI::Label.new("Files", size: :sm), width: 90),
+          bottom: Zaniah::UI::StatusBar.new(Zaniah::UI::Label.new("Ready", size: :sm))).w(420).h(120),
+        Zaniah::UI::ZoomPanView.new(Zaniah::Div.new.w(110).h(70).p(8).bg("#2563eb")
+          .child(Zaniah::UI::Label.new("Zoom / pan", size: :sm)), zoom: 1.3).w(180).h(120)
+      ]))
+      .child(Zaniah::Div.new.flex_row.gap(12).children([
+        Zaniah::UI::DockWorkspace.new(dock_layout,
+          render: ->(id) { Zaniah::Div.new.p(10).child(Zaniah::UI::Label.new("#{id} panel")) }).w(440).h(190),
+        Zaniah::UI::PropertyGrid.new(property_schema,
+          {title: "Workspace", count: 3, visible: true}, height: 190).w(340)
+      ]))
     editors = Zaniah::Div.new.w_full.flex_row.gap(12).children([
       Zaniah::UI::CodeEditor.new("def hello\n  :world\nend\n", language: :ruby).w(390).h(150),
       Zaniah::UI::RichText.new([{text: "Rich ", size: 20}, {text: "text", color: "#2563eb", size: 20}]).w(260)])
-    Zaniah::Div.new.h(2480).p(16).gap(12)
+    Zaniah::Div.new.h(3200).p(16).gap(12)
       .child(section("Foundation", foundation, height: 180))
       .child(section("Actions",
         Zaniah::UI::Button.new("Primary").icon(:check).on_click(&clicks),
@@ -94,7 +118,8 @@ module Gallery
       .child(section("Variants", variants, height: 285))
       .child(section("Data", data, height: 440))
       .child(section("Choice and pickers", choices, height: 210))
-      .child(section("Workspace layout", workspaces, height: 300))
+      .child(section("Feedback and dates", feedback_dates, height: 410))
+      .child(section("Workspace layout", workspaces, height: 530))
       .child(section("Editors", editors, height: 210))
       .child(section("Forms", Zaniah::UI::Form.new.field(name: :email, label: "Release email", value: "ruby@example.com", validation: validation).w(320), height: 150))
   end
@@ -110,6 +135,7 @@ module Gallery
     when /\Atoast-(info|success|warning|danger)\z/ then Zaniah::UI::Toast.new("Saved", variant: Regexp.last_match(1).to_sym)
     when "tooltip" then Zaniah::UI::Tooltip.new("Helpful text", anchor: anchor)
     when "popover" then Zaniah::UI::Popover.new(content, anchor: anchor)
+    when "hover-card" then Zaniah::UI::HoverCard.new(Zaniah::UI::Label.new("Keyboard shortcuts"), anchor: anchor).open
     when "menu" then Zaniah::UI::Menu.new(items, anchor: Zaniah::Point.new(anchor.x, anchor.bottom))
     when "context-menu" then Zaniah::UI::ContextMenu.new(items, anchor: Zaniah::Point.new(anchor.x, anchor.bottom))
     when "modal" then Zaniah::UI::Modal.new(content, title: "Modal")

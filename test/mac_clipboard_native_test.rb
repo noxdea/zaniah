@@ -48,5 +48,17 @@ if RUBY_PLATFORM.include?("darwin")
       assert_equal ["/tmp/one", "/tmp/two"], @window.clipboard_paths
       assert_equal "file:///tmp/one\r\nfile:///tmp/two\r\n", @window.read_clipboard(types: ["text/uri-list"]).fetch("text/uri-list")
     end
+
+    def test_drag_pasteboard_preserves_custom_mime_and_file_compatibility
+      @window.write_clipboard([
+        Zaniah::Clipboard::Item.new("application/x-zaniah-test" => "payload"),
+        Zaniah::Clipboard::Item.new("text/uri-list" => "file:///tmp/test\r\n")
+      ])
+      assert_includes @window.drag_pasteboard_types(@board), "application/x-zaniah-test"
+      assert_includes @window.drag_pasteboard_types(@board), "text/uri-list"
+      assert_equal "payload", @window.read_pasteboard_content(@board, ["application/x-zaniah-test"]).fetch("application/x-zaniah-test")
+      assert_equal :move, @window.native_drag_operation(16)
+      assert_equal :none, @window.native_drag_operation(0)
+    end
   end
 end

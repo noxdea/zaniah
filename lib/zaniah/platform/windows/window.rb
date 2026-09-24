@@ -5,6 +5,7 @@ require_relative "../../ffi/library"
 require_relative "../../gpu/open_gl"
 require_relative "clipboard_data"
 require_relative "native_menu"
+require_relative "drag_drop"
 
 module Zaniah
   module Platform
@@ -83,7 +84,7 @@ module Zaniah
           @dc = @user.fn(:GetDC, [P], P).call(@handle)
           @device.release
           @device = create_device(gpu)
-          @shell.fn(:DragAcceptFiles, [P, I], V).call(@handle, 1)
+          @drag_drop = DragDrop.new(self)
           @user.fn(:ShowWindow, [P, I], I).call(@handle, 5)
           @user.fn(:UpdateWindow, [P], I).call(@handle)
         end
@@ -276,6 +277,12 @@ module Zaniah
             input(down ? Input::MouseDown.new(position, button, mods, double ? 2 : 1) : Input::MouseUp.new(position, button, mods))
           end
         end
+        def begin_drag(data, event: nil)
+          super
+          @drag_drop.start(data)
+          data
+        end
+        def release_drag_capture = @user.fn(:ReleaseCapture, [], I).call
         def with_ime
           context = @imm.fn(:ImmGetContext, [P], P).call(@handle)
           yield context unless context.null?
@@ -462,6 +469,15 @@ module Zaniah
             bytes.byteslice(0, size * 2).force_encoding("UTF-16LE").encode("UTF-8")
           end
         end
+        def hdrop_paths(drop)
+          count = @shell.fn(:DragQueryFileW, [P, U, P, U], U).call(drop, 0xffffffff, 0, 0)
+          Array.new(count) do |index|
+            size = @shell.fn(:DragQueryFileW, [P, U, P, U], U).call(drop, index, 0, 0)
+            bytes = "\0" * ((size + 1) * 2)
+            @shell.fn(:DragQueryFileW, [P, U, P, U], U).call(drop, index, bytes, size + 1)
+            bytes.byteslice(0, size * 2).force_encoding("UTF-16LE").encode("UTF-8")
+          end
+        end
         def dropped_files(drop)
           count = @shell.fn(:DragQueryFileW, [P, U, P, U], U).call(drop, 0xffffffff, 0, 0)
           paths = Array.new(count) do |index|
@@ -473,7 +489,9 @@ module Zaniah
           point = "\0" * 8
           @shell.fn(:DragQueryPoint, [P, P], I).call(drop, point)
           x, y = point.unpack("l2")
-          input(Input::FileDrop.new(paths.freeze, Point.new(x / @scale_factor, y / @scale_factor)))
+          position = Point.new(x / @scale_factor, y / @scale_factor)
+          content = Clipboard::Content.new("text/uri-list" => ClipboardData.uri_list(paths))
+          deliver_drop(content: content, position: position, paths: paths)
         ensure
           @shell.fn(:DragFinish, [P], V).call(drop)
         end
@@ -648,6 +666,7 @@ module Zaniah
         end
         def close
           return false unless super
+          @drag_drop&.close
           @native_menu&.close
           Accessibility.close(self)
           @gl.fn(:wglMakeCurrent, [P, P], I).call(0, 0)

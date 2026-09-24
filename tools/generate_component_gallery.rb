@@ -9,6 +9,7 @@ SHEETS = %i[dark light high_contrast].freeze
 OVERLAYS = %w[
   tooltip-top tooltip-bottom tooltip-left tooltip-right
   popover-top popover-bottom popover-left popover-right
+  hover-card
   menu context-menu modal dialog drawer-left drawer-right
   toast-info toast-success toast-warning toast-danger command-palette
 ].freeze
@@ -18,7 +19,7 @@ FileUtils.mkdir_p(OUTPUT)
 
 SHEETS.each do |appearance|
   app = Zaniah::App.new(clock: -> { 0.0 })
-  window = app.open_window(width: 900, height: 2480)
+  window = app.open_window(width: 900, height: 3200)
   theme = Zaniah::Theme.public_send(appearance)
   app.global(:theme, theme.with(motion: theme.motion.with(reduced: true)))
   window.text_system = Zaniah::TextSystem::Renderer.new(font: FONT, font_db: Zaniah::TextSystem::FontDB.new(paths: []))

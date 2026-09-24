@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0 — 2026-09-25
+
+- Add segmented controls, alerts, hover cards, calendar and date-range inputs.
+- Add zoomable views, dockable workspaces, and editable property grids.
+- Add typed drag-and-drop across desktop backends with explicit move completion.
+
 ## 0.10.0 — 2026-09-24
 
 - Add Unicode bidirectional text layout, caret affinity, and Arabic joining.

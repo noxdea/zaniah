@@ -119,6 +119,7 @@ module Zaniah
         @focus_tree.clear
         @transforms.replace([Transform.identity])
       end
+      def release_mouse_capture = @capture = nil
       def hits = @hits.map { |bounds, _, owner, _, clip| Hit.new(clip ? bounds.intersect(clip) : bounds, owner) }.freeze
       def hit_regions = @hits.map { |bounds, _, owner, transform, clip| HitRegion.new(bounds, owner, transform, clip) }.freeze
 

@@ -136,6 +136,18 @@ module Zaniah
       def initialize: (Array[untyped] options, ?value: untyped) -> void
       def on_change: () { (untyped, Input::MouseDown?, FrameContext?) -> void } -> self
     end
+    class SegmentedControl < Component
+      attr_reader value: untyped
+      def initialize: (Array[untyped] options, ?value: untyped) -> void
+      def on_change: () { (untyped, Input::MouseDown?, FrameContext?) -> void } -> self
+    end
+    class Alert < Component
+      VARIANTS: Array[Symbol]
+      attr_reader title: String
+      def initialize: (untyped title, ?message: untyped, ?variant: :info | :success | :warning | :danger, ?action: _Renderable?, ?dismissible: bool, ?live: bool) -> void
+      def dismissed?: () -> bool
+      def dismiss: () -> bool
+    end
     class Switch < Checkbox
     end
     class Slider < Component
@@ -175,6 +187,12 @@ module Zaniah
     end
     class Tooltip < Popover
       def initialize: (untyped text, anchor: Point | Bounds, **untyped options) -> void
+    end
+    class HoverCard < Component
+      def initialize: (_Renderable content, anchor: _Renderable | Point | Bounds, ?open_delay: Numeric, ?close_delay: Numeric) -> void
+      def open?: () -> bool
+      def open: (?bool value) -> self
+      def close: () -> self
     end
     class Menu < OverlayComponent
       attr_reader selected_index: Integer
@@ -242,6 +260,21 @@ module Zaniah
       def initialize: (?untyped value, ?min: untyped, ?max: untyped, ?label: String, ?disabled: bool) -> void
       def on_change: () { (untyped, FrameContext?) -> void } -> self
       def disabled: (?bool value) -> self
+    end
+    class Calendar < Component
+      WEEKDAYS: Array[String]
+      MONTH_NAMES: Array[String]
+      attr_reader value: untyped
+      attr_reader cursor: untyped
+      attr_reader month: untyped
+      def initialize: (?value: untyped, ?min: untyped, ?max: untyped, ?range: bool, ?week_start: Integer, ?month_names: Array[String]) -> void
+      def on_change: () { (untyped, FrameContext?) -> void } -> self
+    end
+    class DateRangePicker < Component
+      attr_reader value: untyped
+      def initialize: (?value: untyped, ?min: untyped, ?max: untyped, ?week_start: Integer, ?month_names: Array[String], ?label: String) -> void
+      def on_change: () { (untyped, FrameContext?) -> void } -> self
+      def open?: () -> bool
     end
     class TimePicker < Component
       attr_reader value: Integer
@@ -361,6 +394,56 @@ module Zaniah
     end
     class DockPanel < Component
       def initialize: (center: _Renderable, ?top: _Renderable?, ?right: _Renderable?, ?bottom: _Renderable?, ?left: _Renderable?) -> void
+    end
+    class DockLayout
+      class Tabs < Data
+        attr_reader id: String
+        attr_reader panels: Array[String]
+        attr_reader active: String
+      end
+      class Split < Data
+        attr_reader id: String
+        attr_reader orientation: :horizontal | :vertical
+        attr_reader ratio: Float
+        attr_reader first: Tabs | Split
+        attr_reader second: Tabs | Split
+      end
+      attr_reader root: Tabs | Split
+      def self.tabs: (id: String | Symbol, panels: Array[String | Symbol], ?active: String | Symbol?) -> DockLayout
+      def self.split: (id: String | Symbol, orientation: :horizontal | :vertical, ratio: Numeric, first: DockLayout | Hash[Symbol | String, untyped], second: DockLayout | Hash[Symbol | String, untyped]) -> DockLayout
+      def self.from_h: (Hash[Symbol | String, untyped] value) -> DockLayout
+      def to_h: () -> Hash[String, untyped]
+      def groups: () -> Array[Tabs]
+      def find_group: (String | Symbol id) -> Tabs?
+      def find_panel: (String | Symbol id) -> Tabs?
+    end
+    class DockWorkspace < Component
+      attr_reader layout: DockLayout
+      def initialize: (DockLayout | Hash[Symbol | String, untyped] layout, render: Proc) -> void
+      def on_layout_change: () { (DockLayout) -> void } -> self
+      def on_detach: () { (String) -> void } -> self
+      def select: (String | Symbol panel_id) -> bool
+      def move: (String | Symbol panel_id, to: String | Symbol, ?index: Integer?) -> bool
+      def split: (String | Symbol panel_id, target: String | Symbol, side: :left | :right | :top | :bottom) -> bool
+      def detach: (String | Symbol panel_id) -> bool
+      def accessibility_action: (Accessibility::Node item, Symbol action) -> bool
+    end
+    class PropertyGrid < Component
+      class Property < Data
+      end
+      attr_reader values: Hash[Symbol, untyped]
+      attr_reader errors: Hash[Symbol, Array[String]]
+      def initialize: (Array[untyped] schema, ?Hash[Symbol | String, untyped] values, ?height: Numeric, ?row_height: Numeric) -> void
+      def on_change: () { (Symbol, untyped, Hash[Symbol, untyped], FrameContext?) -> void } -> self
+      def set: (Symbol | String key, untyped value) -> bool
+    end
+    class ZoomPanView < Component
+      attr_reader zoom: Float
+      def initialize: (_Renderable content, ?zoom: Numeric, ?min_zoom: Numeric, ?max_zoom: Numeric) -> void
+      def fit: () -> bool?
+      def zoom_to: (Bounds rect) -> bool
+      def view_to_content: (Point point) -> Point?
+      def accessibility_action: (Accessibility::Node item, Symbol action) -> bool
     end
 
     class Modal < OverlayComponent

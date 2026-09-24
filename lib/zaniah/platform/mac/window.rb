@@ -43,9 +43,7 @@ module Zaniah
           O.send(@handle, "setDelegate:", @delegate, args: [:pointer], result: :void)
           O.send(@handle, "setAcceptsMouseMovedEvents:", 1, args: [:bool], result: :void)
           O.send(@handle, "makeFirstResponder:", @view, args: [:pointer], result: :bool)
-          types = [O.string("NSFilenamesPboardType"), O.string("public.file-url")].pack("J2")
-          list = O.send(O.klass("NSArray"), "arrayWithObjects:count:", Fiddle::Pointer[types], 2, args: [:pointer, :ulong])
-          O.send(@view, "registerForDraggedTypes:", list, args: [:pointer], result: :void)
+          register_drop_types
           self.title = @title
           O.send(@handle, "center", result: :void)
           @scale_factor = O.send(@handle, "backingScaleFactor", result: :double)
@@ -55,22 +53,33 @@ module Zaniah
         end
 
         def self.install_classes
-          O.subclass("ZaniahNativeView", "NSView", protocols: ["NSTextInputClient"]) do |klass|
+          O.subclass("ZaniahNativeView", "NSView", protocols: ["NSTextInputClient", "NSDraggingSource"]) do |klass|
             O.method(klass, "acceptsFirstResponder", result: :bool, encoding: "B@:") { 1 }
             O.method(klass, "isFlipped", result: :bool, encoding: "B@:") { 1 }
             O.method(klass, "viewDidChangeEffectiveAppearance", encoding: "v@:") do |receiver, _|
               WINDOWS[receiver]&.native_callback { WINDOWS[receiver].appearance_changed }
             end
             %w[draggingEntered: draggingUpdated:].each do |name|
-              O.method(klass, name, args: [:pointer], result: :ulong, encoding: "Q@:@") { 1 }
+              O.method(klass, name, args: [:pointer], result: :ulong, encoding: "Q@:@") do |receiver, _, dragging|
+                WINDOWS[receiver]&.native_callback { WINDOWS[receiver].native_drag_over(dragging) } || 0
+              end
+            end
+            O.method(klass, "draggingExited:", args: [:pointer], encoding: "v@:@") do |receiver, _, _dragging|
+              WINDOWS[receiver]&.instance_variable_set(:@accepted_native_drag_operation, nil)
             end
             O.method(klass, "performDragOperation:", args: [:pointer], result: :bool, encoding: "B@:@") do |receiver, _, dragging|
               WINDOWS[receiver]&.native_callback { WINDOWS[receiver].file_drop(dragging) } ? 1 : 0
             end
+            O.method(klass, "draggingSession:sourceOperationMaskForDraggingContext:", args: [:pointer, :ulong], result: :ulong, encoding: "Q@:@Q") do |receiver, _, _session, _context|
+              WINDOWS[receiver]&.native_drag_mask || 0
+            end
+            O.method(klass, "draggingSession:endedAtPoint:operation:", args: [:pointer, :point, :ulong], encoding: "v@:@{CGPoint=dd}Q") do |receiver, _, _session, _point, operation|
+              WINDOWS[receiver]&.native_callback { WINDOWS[receiver].finish_drag_source(WINDOWS[receiver].native_drag_operation(operation)) }
+            end
             O.method(klass, "performKeyEquivalent:", args: [:pointer], result: :bool, encoding: "B@:@") do |receiver, _, event|
               WINDOWS[receiver]&.native_callback { WINDOWS[receiver].perform_key_equivalent(event) } ? 1 : 0
             end
-            %w[keyDown: keyUp: flagsChanged: mouseDown: mouseUp: rightMouseDown: rightMouseUp: otherMouseDown: otherMouseUp: mouseMoved: mouseDragged: rightMouseDragged: otherMouseDragged: scrollWheel:].each do |name|
+            %w[keyDown: keyUp: flagsChanged: mouseDown: mouseUp: rightMouseDown: rightMouseUp: otherMouseDown: otherMouseUp: mouseMoved: mouseDragged: rightMouseDragged: otherMouseDragged: scrollWheel: magnifyWithEvent:].each do |name|
               O.method(klass, name, args: [:pointer], encoding: "v@:@") do |receiver, _, event|
                 WINDOWS[receiver]&.native_callback { WINDOWS[receiver].native_input(name, event) }
               end
@@ -273,11 +282,16 @@ module Zaniah
           elsif name != "flagsChanged:"
             x, y = O.send(event, "locationInWindow", result: :point)
             position = Point.new(x, content_size.height - y)
+            if name == "magnifyWithEvent:"
+              input(Input::Magnify.new(position, O.send(event, "magnification", result: :double), O.send(event, "phase", result: :ulong)))
+              return
+            end
             button = [:left, :right, :middle].fetch(O.send(event, "buttonNumber", result: :long), :other)
             if name == "mouseDown:" && decorations != :native && window_region_at(position) == :drag
               O.send(@handle, "performWindowDragWithEvent:", event, args: [:pointer], result: :void)
               return
             end
+            @native_drag_event = event if ["mouseDown:", "mouseDragged:"].include?(name)
             input(case name
             when /Down:/ then Input::MouseDown.new(position, button, modifiers, O.send(event, "clickCount", result: :long))
             when /Up:/ then Input::MouseUp.new(position, button, modifiers)
@@ -286,6 +300,8 @@ module Zaniah
             else Input::MouseMove.new(position, modifiers)
             end)
           end
+        ensure
+          @native_drag_event = nil if ["mouseDown:", "mouseDragged:"].include?(name)
         end
 
         def cocoa_text(value)
@@ -367,7 +383,9 @@ module Zaniah
         end
         def read_clipboard(types:)
           raise TypeError, "clipboard types must be an Array" unless types.is_a?(Array)
-          board = pasteboard
+          read_pasteboard_content(pasteboard, types)
+        end
+        def read_pasteboard_content(board, types)
           items = pasteboard_items(board)
           formats = {}
           types.each do |type|
@@ -437,11 +455,100 @@ module Zaniah
           end.compact
         end
         def file_drop(dragging)
-          paths = pasteboard_paths(O.send(dragging, "draggingPasteboard"))
-          return false if paths.empty?
+          board = O.send(dragging, "draggingPasteboard")
+          types = drag_pasteboard_types(board)
+          return false if types.empty?
+          content = read_pasteboard_content(board, types)
+          paths = pasteboard_paths(board)
+          operation = @accepted_native_drag_operation || native_drag_operation(O.send(dragging, "draggingSourceOperationMask", result: :ulong))
+          delivered = deliver_drop(content: content, position: drag_position(dragging), operation: operation == :none ? :copy : operation, paths: paths)
+          @accepted_native_drag_operation = nil
+          delivered != :none
+        end
+        def render(element, **options)
+          super
+          register_drop_types
+        end
+        def register_drop_types
+          names = ["NSFilenamesPboardType", "public.file-url", "public.utf8-plain-text"]
+          names.concat(@dispatcher.hit_regions.flat_map { |hit| hit.owner.respond_to?(:drop_types) ? hit.owner.drop_types.map { |type| ClipboardData.native_type(type) } : [] })
+          names.uniq!
+          return if names == @registered_drop_types
+          O.send(@view, "registerForDraggedTypes:", cocoa_array(names.map { |name| O.string(name) }), args: [:pointer], result: :void)
+          @registered_drop_types = names
+        end
+        def drag_pasteboard_types(board)
+          types = pasteboard_items(board).flat_map do |item|
+            cocoa_objects(O.send(item, "types")).filter_map { |name| ClipboardData.mime_type(O.text(name)) }
+          end
+          types << "text/uri-list" unless pasteboard_paths(board).empty?
+          types.uniq
+        end
+        def drag_position(dragging)
           x, y = O.send(dragging, "draggingLocation", result: :point)
-          input(Input::FileDrop.new(paths.freeze, Point.new(x, content_size.height - y)))
-          true
+          Point.new(x, content_size.height - y)
+        end
+        def native_drag_operation(mask)
+          return :move if (mask & 16) != 0
+          return :copy if (mask & 1) != 0
+          return :link if (mask & 2) != 0
+          :none
+        end
+        def native_drag_mask
+          return 0 unless @drag_data
+          @drag_data.operations.reduce(0) { |mask, operation| mask | {copy: 1, link: 2, move: 16}.fetch(operation) }
+        end
+        def native_drag_over(dragging)
+          @accepted_native_drag_operation = nil
+          board = O.send(dragging, "draggingPasteboard")
+          types = drag_pasteboard_types(board)
+          mask = O.send(dragging, "draggingSourceOperationMask", result: :ulong)
+          operations = {copy: 1, link: 2, move: 16}.filter_map { |operation, bit| operation unless (mask & bit).zero? }
+          return 0 if types.empty? || operations.empty?
+          operation = drag_over(types: types, position: drag_position(dragging), operations: operations)
+          operation = :copy if operation == :none && types.include?("text/uri-list") && operations.include?(:copy)
+          @accepted_native_drag_operation = operation
+          {copy: 1, link: 2, move: 16}.fetch(operation, 0)
+        end
+        def begin_drag(data, event: nil)
+          raise Error, "native drag requires a mouse-down event" unless @native_drag_event
+          super
+          native_items = []
+          drag_items = []
+          preview = nil
+          begin
+            data.items.each do |item|
+              formats, urls = pasteboard_formats(item)
+              [formats, *urls.drop(1).map { |url| {"public.file-url" => url} }].each do |entries|
+                writer = O.new("NSPasteboardItem")
+                native_items << writer
+                entries.each { |type, bytes| raise Error, "NSPasteboard refused #{type}" unless set_pasteboard_data(writer, type, bytes) }
+                dragging_item = O.send(O.alloc("NSDraggingItem"), "initWithPasteboardWriter:", writer, args: [:pointer])
+                drag_items << dragging_item
+              end
+            end
+            preview = drag_preview_image(data.image)
+            drag_items.each do |item|
+              O.send(item, "setDraggingFrame:contents:", [0, 0, 32, 32], preview, args: [:rect, :pointer], result: :void)
+            end
+            O.send(@view, "beginDraggingSessionWithItems:event:source:", cocoa_array(drag_items), @native_drag_event, @view, args: [:pointer, :pointer, :pointer])
+          ensure
+            drag_items.each { |item| O.release(item) }
+            native_items.each { |item| O.release(item) }
+            O.release(preview) if preview
+          end
+          data
+        end
+        def drag_preview_image(image)
+          texture = image.respond_to?(:texture) ? image.texture : image
+          if texture.respond_to?(:width) && texture.respond_to?(:height) && texture.respond_to?(:data)
+            require_relative "../../png"
+            bytes = PNG.encode(texture.width, texture.height, texture.data)
+            native_data = O.send(O.klass("NSData"), "dataWithBytes:length:", Fiddle::Pointer[bytes], bytes.bytesize, args: [:pointer, :ulong])
+            O.send(O.alloc("NSImage"), "initWithData:", native_data, args: [:pointer])
+          else
+            O.send(O.alloc("NSImage"), "initWithSize:", [32, 32], args: [:size])
+          end
         end
         def appearance
           name = O.text(O.send(O.send(@view, "effectiveAppearance"), "name"))

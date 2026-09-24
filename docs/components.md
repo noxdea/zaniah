@@ -32,6 +32,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L0 | `Card` | `(*children)`, `child` | theme surface | group |
 | L0 | `Badge` | `(text, variant:)` | neutral/accent/success/warning/danger | text |
 | L0 | `Kbd` | `(keys, platform:)`; `.for(action, keymap:)` | OS shortcut notation, including multi-stroke bindings | text |
+| L0 | `Alert` | `(title, message:, variant:, action:, dismissible:, live:)`; `dismiss` | info/success/warning/danger; persistent until dismissed | alert when live, otherwise status |
 | L0 | `Avatar` | `(name, image:, size:)` | initials or PNG | image |
 | L0 | `Skeleton` | `(width:, height:)` | pulsing loading placeholder | progressbar/busy |
 | L0 | `EmptyState` | `(title, message:, icon:, action:)` | compositional | group |
@@ -42,6 +43,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L1 | `Checkbox` | `(label, value:, disabled:)`; `on_change` | true/false/mixed | checkbox |
 | L1 | `Radio` | `(label, value:, disabled:)`; `on_change` | selected/unselected | radio |
 | L1 | `RadioGroup` | `(options, value:)`; `on_change` | one selected value | radiogroup |
+| L1 | `SegmentedControl` | `(options, value:)`; `on_change` | mutually exclusive segments; arrows/Home/End | radiogroup/radio |
 | L1 | `Switch` | `(label, value:, disabled:)`; `on_change` | on/off | switch |
 | L1 | `Slider` | `(value:, min:, max:, step:, label:)`; `on_change` | pointer + arrow/Home/End/Page keys | slider |
 | L1 | `RangeSlider` | `(value: [low, high], ...)` | two thumbs | slider |
@@ -50,6 +52,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L1 | `Meter` | `(value:, low:, high:, optimum:)` | thresholds | meter |
 | L2 | `Tooltip` | `(text, anchor:, side:, open:)` | top/bottom/left/right | tooltip |
 | L2 | `Popover` | `(content, anchor:, side:, width:, height:, open:, modal:)` | flipped and viewport-clamped | group |
+| L2 | `HoverCard` | `(content, anchor:, open_delay:, close_delay:)` | hover or focus opens after a delay; non-modal | dialog |
 | L2 | `ContextMenu`, `Menu` | `(items, anchor:, open:)` | pointer + arrows/Home/End/Enter/Esc | menu/menuitem |
 | L2 | `MenuBar` | `(menus)` or `.from(app.menu_bar)` | declarative menu model or legacy pairs | menubar |
 | L2 | `Dropdown` | `(label, items:, value:)`; `on_change` | menu-backed | button |
@@ -63,6 +66,8 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L2 | `Combobox` | `(items, value:, label:, placeholder:, disabled:, matcher:)`; `on_change` | editable, filtered choices with highlighted matches | combobox |
 | L2 | `MultiSelect` | `(items, value:, label:, disabled:)`; `on_change` | multiple selected badges | listbox |
 | L2 | `DatePicker` | `(value, min:, max:, label:, disabled:)`; `on_change` | ISO date, day/week keyboard steps | combobox |
+| L2 | `Calendar` | `(value:, min:, max:, range:, week_start:, month_names:)`; `on_change` | arrow keys move days/weeks, Page keys move months, Enter selects | grid/gridcell |
+| L2 | `DateRangePicker` | `(value:, min:, max:, week_start:, month_names:)`; `on_change` | Calendar-backed start/end selection | combobox |
 | L2 | `TimePicker` | `(value, step:, label:, disabled:)`; `on_change` | 24-hour time, minute/hour keyboard steps | combobox |
 | L2 | `ColorPicker` | `(value, label:, swatches:, disabled:)`; `on_change` | hex input and swatches | combobox |
 | L3 | `Tabs` | `(items, selected:)`; `on_change` | arrows/Home/End | tab/tabpanel |
@@ -82,11 +87,14 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L3 | `SplitPane` | `(first, second, orientation:, ratio:, min:, max:)`; `on_change` | horizontal/vertical, draggable separator | group/separator |
 | L3 | `PaneGrid` | `(panes, columns:, rows:, divider_size:, minimum:, keyboard_step:)`; `replace`, `on_resize` | arbitrary resizable grid, stable pane IDs | group/separator |
 | L3 | `Resizable` | `(content, width:, height:, min_width:, min_height:, max_width:, max_height:)`; `on_resize` | drag or keyboard resize | group/separator |
+| L3 | `ZoomPanView` | `(content, zoom:, min_zoom:, max_zoom:)`; `fit`, `zoom_to`, `view_to_content` | drag to pan, pinch or Ctrl+wheel to zoom, `+`/`-`/`0` when focused | group |
 | L3 | `DockPanel` | `(center:, top:, right:, bottom:, left:)` | five-region layout | group |
+| L3 | `DockWorkspace` | `(layout, render:)`; `on_layout_change`, `on_detach`; `DockLayout.to_h`/`.from_h` | drag tabs to move/split, arrows select, Alt+arrows move, Ctrl+Shift+arrows split, Ctrl+Shift+D requests detach | tablist/tab/tabpanel/separator |
 | L3 | `ListView` | `(items, height:, row_height:, selected:)`; `on_select` | virtual rows and keyboard selection | list/listitem |
 | L4 | `Table`, `DataGrid` | `(rows, columns:, height:, selection:, row_key:)`; `on_sort`, `on_select`, `on_edit`, `on_copy`, `on_paste` | virtual rows, sorting, resizing, editing, typed clipboard hooks | table/row/cell |
 | L4 | `Grid` | `(rows:, columns:, row_height:, column_width:, frozen_rows:, frozen_columns:)`; `scroll_to`, range `selection`, `on_select`, `on_edit`, `on_fill`, `on_resize`, `on_copy`, `on_paste` | two-axis virtualization, frozen panes, visible-cell resize/fill and typed clipboard hooks | table |
 | L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, `replace`, `replace_children`, `invalidate`, lazy `children` proc | arrows/Home/End | tree/treeitem |
+| L4 | `PropertyGrid` | `(schema, values, height:, row_height:)`; `on_change`, `set` | typed existing controls, `Validation`, virtual rows | table/row/cell |
 | L5 | `Sparkline` | `(values, width:, height:, color:, label:)` | line + tooltip | image |
 | L5 | `LineChart`, `BarChart`, `StackedBarChart`, `AreaChart` | `(series, width:, height:, colors:, label:)`; `AreaChart(stacked:)` | shared axes, ticks, grid lines, color-keyed legend, tooltip | image |
 | L5 | `PieChart`, `DonutChart` | `(data, width:, height:, colors:, label:)` | slices, shared color-keyed legend, tooltip | image |
@@ -100,6 +108,28 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 All input components are keyboard operable. Disabled controls remain visible but are
 removed from focus traversal. Overlay components close on Esc; modal overlays restore
 the previous focus. See [TUI](tui.md) for terminal representations.
+
+`Calendar` and `DateRangePicker` use Ruby's `Date` and ISO 8601 strings. Pass
+`week_start: 0..6` (Sunday is 0) and twelve `month_names:` to localize the grid
+without an i18n dependency. A range picker returns a two-element array of dates;
+its second value is `nil` while the user is choosing the end. `HoverCard` accepts
+an element/component as its anchor to open on pointer hover or keyboard focus, or
+a `Point`/`Bounds` for positioned use. Its delays follow the window's injected clock.
+
+`ZoomPanView` uses content-local coordinates for `zoom_to` and `view_to_content`.
+Call `fit` after the first layout; it scales the content into the current viewport.
+Native macOS pinch emits `Input::Magnify`, while Ctrl+wheel provides a desktop fallback.
+
+`DockLayout` is a validated tree of tab groups and horizontal/vertical splits with
+stable string IDs. Use `DockLayout.tabs` and `.split` to build it, and persist
+`layout.to_h` in the application; `DockLayout.from_h` restores it. `DockWorkspace`
+passes the active panel ID to `render:` and emits a new layout on tab changes.
+`on_detach` is a notification only; the application decides whether to open a
+window and remove the panel. A pointer drop in the outer 20% of a group splits it.
+`PropertyGrid` schema entries use `key`, optional `label`, `type` (`text`,
+`textarea`, `number`, `boolean`, `select`, `color`, `date`, `time`), `options` for
+select, and an optional `Validation`. Invalid edits remain in the control while
+the last valid value is retained. Both components expose terminal fallbacks.
 
 `Combobox` and `CommandPalette` default to case-insensitive substring matching in
 input order. Pass `matcher:` to either component, or set a default with

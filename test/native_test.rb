@@ -243,6 +243,7 @@ class NativeTest < Minitest::Test
     window.define_singleton_method(:read_offer) { |*| "file:///tmp/drop.txt\n" }
     window.drag_enter(10, 20 * 256, 30 * 256, Fiddle::Pointer.new(7))
     window.finish_drop
+    assert_instance_of Zaniah::Input::DataDrop, events.first
     assert_equal ["/tmp/drop.txt"], events.last.paths
     assert_equal Zaniah::Point.new(20, 30), events.last.position
     assert calls.any? { |(args, _)| args[1] == 3 }, "successful drop must finish"
@@ -252,7 +253,7 @@ class NativeTest < Minitest::Test
     window.instance_variable_set(:@offer_actions, {7 => 0})
     window.drag_enter(11, 0, 0, Fiddle::Pointer.new(7))
     window.finish_drop
-    assert_equal 1, events.length
+    assert_equal 2, events.length
     refute calls.any? { |(args, _)| args[1] == 3 }, "unnegotiated drop must not finish"
   end
 

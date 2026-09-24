@@ -212,6 +212,7 @@ module Zaniah
         end
         def tick
           poll_events unless closed?
+          finish_outgoing_drag(:none) if @outgoing_drag&.dig(:dropped_at) && Process.clock_gettime(Process::CLOCK_MONOTONIC) - @outgoing_drag[:dropped_at] > 5
           poll_appearance unless closed?
           Accessibility.poll(self) unless closed?
           raise @native_error if @native_error
@@ -299,6 +300,7 @@ module Zaniah
           input(Input::TextInput.new(text)) unless text.empty? || text.match?(/\A[\x00-\x1f\x7f]+\z/)
         end
         def mouse_event(event, type)
+          return outgoing_drag_pointer(event, type) if @outgoing_drag && !@outgoing_drag[:dropped_at] && [5, 6].include?(type)
           px, py = event[64, 8].unpack("i2")
           position = Point.new(px / @scale_factor, py / @scale_factor)
           state, button = event[80, 8].unpack("I2")
@@ -495,34 +497,172 @@ module Zaniah
         ensure
           x(:XFree, [P], I, data) if data && !data.null?
         end
+        def begin_drag(data, event: nil)
+          raise Error, "X11 drag requires a mouse-down event" unless event.is_a?(Input::MouseDown)
+          result = x(:XGrabPointer, [P, L, I, L, I, I, L, L, L], I, @display, @handle, 0, (1 << 3) | (1 << 6), 1, 1, 0, 0, 0)
+          raise Error, "X11 pointer grab failed" unless result.zero?
+          super
+          @outgoing_drag = {formats: data.content.formats, target: nil, accepted: false, operation: data.operations.first}
+          property(@handle, atom("XdndTypeList"), 4, data.types.map { |type| atom(type) }.pack("L!*"), format: 32) if data.types.length > 3
+          x(:XSetSelectionOwner, [P, L, L, L], I, @display, atom("XdndSelection"), @handle, 0)
+          x(:XFlush, [P], I, @display)
+          data
+        rescue StandardError
+          x(:XUngrabPointer, [P, L], I, @display, 0) if result == 0
+          raise
+        end
+        def outgoing_drag_pointer(event, type)
+          state = @outgoing_drag
+          state[:operation] = xdnd_requested_action(event[80, 4].unpack1("L!"))
+          root_x, root_y = event[72, 8].unpack("i2")
+          target, version = xdnd_target_at_pointer
+          if target != state[:target]
+            send_client_message(state[:target], "XdndLeave", [@handle, 0, 0, 0, 0]) if state[:target]
+            state[:target], state[:target_version], state[:accepted], state[:accepted_operation] = target, version, false, nil
+            if target
+              ids = state[:formats].keys.map { |mime| atom(mime) }
+              send_client_message(target, "XdndEnter", [@handle, (version << 24) | (ids.length > 3 ? 1 : 0), *ids.first(3).fill(0, ids.length...3)])
+            end
+          end
+          if type == 6
+            if target
+              packed = ((root_x & 0xffff) << 16) | (root_y & 0xffff)
+              send_client_message(target, "XdndPosition", [@handle, 0, packed, event[56, 8].unpack1("L!"), atom("XdndAction#{state[:operation].to_s.capitalize}")])
+            end
+          elsif target && state[:accepted]
+            send_client_message(target, "XdndDrop", [@handle, 0, event[56, 8].unpack1("L!"), 0, 0])
+            x(:XUngrabPointer, [P, L], I, @display, 0)
+            state[:dropped_at] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          else
+            finish_outgoing_drag(:none)
+          end
+        end
+        def xdnd_target_at_pointer
+          current = @root
+          target = version = nil
+          16.times do
+            root, child = [0].pack("L!"), [0].pack("L!")
+            root_x, root_y, local_x, local_y, mask = Array.new(5) { [0].pack("i") }
+            ok = x(:XQueryPointer, [P, L, P, P, P, P, P, P, P], I, @display, current, root, child, root_x, root_y, local_x, local_y, mask)
+            break if ok.zero?
+            next_window = child.unpack1("L!")
+            break if next_window.zero? || next_window == current
+            current = next_window
+            aware = read_property(current, atom("XdndAware"), delete: false)
+            if aware.bytesize >= Fiddle::SIZEOF_LONG && (candidate = aware.unpack1("L!")) >= 2
+              target, version = current, [candidate, 5].min
+            end
+          end
+          [target, version]
+        rescue Error
+          [nil, nil]
+        end
+        def finish_outgoing_drag(operation)
+          return unless @outgoing_drag
+          x(:XUngrabPointer, [P, L], I, @display, 0)
+          x(:XSetSelectionOwner, [P, L, L, L], I, @display, atom("XdndSelection"), 0, 0)
+          @outgoing_drag = nil
+          finish_drag_source(operation)
+        end
+        def xdnd_action(id)
+          {copy: "XdndActionCopy", move: "XdndActionMove", link: "XdndActionLink"}
+            .find { |_operation, name| atom(name) == id }&.first
+        end
+        def xdnd_requested_action(modifiers)
+          requested = if (modifiers & 5) == 5
+            :link
+          elsif (modifiers & 4) != 0
+            :copy
+          elsif (modifiers & 1) != 0
+            :move
+          end
+          @drag_data.operations.include?(requested) ? requested : @drag_data.operations.first
+        end
         def client_message(event)
           type, data = event[40, 8].unpack1("L!"), event[56, 40].unpack("L!5")
           case type
           when atom("WM_PROTOCOLS") then close if data[0] == atom("WM_DELETE_WINDOW")
           when atom("XdndEnter")
             @drag_source = data[0]
+            @drag_accept = false
             types = data[1].odd? ? read_property(@drag_source, atom("XdndTypeList"), delete: false).unpack("L!*") : data[2, 3]
-            @drag_accept = types.include?(atom("text/uri-list"))
-          when atom("XdndLeave") then @drag_source = nil
+            @drag_types = types.reject(&:zero?).to_h do |id|
+              name = atom_name(id)
+              [target_mime(name) || name, id]
+            end
+          when atom("XdndLeave") then @drag_source = @drag_types = nil
           when atom("XdndPosition")
             return unless data[0] == @drag_source
             root_x, root_y = [data[2] >> 16, data[2] & 0xffff].map { |n| n >= 0x8000 ? n - 0x10000 : n }
             left, top, child = [0].pack("i"), [0].pack("i"), [0].pack("L!")
             x(:XTranslateCoordinates, [P, L, L, I, I, P, P, P], I, @display, @root, @handle, root_x, root_y, left, top, child)
             @drag_position = Point.new(left.unpack1("i") / @scale_factor, top.unpack1("i") / @scale_factor)
-            send_client_message(@drag_source, "XdndStatus", [@handle, @drag_accept ? 3 : 2, 0, 0, @drag_accept ? atom("XdndActionCopy") : 0])
+            requested = xdnd_action(data[4])
+            offered = requested ? [requested] : []
+            @drag_operation = drag_over(types: @drag_types.keys, position: @drag_position, operations: offered)
+            @drag_operation = :copy if @drag_operation == :none && @drag_types.key?("text/uri-list") && offered.include?(:copy)
+            @drag_accept = @drag_operation != :none
+            send_client_message(@drag_source, "XdndStatus", [@handle, @drag_accept ? 3 : 2, 0, 0, @drag_accept ? atom("XdndAction#{@drag_operation.to_s.capitalize}") : 0])
           when atom("XdndDrop")
             return unless data[0] == @drag_source
             return finish_drop(0) unless @drag_accept
-            x(:XConvertSelection, [P, L, L, L, L, L], I, @display, atom("XdndSelection"), atom("text/uri-list"), atom("ZANIAH_DROP"), @handle, data[2])
+            @drop_formats = {}
+            @drop_targets = @drag_types.keys
+            @drop_time = data[2]
+            request_next_drop_target
+          when atom("XdndStatus")
+            if @outgoing_drag && data[0] == @outgoing_drag[:target]
+              action = xdnd_action(data[4])
+              offered = action && @drag_data.operations.include?(action)
+              @outgoing_drag[:accepted] = data[1].odd? && (data[4].zero? || offered)
+              @outgoing_drag[:accepted_operation] = @outgoing_drag[:accepted] ? (offered ? action : @outgoing_drag[:operation]) : nil
+              @outgoing_drag[:operation] = action if offered
+            end
+          when atom("XdndFinished")
+            if @outgoing_drag && data[0] == @outgoing_drag[:target]
+              action = if @outgoing_drag.fetch(:target_version, 5) < 5
+                @outgoing_drag[:accepted_operation]
+              elsif data[1].odd?
+                xdnd_action(data[2])
+              end
+              finish_outgoing_drag(@drag_data.operations.include?(action) ? action : :none)
+            end
           end
+        end
+        def request_next_drop_target
+          target = @drop_targets&.shift
+          return finish_drop(0) unless target
+          @drop_current_target = target
+          x(:XConvertSelection, [P, L, L, L, L, L], I, @display, atom("XdndSelection"), @drag_types.fetch(target), atom("ZANIAH_DROP"), @handle, @drop_time)
         end
         def finish_drop(property_name)
           return unless @drag_source
-          paths = property_name.zero? ? [] : self.class.file_paths(read_property(@handle, property_name))
-          send_client_message(@drag_source, "XdndFinished", [@handle, paths.empty? ? 0 : 1, paths.empty? ? 0 : atom("XdndActionCopy"), 0, 0])
-          @drag_source = nil
-          input(Input::FileDrop.new(paths.freeze, @drag_position || Point.new(0, 0))) unless paths.empty?
+          if @drop_delete_pending
+            @drop_delete_done = !property_name.zero?
+            @drop_delete_pending = false
+            read_property(@handle, property_name) if @drop_delete_done
+          elsif !property_name.zero? && @drop_targets
+            if @drop_current_target
+              data = read_property(@handle, property_name)
+              data = data.force_encoding("ISO-8859-1").encode("UTF-8") if @drag_types[@drop_current_target] == atom("STRING")
+              @drop_formats[@drop_current_target] = data
+            end
+            return request_next_drop_target unless @drop_targets.empty?
+          end
+          operation = @drag_operation || :copy
+          accepted = @drag_accept && !@drop_formats.to_h.empty? && @drop_delete_done != false
+          if accepted && operation == :move && @drop_delete_done.nil?
+            @drop_delete_pending = true
+            x(:XConvertSelection, [P, L, L, L, L, L], I, @display, atom("XdndSelection"), atom("DELETE"), atom("ZANIAH_DROP_DELETE"), @handle, @drop_time)
+            return
+          end
+          if accepted
+            content = Clipboard::Content.new(@drop_formats)
+            accepted = deliver_drop(content: content, position: @drag_position || Point.new(0, 0), operation: operation) != :none
+          end
+          send_client_message(@drag_source, "XdndFinished", [@handle, accepted ? 1 : 0, accepted ? atom("XdndAction#{operation.to_s.capitalize}") : 0, 0, 0])
+          @drag_source = @drag_types = @drop_targets = @drop_formats = @drop_current_target = nil
+          @drop_delete_pending = @drop_delete_done = nil
         end
         def send_client_message(window, name, data)
           event = "\0".b * 192
@@ -537,7 +677,11 @@ module Zaniah
           requestor, selection, target, prop, time = event[40, 40].unpack("L!5")
           prop = target if prop.zero?
           name = atom_name(target)
-          data = selection == atom("CLIPBOARD") ? own_selection(name) : nil
+          data = if selection == atom("CLIPBOARD")
+            own_selection(name)
+          elsif selection == atom("XdndSelection") && @outgoing_drag
+            name == "DELETE" ? (commit_drag_move ? "".b : nil) : own_selection(name, @outgoing_drag[:formats])
+          end
           release_outgoing_incr([requestor, prop]) if @outgoing_incr&.key?([requestor, prop])
           if data
             if data.bytesize > 65_536
@@ -574,20 +718,19 @@ module Zaniah
           return "text/plain" if %w[UTF8_STRING STRING text/plain;charset=utf-8].include?(target)
           target if target.include?("/")
         end
-        def own_selection(target)
-          formats = @clipboard_formats || {}
+        def own_selection(target, formats = @clipboard_formats || {})
           if target == "TARGETS"
             names = ["TARGETS", *formats.keys]
             names.concat(%w[UTF8_STRING text/plain;charset=utf-8]) if formats.key?("text/plain")
-            names << "STRING" if latin1_text
+            names << "STRING" if latin1_text(formats)
             return names.uniq.map { |name| atom(name) }.pack("L!*")
           end
-          return latin1_text if target == "STRING"
+          return latin1_text(formats) if target == "STRING"
           return formats["text/plain"] if %w[UTF8_STRING text/plain;charset=utf-8].include?(target)
           formats[target]
         end
-        def latin1_text
-          @clipboard_formats&.fetch("text/plain", nil)&.encode("ISO-8859-1")&.b
+        def latin1_text(formats)
+          formats.fetch("text/plain", nil)&.encode("ISO-8859-1")&.b
         rescue Encoding::UndefinedConversionError
           nil
         end
