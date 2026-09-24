@@ -15,7 +15,9 @@ module Zaniah
         if Data == Struct
           super(*values)
         else
-          super(**self.class.members.zip(values).to_h)
+          super(text: values[0], glyphs: values[1], width: values[2], ascent: values[3],
+            descent: values[4], size: values[5], carets: values[6],
+            visual_carets: values[7], writing_mode: values[8])
         end
         freeze
       end
