@@ -126,16 +126,21 @@ module Zaniah
       overlays = !@inline_overlays.empty? || !@block_overlays.empty?
       unless overlays || @writing_mode == :vertical_rl
         @line = if cx.text_system
-          params = cx.text_system.method(:layout_line).parameters
-          kwargs = {font: @font, size: @font_size}
-          kwargs[:direction] = @text_direction if params.include?([:key, :direction]) || params.any? { |kind, _| kind == :keyrest }
-          cx.text_system.layout_line(value, **kwargs)
+          if @text_direction == :auto
+            cx.text_system.layout_line(value, font: @font, size: @font_size)
+          else
+            params = cx.text_system.method(:layout_line).parameters
+            kwargs = {font: @font, size: @font_size}
+            kwargs[:direction] = @text_direction if params.include?([:key, :direction]) || params.any? { |kind, _| kind == :keyrest }
+            cx.text_system.layout_line(value, **kwargs)
+          end
         else
           approximate_line(value)
         end
       end
       line_height = @line ? @line.ascent + @line.descent : 0
-      rtl = Unicode::Bidi.resolve(value, direction: @text_direction).direction == :rtl
+      rtl = @text_direction == :rtl || (@text_direction == :auto && !value.ascii_only? &&
+        Unicode::Bidi.resolve(value, direction: :auto).direction == :rtl)
       unless @wrap == :none && !@ellipsis && !overlays && !rtl && @writing_mode != :vertical_rl
         extent = @writing_mode == :vertical_rl ? cx.window.content_size.height : cx.window.content_size.width
         available = @style[@writing_mode == :vertical_rl ? :height : :width]
