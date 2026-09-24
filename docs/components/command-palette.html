@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Search actions from the keyboard and execute the selected command.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="canonical" href="https://noxdea.github.io/zaniah/docs/components/command-palette.html">
+  <link rel="stylesheet" href="../site.css">
+  <title>Command palette · Zaniah Docs</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="../index.html" aria-label="Zaniah documentation home"><span class="brand-symbol" aria-hidden="true">Z</span><span>Zaniah <small>Docs</small></span></a>
+      <nav class="header-links" aria-label="Global navigation">
+        <a href="../index.html">Docs</a>
+        <a href="index.html">Components</a>
+        <a href="https://github.com/noxdea/zaniah">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="docs-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+
+        <div class="nav-group"><h2>Getting started</h2>
+
+            <a href="../index.html">Introduction</a>
+
+            <a href="index.html">Components overview</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Foundations</h2>
+
+            <a href="primitives.html">Primitives</a>
+
+            <a href="badges.html">Badges</a>
+
+            <a href="alerts.html">Alerts</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Actions</h2>
+
+            <a href="buttons.html">Buttons</a>
+
+            <a href="button-group.html">Button group</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Inputs</h2>
+
+            <a href="checks-and-radios.html">Checks, radios, and switches</a>
+
+            <a href="sliders-and-progress.html">Sliders and progress</a>
+
+            <a href="text-fields.html">Text inputs</a>
+
+            <a href="selects.html">Select and combobox</a>
+
+            <a href="date-and-time.html">Date, time, and color</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Navigation</h2>
+
+            <a href="tabs.html">Tabs</a>
+
+            <a href="accordion.html">Accordion and collapsible</a>
+
+            <a href="breadcrumb.html">Breadcrumb</a>
+
+            <a href="pagination.html">Pagination</a>
+
+            <a href="scrolling.html">Scrolling</a>
+
+            <a href="navigation-shell.html">Toolbar, sidebar, and status bar</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Overlays</h2>
+
+            <a href="tooltips-and-popovers.html">Tooltips and popovers</a>
+
+            <a href="menus.html">Menus and dropdowns</a>
+
+            <a href="dialogs.html">Modal and dialog</a>
+
+            <a href="drawer.html">Drawer</a>
+
+            <a href="toasts.html">Toasts</a>
+
+            <a href="command-palette.html" aria-current="page">Command palette</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Data and visualization</h2>
+
+            <a href="tables.html">Tables and data grids</a>
+
+            <a href="grid.html">Grid</a>
+
+            <a href="trees.html">Tree view</a>
+
+            <a href="property-grid.html">Property grid</a>
+
+            <a href="charts.html">Charts</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Workspaces</h2>
+
+            <a href="workspace.html">Resizable layouts</a>
+
+            <a href="docking.html">Dock workspace</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Editing</h2>
+
+            <a href="forms.html">Forms and validation</a>
+
+            <a href="code-editor.html">Code editor</a>
+
+            <a href="rich-text.html">Rich text</a>
+
+        </div>
+
+    </aside>
+
+    <main id="content" class="content">
+      <details class="mobile-nav"><summary>Browse documentation</summary><nav aria-label="Mobile documentation navigation">
+
+          <strong>Getting started</strong>
+
+            <a href="../index.html">Introduction</a>
+
+            <a href="index.html">Components overview</a>
+
+
+          <strong>Foundations</strong>
+
+            <a href="primitives.html">Primitives</a>
+
+            <a href="badges.html">Badges</a>
+
+            <a href="alerts.html">Alerts</a>
+
+
+          <strong>Actions</strong>
+
+            <a href="buttons.html">Buttons</a>
+
+            <a href="button-group.html">Button group</a>
+
+
+          <strong>Inputs</strong>
+
+            <a href="checks-and-radios.html">Checks, radios, and switches</a>
+
+            <a href="sliders-and-progress.html">Sliders and progress</a>
+
+            <a href="text-fields.html">Text inputs</a>
+
+            <a href="selects.html">Select and combobox</a>
+
+            <a href="date-and-time.html">Date, time, and color</a>
+
+
+          <strong>Navigation</strong>
+
+            <a href="tabs.html">Tabs</a>
+
+            <a href="accordion.html">Accordion and collapsible</a>
+
+            <a href="breadcrumb.html">Breadcrumb</a>
+
+            <a href="pagination.html">Pagination</a>
+
+            <a href="scrolling.html">Scrolling</a>
+
+            <a href="navigation-shell.html">Toolbar, sidebar, and status bar</a>
+
+
+          <strong>Overlays</strong>
+
+            <a href="tooltips-and-popovers.html">Tooltips and popovers</a>
+
+            <a href="menus.html">Menus and dropdowns</a>
+
+            <a href="dialogs.html">Modal and dialog</a>
+
+            <a href="drawer.html">Drawer</a>
+
+            <a href="toasts.html">Toasts</a>
+
+            <a href="command-palette.html" aria-current="page">Command palette</a>
+
+
+          <strong>Data and visualization</strong>
+
+            <a href="tables.html">Tables and data grids</a>
+
+            <a href="grid.html">Grid</a>
+
+            <a href="trees.html">Tree view</a>
+
+            <a href="property-grid.html">Property grid</a>
+
+            <a href="charts.html">Charts</a>
+
+
+          <strong>Workspaces</strong>
+
+            <a href="workspace.html">Resizable layouts</a>
+
+            <a href="docking.html">Dock workspace</a>
+
+
+          <strong>Editing</strong>
+
+            <a href="forms.html">Forms and validation</a>
+
+            <a href="code-editor.html">Code editor</a>
+
+            <a href="rich-text.html">Rich text</a>
+
+
+      </nav></details>
+      <div class="page-heading">
+        <p class="breadcrumb"><a href="../index.html">Docs</a><span aria-hidden="true">/</span>Overlays</p>
+        <h1>Command palette</h1>
+        <p class="lead">Search actions from the keyboard and execute the selected command.</p>
+      </div>
+
+        <section class="doc-section" id="import"><h2>Import</h2>
+          <p>Load the optional component layer before using the examples below.</p>
+          <div class="code-example"><div class="code-label">Ruby</div><pre><code>require "zaniah/ui"</code></pre></div>
+        </section>
+
+
+
+
+          <section class="doc-section" id="commands">
+            <h2>Commands</h2>
+            <p>Provide label/action pairs or build it from registered application actions.</p>
+
+              <figure class="example"><div class="example-label">Rendered example</div><img src="../gallery/command-palette-light.png" alt="Command palette with a search field and matching commands." loading="lazy"><figcaption>Rendered by Zaniah's headless backend.</figcaption></figure>
+
+
+              <div class="code-example"><div class="code-label">Ruby</div><pre><code>commands = [[&quot;Open file&quot;, -&gt;(*) { puts &quot;Open&quot; }],
+            [&quot;Close file&quot;, -&gt;(*) { puts &quot;Close&quot; }]]
+Zaniah::UI::CommandPalette.new(commands, open: true)
+</code></pre></div>
+
+
+          </section>
+
+          <section class="doc-section" id="application-actions">
+            <h2>Application actions</h2>
+            <p>from(app.actions) carries action titles, availability, and shortcut labels into the palette.</p>
+
+
+              <div class="code-example"><div class="code-label">Ruby</div><pre><code>Zaniah::UI::CommandPalette.from(app.actions)
+</code></pre></div>
+
+
+          </section>
+
+
+          <section class="doc-section" id="api"><h2>API summary</h2><p>Constructor options and behaviors are drawn from the <a href="https://github.com/noxdea/zaniah/blob/main/docs/components.md">component reference</a>.</p>
+            <div class="table-scroll"><table><thead><tr><th>Component</th><th>Constructor and methods</th><th>Variants or behavior</th></tr></thead><tbody>
+              <tr><td><code>CommandPalette</code></td><td><code>(commands, open:, placeholder:, matcher:)</code>; <code>.from(app.actions)</code></td><td>searchable modal, Up/Down/Enter</td></tr>
+            </tbody></table></div>
+          </section>
+          <section class="doc-section" id="accessibility"><h2>Accessibility</h2>
+            <p>The palette is a dialog with a list. Up and Down move through matches; Enter runs the selected action.</p>
+            <div class="table-scroll"><table><thead><tr><th>Component</th><th>Semantic role</th></tr></thead><tbody>
+              <tr><td><code>CommandPalette</code></td><td>dialog/list</td></tr>
+            </tbody></table></div>
+          </section>
+
+
+
+      <nav class="pagination" aria-label="Adjacent pages">
+        <a href="toasts.html"><small>Previous</small><strong>Toasts</strong></a>
+        <a href="tables.html"><small>Next</small><strong>Tables and data grids</strong></a>
+      </nav>
+    </main>
+
+    <aside class="toc" aria-label="On this page"><p>On this page</p>
+
+        <a href="#import">Import</a>
+        <a href="#commands">Commands</a><a href="#application-actions">Application actions</a>
+        <a href="#api">API summary</a><a href="#accessibility">Accessibility</a>
+
+    </aside>
+  </div>
+  <footer class="site-footer"><span>Zaniah is open source under the MIT License.</span><a href="https://github.com/noxdea/zaniah">Source on GitHub</a></footer>
+</body>
+</html>

@@ -124,8 +124,8 @@ compositor to fullscreen on that output, but the compositor may choose otherwise
 
 ## Documentation
 
-- [User guide (日本語)](https://noxdea.github.io/zaniah/docs/) — installation, first render, native windows, and backends
-- [Component atlas (日本語)](https://noxdea.github.io/zaniah/docs/catalog.html) — illustrated component choices and examples
+- [User guide](https://noxdea.github.io/zaniah/docs/) — installation, first render, and native windows
+- [Component documentation](https://noxdea.github.io/zaniah/docs/components/) — rendered examples, code, API summaries, and accessibility notes
 - [Native backends](docs/native.md) — windows, displays, file watching, and terminals
 - [Text system](docs/text.md) — font discovery, shaping, rasterization, and caching
 - [Images](docs/images.md) — PNG, GIF, baseline JPEG, and orientation support

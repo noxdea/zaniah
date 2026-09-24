@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Collect free-form text with single-line, multiline, search, password, numeric, and tag controls.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="canonical" href="https://noxdea.github.io/zaniah/docs/components/text-fields.html">
+  <link rel="stylesheet" href="../site.css">
+  <title>Text inputs · Zaniah Docs</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="../index.html" aria-label="Zaniah documentation home"><span class="brand-symbol" aria-hidden="true">Z</span><span>Zaniah <small>Docs</small></span></a>
+      <nav class="header-links" aria-label="Global navigation">
+        <a href="../index.html">Docs</a>
+        <a href="index.html">Components</a>
+        <a href="https://github.com/noxdea/zaniah">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="docs-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+
+        <div class="nav-group"><h2>Getting started</h2>
+
+            <a href="../index.html">Introduction</a>
+
+            <a href="index.html">Components overview</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Foundations</h2>
+
+            <a href="primitives.html">Primitives</a>
+
+            <a href="badges.html">Badges</a>
+
+            <a href="alerts.html">Alerts</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Actions</h2>
+
+            <a href="buttons.html">Buttons</a>
+
+            <a href="button-group.html">Button group</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Inputs</h2>
+
+            <a href="checks-and-radios.html">Checks, radios, and switches</a>
+
+            <a href="sliders-and-progress.html">Sliders and progress</a>
+
+            <a href="text-fields.html" aria-current="page">Text inputs</a>
+
+            <a href="selects.html">Select and combobox</a>
+
+            <a href="date-and-time.html">Date, time, and color</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Navigation</h2>
+
+            <a href="tabs.html">Tabs</a>
+
+            <a href="accordion.html">Accordion and collapsible</a>
+
+            <a href="breadcrumb.html">Breadcrumb</a>
+
+            <a href="pagination.html">Pagination</a>
+
+            <a href="scrolling.html">Scrolling</a>
+
+            <a href="navigation-shell.html">Toolbar, sidebar, and status bar</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Overlays</h2>
+
+            <a href="tooltips-and-popovers.html">Tooltips and popovers</a>
+
+            <a href="menus.html">Menus and dropdowns</a>
+
+            <a href="dialogs.html">Modal and dialog</a>
+
+            <a href="drawer.html">Drawer</a>
+
+            <a href="toasts.html">Toasts</a>
+
+            <a href="command-palette.html">Command palette</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Data and visualization</h2>
+
+            <a href="tables.html">Tables and data grids</a>
+
+            <a href="grid.html">Grid</a>
+
+            <a href="trees.html">Tree view</a>
+
+            <a href="property-grid.html">Property grid</a>
+
+            <a href="charts.html">Charts</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Workspaces</h2>
+
+            <a href="workspace.html">Resizable layouts</a>
+
+            <a href="docking.html">Dock workspace</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Editing</h2>
+
+            <a href="forms.html">Forms and validation</a>
+
+            <a href="code-editor.html">Code editor</a>
+
+            <a href="rich-text.html">Rich text</a>
+
+        </div>
+
+    </aside>
+
+    <main id="content" class="content">
+      <details class="mobile-nav"><summary>Browse documentation</summary><nav aria-label="Mobile documentation navigation">
+
+          <strong>Getting started</strong>
+
+            <a href="../index.html">Introduction</a>
+
+            <a href="index.html">Components overview</a>
+
+
+          <strong>Foundations</strong>
+
+            <a href="primitives.html">Primitives</a>
+
+            <a href="badges.html">Badges</a>
+
+            <a href="alerts.html">Alerts</a>
+
+
+          <strong>Actions</strong>
+
+            <a href="buttons.html">Buttons</a>
+
+            <a href="button-group.html">Button group</a>
+
+
+          <strong>Inputs</strong>
+
+            <a href="checks-and-radios.html">Checks, radios, and switches</a>
+
+            <a href="sliders-and-progress.html">Sliders and progress</a>
+
+            <a href="text-fields.html" aria-current="page">Text inputs</a>
+
+            <a href="selects.html">Select and combobox</a>
+
+            <a href="date-and-time.html">Date, time, and color</a>
+
+
+          <strong>Navigation</strong>
+
+            <a href="tabs.html">Tabs</a>
+
+            <a href="accordion.html">Accordion and collapsible</a>
+
+            <a href="breadcrumb.html">Breadcrumb</a>
+
+            <a href="pagination.html">Pagination</a>
+
+            <a href="scrolling.html">Scrolling</a>
+
+            <a href="navigation-shell.html">Toolbar, sidebar, and status bar</a>
+
+
+          <strong>Overlays</strong>
+
+            <a href="tooltips-and-popovers.html">Tooltips and popovers</a>
+
+            <a href="menus.html">Menus and dropdowns</a>
+
+            <a href="dialogs.html">Modal and dialog</a>
+
+            <a href="drawer.html">Drawer</a>
+
+            <a href="toasts.html">Toasts</a>
+
+            <a href="command-palette.html">Command palette</a>
+
+
+          <strong>Data and visualization</strong>
+
+            <a href="tables.html">Tables and data grids</a>
+
+            <a href="grid.html">Grid</a>
+
+            <a href="trees.html">Tree view</a>
+
+            <a href="property-grid.html">Property grid</a>
+
+            <a href="charts.html">Charts</a>
+
+
+          <strong>Workspaces</strong>
+
+            <a href="workspace.html">Resizable layouts</a>
+
+            <a href="docking.html">Dock workspace</a>
+
+
+          <strong>Editing</strong>
+
+            <a href="forms.html">Forms and validation</a>
+
+            <a href="code-editor.html">Code editor</a>
+
+            <a href="rich-text.html">Rich text</a>
+
+
+      </nav></details>
+      <div class="page-heading">
+        <p class="breadcrumb"><a href="../index.html">Docs</a><span aria-hidden="true">/</span>Inputs</p>
+        <h1>Text inputs</h1>
+        <p class="lead">Collect free-form text with single-line, multiline, search, password, numeric, and tag controls.</p>
+      </div>
+
+        <section class="doc-section" id="import"><h2>Import</h2>
+          <p>Load the optional component layer before using the examples below.</p>
+          <div class="code-example"><div class="code-label">Ruby</div><pre><code>require "zaniah/ui"</code></pre></div>
+        </section>
+
+
+
+
+          <section class="doc-section" id="basic-fields">
+            <h2>Basic fields</h2>
+            <p>Use a visible label for form fields. TextField supports a placeholder, error, counter, prefix, suffix, and clear action.</p>
+
+              <figure class="example"><div class="example-label">Rendered example</div><img src="../previews/text-input.png" alt="Labeled text, multiline, search, password, number, and tag inputs." loading="lazy"><figcaption>Rendered by Zaniah's headless backend.</figcaption></figure>
+
+
+              <div class="code-example"><div class="code-label">Ruby</div><pre><code>Zaniah::UI::TextField.new(&quot;Ruby&quot;, label: &quot;Name&quot;, clearable: true)
+Zaniah::UI::TextArea.new(&quot;Several lines&quot;, label: &quot;Notes&quot;, rows: 3)
+Zaniah::UI::SearchInput.new(&quot;&quot;, placeholder: &quot;Search&quot;)
+</code></pre></div>
+
+
+          </section>
+
+          <section class="doc-section" id="specialized-fields">
+            <h2>Specialized fields</h2>
+            <p>PasswordInput masks its value. NumberInput enforces optional bounds and increments. TagInput reports a list of tags.</p>
+
+
+              <div class="code-example"><div class="code-label">Ruby</div><pre><code>Zaniah::UI::PasswordInput.new(&quot;&quot;, label: &quot;Password&quot;)
+Zaniah::UI::NumberInput.new(4, min: 0, max: 10)
+Zaniah::UI::TagInput.new(%w[ruby ui], placeholder: &quot;Tags&quot;)
+</code></pre></div>
+
+
+          </section>
+
+
+          <section class="doc-section" id="api"><h2>API summary</h2><p>Constructor options and behaviors are drawn from the <a href="https://github.com/noxdea/zaniah/blob/main/docs/components.md">component reference</a>.</p>
+            <div class="table-scroll"><table><thead><tr><th>Component</th><th>Constructor and methods</th><th>Variants or behavior</th></tr></thead><tbody>
+              <tr><td><code>TextField</code></td><td><code>(value, placeholder:, label:, prefix:, suffix:, error:, max_length:, clearable:)</code></td><td>IME, selection, counter</td></tr><tr><td><code>TextArea</code></td><td>TextField plus <code>rows:</code></td><td>multiline/wrapped</td></tr><tr><td><code>SearchInput</code></td><td>TextField options</td><td>search + clear icons</td></tr><tr><td><code>PasswordInput</code></td><td>TextField options</td><td>masked display</td></tr><tr><td><code>NumberInput</code></td><td>TextField plus <code>min:</code>, <code>max:</code>, <code>step:</code>; <code>increment</code>, <code>decrement</code></td><td>numeric</td></tr><tr><td><code>TagInput</code></td><td><code>(tags, separator:, ...)</code>; <code>on_tags_change</code></td><td>badge list + editor</td></tr>
+            </tbody></table></div>
+          </section>
+          <section class="doc-section" id="accessibility"><h2>Accessibility</h2>
+            <p>Labels and errors are associated with their fields. Multiline input exposes a multiline textbox; search exposes a searchbox.</p>
+            <div class="table-scroll"><table><thead><tr><th>Component</th><th>Semantic role</th></tr></thead><tbody>
+              <tr><td><code>TextField</code></td><td>textbox</td></tr><tr><td><code>TextArea</code></td><td>textbox/multiline</td></tr><tr><td><code>SearchInput</code></td><td>searchbox</td></tr><tr><td><code>PasswordInput</code></td><td>textbox</td></tr><tr><td><code>NumberInput</code></td><td>textbox</td></tr><tr><td><code>TagInput</code></td><td>textbox</td></tr>
+            </tbody></table></div>
+          </section>
+
+
+
+      <nav class="pagination" aria-label="Adjacent pages">
+        <a href="sliders-and-progress.html"><small>Previous</small><strong>Sliders and progress</strong></a>
+        <a href="selects.html"><small>Next</small><strong>Select and combobox</strong></a>
+      </nav>
+    </main>
+
+    <aside class="toc" aria-label="On this page"><p>On this page</p>
+
+        <a href="#import">Import</a>
+        <a href="#basic-fields">Basic fields</a><a href="#specialized-fields">Specialized fields</a>
+        <a href="#api">API summary</a><a href="#accessibility">Accessibility</a>
+
+    </aside>
+  </div>
+  <footer class="site-footer"><span>Zaniah is open source under the MIT License.</span><a href="https://github.com/noxdea/zaniah">Source on GitHub</a></footer>
+</body>
+</html>

@@ -1,105 +1,13 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Zaniah コンポーネント図鑑。コントロール、入力、データ表示、ワークスペース、オーバーレイを実際の描画画像とともに紹介。">
-  <meta name="theme-color" content="#101720">
-  <link rel="canonical" href="https://noxdea.github.io/zaniah/docs/catalog.html">
-  <link rel="stylesheet" href="site.css">
-  <title>コンポーネント図鑑 · Zaniah User Guide</title>
+  <meta http-equiv="refresh" content="0; url=components/">
+  <link rel="canonical" href="https://noxdea.github.io/zaniah/docs/components/">
+  <title>Components · Zaniah Docs</title>
 </head>
 <body>
-  <a class="skip-link" href="#main">本文へ移動</a>
-  <header class="site-header"><div class="header-inner">
-    <a class="wordmark" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>Zaniah <small>/ Docs</small></span></a>
-    <nav class="top-nav" aria-label="サイト内ナビゲーション"><a href="./">はじめる</a><a aria-current="page" href="catalog.html">コンポーネント</a><a href="https://github.com/noxdea/zaniah">GitHub ↗</a></nav>
-  </div></header>
-
-  <main id="main">
-    <section class="catalog-hero container"><p class="eyebrow">COMPONENT ATLAS <span>02 / 02</span></p><h1>部品を知る。<br><em>画面が広がる。</em></h1><p class="lead">Zaniah のオプション UI 層は <code>require "zaniah/ui"</code> で読み込みます。ボタンから仮想化されたデータ表示まで、どれも Ruby の要素ツリーに直接置けます。画像は Zaniah 自身で描画したものです。</p>
-      <nav class="catalog-nav" aria-label="カテゴリへ移動"><a href="#foundation">基礎と操作</a><a href="#input">入力と選択</a><a href="#navigation">ナビゲーション</a><a href="#data">データとチャート</a><a href="#workspace">ワークスペース</a><a href="#overlays">オーバーレイ</a></nav>
-    </section>
-
-    <div class="container">
-      <section class="catalog-section" aria-labelledby="atlas-image-title"><div class="catalog-heading"><div><p class="section-index">RENDERED ATLAS</p><h2 id="atlas-image-title">実際の描画を見る。</h2></div><p>以下の画面は Zaniah のヘッドレスバックエンドで生成したものです。基礎部品からワークスペース、フォームまでを一枚で見渡せます。</p></div><figure class="sheet"><img src="gallery/components-dark.png" width="900" height="3200" alt="基礎、操作、入力、ナビゲーション、データ、ワークスペース、フォームの各コンポーネントを縦に並べたダークテーマの全体画像" loading="lazy"><figcaption>Dark theme · <a href="gallery/components-light.png">Light</a> · <a href="gallery/components-high_contrast.png">High contrast</a></figcaption></figure></section>
-      <section class="catalog-section" id="foundation"><div class="catalog-heading"><div><p class="section-index">01 / FOUNDATION & ACTIONS</p><h2>小さな部品から。</h2></div><p>ラベル、状態表示、操作ボタンは画面の語彙です。テーマの色とサイズを選び、必要なイベントだけを渡します。</p></div>
-        <div class="code-block"><div class="code-label">Button · Badge · Alert</div><pre><code>require "zaniah/ui"
-
-button = Zaniah::UI::Button.new("Save", variant: :primary)
-  .icon(:check).on_click { puts "Saved" }
-badge = Zaniah::UI::Badge.new("Ready", variant: :success)
-alert = Zaniah::UI::Alert.new("Saved", variant: :success)</code></pre></div>
-        <dl class="component-list">
-          <div><dt>Label · Icon</dt><dd>本文や見出し、意味を持つアイコン。<code>Icon</code> は読み上げ用の <code>label:</code> を指定できます。</dd></div>
-          <div><dt>Divider · Spacer · Card</dt><dd>領域の分割、余白、コンテンツのまとまりに使います。</dd></div>
-          <div><dt>Badge · Kbd · Avatar</dt><dd>短い状態、ショートカット、人や対象の識別を表します。</dd></div>
-          <div><dt>Alert · EmptyState · Skeleton</dt><dd>重要な通知、空の結果、読み込み中をそれぞれ明示します。</dd></div>
-          <div><dt>Button · IconButton · ToggleButton</dt><dd>実行、アイコン操作、押下状態の切り替え。サイズと variant を選べます。</dd></div>
-          <div><dt>ButtonGroup · ProgressBar · Spinner · Meter</dt><dd>関連操作の整列、進捗、処理中、値の範囲を示します。</dd></div>
-        </dl>
-      </section>
-
-      <section class="catalog-section" id="input"><div class="catalog-heading"><div><p class="section-index">02 / INPUT & CHOICE</p><h2>入力を受け取る。</h2></div><p>文字、数値、単一・複数選択、日付と時間。キーボードとフォーカス操作を備えた既成部品を選べます。</p></div>
-        <dl class="component-list">
-          <div><dt>TextField · TextArea · SearchInput</dt><dd>一行、複数行、検索。ラベル、ヒント、エラー、クリア操作を付けられます。</dd></div>
-          <div><dt>PasswordInput · NumberInput · TagInput</dt><dd>マスクされた文字列、範囲付き数値、複数タグの編集に対応します。</dd></div>
-          <div><dt>Checkbox · Radio · RadioGroup · Switch</dt><dd>複数選択、一つだけの選択、オン・オフの状態を用途で使い分けます。</dd></div>
-          <div><dt>Slider · RangeSlider</dt><dd>単一値または二つのつまみで範囲を調整します。</dd></div>
-          <div><dt>Select · Combobox · MultiSelect</dt><dd>固定候補、検索できる候補、複数候補から選べます。</dd></div>
-          <div><dt>DatePicker · Calendar · DateRangePicker</dt><dd>日付、月表示、開始・終了日の範囲を入力します。</dd></div>
-          <div><dt>TimePicker · ColorPicker · SegmentedControl</dt><dd>時刻、色、少数の排他的な選択肢に向きます。</dd></div>
-          <div><dt>Validation · FormField · Form</dt><dd>必須・形式などの検証と送信を組み合わせます。</dd></div>
-        </dl>
-        <p class="section-tip"><strong>選び方の目安：</strong> 選択肢が短く固定なら <code>SegmentedControl</code>、多いなら <code>Select</code>、検索が必要なら <code>Combobox</code>。日付範囲は <code>DateRangePicker</code> が開始と終了をまとめて扱います。</p>
-      </section>
-
-      <section class="catalog-section" id="navigation"><div class="catalog-heading"><div><p class="section-index">03 / NAVIGATION & STRUCTURE</p><h2>情報をたどる。</h2></div><p>画面の階層と現在位置を伝える部品。タブや折りたたみはキーボードで操作できます。</p></div>
-        <dl class="component-list">
-          <div><dt>Tabs · Accordion · Collapsible</dt><dd>表示を切り替える、複数の節を展開する、一つの内容を開閉する。</dd></div>
-          <div><dt>Breadcrumb · Pagination</dt><dd>階層上の現在地と、ページ分割されたデータの位置を示します。</dd></div>
-          <div><dt>Toolbar · StatusBar · Sidebar</dt><dd>操作列、状態表示、横断的なナビゲーションの配置に使います。</dd></div>
-          <div><dt>ScrollView · Scrollbar · ListView</dt><dd>スクロール領域、スクロール操作、仮想化された行リストを作ります。</dd></div>
-          <div><dt>MenuBar · Dropdown</dt><dd>アプリのメニューと、メニュー型の選択操作に使います。</dd></div>
-        </dl>
-      </section>
-
-      <section class="catalog-section" id="data"><div class="catalog-heading"><div><p class="section-index">04 / DATA & VISUALIZATION</p><h2>大きなデータも、見通しよく。</h2></div><p>行・列・階層を扱うビューと、傾向を伝えるチャート。大量データ向けの仮想化も含まれます。</p></div>
-        <dl class="component-list">
-          <div><dt>Table · DataGrid</dt><dd>レコードを列で表示。並べ替え、列幅変更、選択、編集、コピー・ペーストのフックがあります。</dd></div>
-          <div><dt>Grid</dt><dd>行列を両方向に仮想化。固定行・列や範囲選択を使う表計算型ビューです。</dd></div>
-          <div><dt>TreeView</dt><dd>階層を展開するビュー。遅延ロードした子要素の差し替えもできます。</dd></div>
-          <div><dt>PropertyGrid</dt><dd>型付きの編集部品を使い、オブジェクトの属性を表形式で編集します。</dd></div>
-          <div><dt>Sparkline · LineChart · AreaChart</dt><dd>小さな推移、折れ線、面の推移に使います。</dd></div>
-          <div><dt>BarChart · StackedBarChart · PieChart · DonutChart · ScatterChart</dt><dd>比較、構成比、点の分布を用途に合わせて描き分けます。</dd></div>
-        </dl>
-      </section>
-
-      <section class="catalog-section" id="workspace"><div class="catalog-heading"><div><p class="section-index">05 / WORKSPACE & EDITORS</p><h2>アプリの骨格まで。</h2></div><p>分割レイアウト、ドッキング、編集領域。単純な画面から複数ペインの作業環境まで組み立てられます。</p></div>
-        <dl class="component-list">
-          <div><dt>SplitPane · PaneGrid · Resizable</dt><dd>二分割、複数ペイン、単独領域のリサイズを扱います。</dd></div>
-          <div><dt>DockPanel · DockWorkspace</dt><dd>固定の五領域レイアウトと、タブを移動・分割できる作業領域です。</dd></div>
-          <div><dt>ZoomPanView</dt><dd>キャンバスを拡大縮小・パンする表示領域です。</dd></div>
-          <div><dt>CodeEditor · RichText</dt><dd>軽量コード編集と、装飾・縦書き・インライン要素を含むリッチテキストです。</dd></div>
-        </dl>
-      </section>
-
-      <section class="catalog-section" id="overlays"><div class="catalog-heading"><div><p class="section-index">06 / OVERLAYS & FEEDBACK</p><h2>必要な瞬間に現れる。</h2></div><p>実際のヘッドレス描画から、オーバーレイの見え方を確認できます。モーダルはフォーカスを閉じ込め、Esc で閉じられます。</p></div>
-        <div class="shots">
-          <figure class="shot"><img src="gallery/menu-dark.png" width="900" height="700" alt="ダークテーマのメニュー。項目が縦に表示される" loading="lazy"><figcaption><strong>Menu / ContextMenu</strong> — コマンドを選ぶ。矢印キー、Enter、Esc に対応。</figcaption></figure>
-          <figure class="shot"><img src="gallery/popover-right-dark.png" width="900" height="700" alt="右側に開くポップオーバー" loading="lazy"><figcaption><strong>Popover</strong> — 補足情報や小さな操作を近くに表示。</figcaption></figure>
-          <figure class="shot"><img src="gallery/tooltip-bottom-dark.png" width="900" height="700" alt="アンカーの下に開く短いツールチップ" loading="lazy"><figcaption><strong>Tooltip</strong> — 操作対象の短い説明に。</figcaption></figure>
-          <figure class="shot"><img src="gallery/hover-card-dark.png" width="900" height="700" alt="ホバーまたはフォーカスで開く補足カード" loading="lazy"><figcaption><strong>HoverCard</strong> — ホバーやフォーカスで詳細を表示。</figcaption></figure>
-          <figure class="shot"><img src="gallery/dialog-dark.png" width="900" height="700" alt="暗い背景の中央に開くダイアログ" loading="lazy"><figcaption><strong>Modal / Dialog</strong> — 作業の確認やまとまった入力に。</figcaption></figure>
-          <figure class="shot"><img src="gallery/drawer-right-dark.png" width="900" height="700" alt="画面右端から開くドロワー" loading="lazy"><figcaption><strong>Drawer</strong> — 主画面を残したまま詳細を見せる。</figcaption></figure>
-          <figure class="shot"><img src="gallery/toast-success-dark.png" width="900" height="700" alt="保存完了を示す緑色のトースト通知" loading="lazy"><figcaption><strong>Toast</strong> — 成功、警告、エラーなど短い通知に。</figcaption></figure>
-          <figure class="shot"><img src="gallery/command-palette-dark.png" width="900" height="700" alt="検索欄と候補を持つコマンドパレット" loading="lazy"><figcaption><strong>CommandPalette</strong> — コマンドを検索して実行。</figcaption></figure>
-        </div>
-      </section>
-
-      <section class="catalog-end"><p class="section-index">THE FULL REFERENCE</p><h2>全 API とオプションを調べる。</h2><p>この図鑑は用途の入口です。引数、variant、アクセシビリティ role、キーボード操作は <a href="https://github.com/noxdea/zaniah/blob/main/docs/components.md">コンポーネントリファレンス</a> にまとめています。画像は <code>tools/generate_component_gallery.rb</code> で再生成できます。</p><a class="button button-primary" href="./">ガイドへ戻る <span aria-hidden="true">←</span></a></section>
-    </div>
-  </main>
-  <footer class="site-footer"><div class="container footer-inner"><span>Zaniah / Pure Ruby UI toolkit</span><span><a href="../">ホーム</a><a href="./">はじめる</a><a href="https://github.com/noxdea/zaniah">GitHub</a></span></div></footer>
+  <p>The component catalog has moved to <a href="components/">Components</a>.</p>
 </body>
 </html>

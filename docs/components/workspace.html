@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Arrange application content with split panes, resizable regions, zoom, and lists.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="canonical" href="https://noxdea.github.io/zaniah/docs/components/workspace.html">
+  <link rel="stylesheet" href="../site.css">
+  <title>Resizable layouts · Zaniah Docs</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="../index.html" aria-label="Zaniah documentation home"><span class="brand-symbol" aria-hidden="true">Z</span><span>Zaniah <small>Docs</small></span></a>
+      <nav class="header-links" aria-label="Global navigation">
+        <a href="../index.html">Docs</a>
+        <a href="index.html">Components</a>
+        <a href="https://github.com/noxdea/zaniah">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="docs-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+
+        <div class="nav-group"><h2>Getting started</h2>
+
+            <a href="../index.html">Introduction</a>
+
+            <a href="index.html">Components overview</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Foundations</h2>
+
+            <a href="primitives.html">Primitives</a>
+
+            <a href="badges.html">Badges</a>
+
+            <a href="alerts.html">Alerts</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Actions</h2>
+
+            <a href="buttons.html">Buttons</a>
+
+            <a href="button-group.html">Button group</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Inputs</h2>
+
+            <a href="checks-and-radios.html">Checks, radios, and switches</a>
+
+            <a href="sliders-and-progress.html">Sliders and progress</a>
+
+            <a href="text-fields.html">Text inputs</a>
+
+            <a href="selects.html">Select and combobox</a>
+
+            <a href="date-and-time.html">Date, time, and color</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Navigation</h2>
+
+            <a href="tabs.html">Tabs</a>
+
+            <a href="accordion.html">Accordion and collapsible</a>
+
+            <a href="breadcrumb.html">Breadcrumb</a>
+
+            <a href="pagination.html">Pagination</a>
+
+            <a href="scrolling.html">Scrolling</a>
+
+            <a href="navigation-shell.html">Toolbar, sidebar, and status bar</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Overlays</h2>
+
+            <a href="tooltips-and-popovers.html">Tooltips and popovers</a>
+
+            <a href="menus.html">Menus and dropdowns</a>
+
+            <a href="dialogs.html">Modal and dialog</a>
+
+            <a href="drawer.html">Drawer</a>
+
+            <a href="toasts.html">Toasts</a>
+
+            <a href="command-palette.html">Command palette</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Data and visualization</h2>
+
+            <a href="tables.html">Tables and data grids</a>
+
+            <a href="grid.html">Grid</a>
+
+            <a href="trees.html">Tree view</a>
+
+            <a href="property-grid.html">Property grid</a>
+
+            <a href="charts.html">Charts</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Workspaces</h2>
+
+            <a href="workspace.html" aria-current="page">Resizable layouts</a>
+
+            <a href="docking.html">Dock workspace</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Editing</h2>
+
+            <a href="forms.html">Forms and validation</a>
+
+            <a href="code-editor.html">Code editor</a>
+
+            <a href="rich-text.html">Rich text</a>
+
+        </div>
+
+    </aside>
+
+    <main id="content" class="content">
+      <details class="mobile-nav"><summary>Browse documentation</summary><nav aria-label="Mobile documentation navigation">
+
+          <strong>Getting started</strong>
+
+            <a href="../index.html">Introduction</a>
+
+            <a href="index.html">Components overview</a>
+
+
+          <strong>Foundations</strong>
+
+            <a href="primitives.html">Primitives</a>
+
+            <a href="badges.html">Badges</a>
+
+            <a href="alerts.html">Alerts</a>
+
+
+          <strong>Actions</strong>
+
+            <a href="buttons.html">Buttons</a>
+
+            <a href="button-group.html">Button group</a>
+
+
+          <strong>Inputs</strong>
+
+            <a href="checks-and-radios.html">Checks, radios, and switches</a>
+
+            <a href="sliders-and-progress.html">Sliders and progress</a>
+
+            <a href="text-fields.html">Text inputs</a>
+
+            <a href="selects.html">Select and combobox</a>
+
+            <a href="date-and-time.html">Date, time, and color</a>
+
+
+          <strong>Navigation</strong>
+
+            <a href="tabs.html">Tabs</a>
+
+            <a href="accordion.html">Accordion and collapsible</a>
+
+            <a href="breadcrumb.html">Breadcrumb</a>
+
+            <a href="pagination.html">Pagination</a>
+
+            <a href="scrolling.html">Scrolling</a>
+
+            <a href="navigation-shell.html">Toolbar, sidebar, and status bar</a>
+
+
+          <strong>Overlays</strong>
+
+            <a href="tooltips-and-popovers.html">Tooltips and popovers</a>
+
+            <a href="menus.html">Menus and dropdowns</a>
+
+            <a href="dialogs.html">Modal and dialog</a>
+
+            <a href="drawer.html">Drawer</a>
+
+            <a href="toasts.html">Toasts</a>
+
+            <a href="command-palette.html">Command palette</a>
+
+
+          <strong>Data and visualization</strong>
+
+            <a href="tables.html">Tables and data grids</a>
+
+            <a href="grid.html">Grid</a>
+
+            <a href="trees.html">Tree view</a>
+
+            <a href="property-grid.html">Property grid</a>
+
+            <a href="charts.html">Charts</a>
+
+
+          <strong>Workspaces</strong>
+
+            <a href="workspace.html" aria-current="page">Resizable layouts</a>
+
+            <a href="docking.html">Dock workspace</a>
+
+
+          <strong>Editing</strong>
+
+            <a href="forms.html">Forms and validation</a>
+
+            <a href="code-editor.html">Code editor</a>
+
+            <a href="rich-text.html">Rich text</a>
+
+
+      </nav></details>
+      <div class="page-heading">
+        <p class="breadcrumb"><a href="../index.html">Docs</a><span aria-hidden="true">/</span>Workspaces</p>
+        <h1>Resizable layouts</h1>
+        <p class="lead">Arrange application content with split panes, resizable regions, zoom, and lists.</p>
+      </div>
+
+        <section class="doc-section" id="import"><h2>Import</h2>
+          <p>Load the optional component layer before using the examples below.</p>
+          <div class="code-example"><div class="code-label">Ruby</div><pre><code>require "zaniah/ui"</code></pre></div>
+        </section>
+
+
+
+
+          <section class="doc-section" id="split-and-resize">
+            <h2>Split and resize</h2>
+            <p>SplitPane separates two elements. PaneGrid supports a resizable grid with stable pane IDs.</p>
+
+              <figure class="example"><div class="example-label">Rendered example</div><img src="../previews/workspace.png" alt="Split pane, resizable view, and selectable list in a Zaniah workspace." loading="lazy"><figcaption>Rendered by Zaniah's headless backend.</figcaption></figure>
+
+
+              <div class="code-example"><div class="code-label">Ruby</div><pre><code>Zaniah::UI::SplitPane.new(
+  Zaniah::UI::Label.new(&quot;Files&quot;),
+  Zaniah::UI::Label.new(&quot;Editor&quot;),
+  ratio: 0.35)
+Zaniah::UI::Resizable.new(
+  Zaniah::UI::Label.new(&quot;Resize me&quot;), width: 180, height: 100)
+</code></pre></div>
+
+
+          </section>
+
+          <section class="doc-section" id="five-region-dock-panel">
+            <h2>Five-region dock panel</h2>
+            <p>DockPanel is a simple top/right/bottom/left/center layout; use DockWorkspace when users need draggable tabs.</p>
+
+
+              <div class="code-example"><div class="code-label">Ruby</div><pre><code>Zaniah::UI::DockPanel.new(
+  center: Zaniah::UI::Label.new(&quot;Editor&quot;),
+  left: Zaniah::UI::Sidebar.new(
+    Zaniah::UI::Label.new(&quot;Files&quot;), width: 160))
+</code></pre></div>
+
+
+          </section>
+
+          <section class="doc-section" id="pane-grid">
+            <h2>Pane grid</h2>
+            <p>PaneGrid assigns a stable ID and content to each pane; track sizes use Zaniah layout units.</p>
+
+              <figure class="example"><div class="example-label">Rendered example</div><img src="../previews/pane-grid.png" alt="Two resizable panes labeled Files and Editor." loading="lazy"><figcaption>Rendered by Zaniah's headless backend.</figcaption></figure>
+
+
+              <div class="code-example"><div class="code-label">Ruby</div><pre><code>Zaniah::UI::PaneGrid.new(
+  [[[:files, Zaniah::UI::Label.new(&quot;Files&quot;)],
+    [:editor, Zaniah::UI::Label.new(&quot;Editor&quot;)]]],
+  columns: [Zaniah.fr(1), Zaniah.fr(2)],
+  rows: [Zaniah.fr(1)])
+</code></pre></div>
+
+
+          </section>
+
+          <section class="doc-section" id="virtual-list-and-zoom">
+            <h2>Virtual list and zoom</h2>
+            <p>ListView virtualizes long lists. ZoomPanView pans and scales content without changing its local coordinates.</p>
+
+
+              <div class="code-example"><div class="code-label">Ruby</div><pre><code>Zaniah::UI::ListView.new(%w[Alpha Beta Gamma],
+  height: 100, selected: 1)
+Zaniah::UI::ZoomPanView.new(
+  Zaniah::UI::Label.new(&quot;Canvas&quot;), zoom: 1.3)
+</code></pre></div>
+
+
+          </section>
+
+
+          <section class="doc-section" id="api"><h2>API summary</h2><p>Constructor options and behaviors are drawn from the <a href="https://github.com/noxdea/zaniah/blob/main/docs/components.md">component reference</a>.</p>
+            <div class="table-scroll"><table><thead><tr><th>Component</th><th>Constructor and methods</th><th>Variants or behavior</th></tr></thead><tbody>
+              <tr><td><code>SplitPane</code></td><td><code>(first, second, orientation:, ratio:, min:, max:)</code>; <code>on_change</code></td><td>horizontal/vertical, draggable separator</td></tr><tr><td><code>PaneGrid</code></td><td><code>(panes, columns:, rows:, divider_size:, minimum:, keyboard_step:)</code>; <code>replace</code>, <code>on_resize</code></td><td>arbitrary resizable grid, stable pane IDs</td></tr><tr><td><code>Resizable</code></td><td><code>(content, width:, height:, min_width:, min_height:, max_width:, max_height:)</code>; <code>on_resize</code></td><td>drag or keyboard resize</td></tr><tr><td><code>ZoomPanView</code></td><td><code>(content, zoom:, min_zoom:, max_zoom:)</code>; <code>fit</code>, <code>zoom_to</code>, <code>view_to_content</code></td><td>drag to pan, pinch or Ctrl+wheel to zoom, <code>+</code>/<code>-</code>/<code>0</code> when focused</td></tr><tr><td><code>DockPanel</code></td><td><code>(center:, top:, right:, bottom:, left:)</code></td><td>five-region layout</td></tr><tr><td><code>ListView</code></td><td><code>(items, height:, row_height:, selected:)</code>; <code>on_select</code></td><td>virtual rows and keyboard selection</td></tr>
+            </tbody></table></div>
+          </section>
+          <section class="doc-section" id="accessibility"><h2>Accessibility</h2>
+            <p>Resizable separators are keyboard operable. Lists expose list and listitem roles; zoom shortcuts work when focused.</p>
+            <div class="table-scroll"><table><thead><tr><th>Component</th><th>Semantic role</th></tr></thead><tbody>
+              <tr><td><code>SplitPane</code></td><td>group/separator</td></tr><tr><td><code>PaneGrid</code></td><td>group/separator</td></tr><tr><td><code>Resizable</code></td><td>group/separator</td></tr><tr><td><code>ZoomPanView</code></td><td>group</td></tr><tr><td><code>DockPanel</code></td><td>group</td></tr><tr><td><code>ListView</code></td><td>list/listitem</td></tr>
+            </tbody></table></div>
+          </section>
+
+
+
+      <nav class="pagination" aria-label="Adjacent pages">
+        <a href="charts.html"><small>Previous</small><strong>Charts</strong></a>
+        <a href="docking.html"><small>Next</small><strong>Dock workspace</strong></a>
+      </nav>
+    </main>
+
+    <aside class="toc" aria-label="On this page"><p>On this page</p>
+
+        <a href="#import">Import</a>
+        <a href="#split-and-resize">Split and resize</a><a href="#five-region-dock-panel">Five-region dock panel</a><a href="#pane-grid">Pane grid</a><a href="#virtual-list-and-zoom">Virtual list and zoom</a>
+        <a href="#api">API summary</a><a href="#accessibility">Accessibility</a>
+
+    </aside>
+  </div>
+  <footer class="site-footer"><span>Zaniah is open source under the MIT License.</span><a href="https://github.com/noxdea/zaniah">Source on GitHub</a></footer>
+</body>
+</html>

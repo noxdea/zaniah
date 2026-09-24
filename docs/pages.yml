@@ -1,0 +1,804 @@
+pages:
+  - path: index.html
+    kind: guide
+    group: Getting started
+    title: Introduction
+    lead: "Build native windows, terminal interfaces, and deterministic PNGs from the same Ruby element tree."
+    sections:
+      - heading: Requirements
+        text:
+          - "Zaniah runs on CRuby 3.1 or newer. Add the gem to your Gemfile and install it with Bundler. The component library is opt-in: load `zaniah/ui` when you need controls."
+        code_label: Gemfile
+        code: |
+          gem "zaniah"
+      - heading: Your first image
+        text:
+          - "Use the headless backend to render a frame without opening a desktop window. Save the result as a PNG, which is also useful for visual tests."
+        code_label: hello.rb
+        code: |
+          require "zaniah"
+
+          window = Zaniah::Platform.open_window(
+            backend: :headless, width: 480, height: 240
+          )
+          window.text_system = Zaniah::TextSystem::Renderer.new
+          window.draw do
+            Zaniah::Div.new.flex_col.p(24).gap(12).bg("#161b22")
+              .child(Zaniah::Text.new("Hello, Ruby", size: 24))
+              .child(Zaniah::Text.new("A native toolkit, written in Ruby."))
+          end
+          window.tick
+          window.write_png("hello.png")
+          window.close
+        note: "Run `bundle exec ruby hello.rb` to create `hello.png` in the current directory."
+      - heading: Open a window
+        text:
+          - "Switch to a native backend and call `run` instead of rendering a single frame. Load `zaniah/ui` to use the component library."
+        code_label: app.rb
+        code: |
+          require "zaniah/ui"
+
+          window = Zaniah::Platform.open_window(
+            backend: :mac, width: 640, height: 360
+          )
+          window.draw do
+            Zaniah::Div.new.flex_col.p(24).gap(12)
+              .child(Zaniah::UI::Label.new("Hello, Zaniah", size: :xl))
+              .child(Zaniah::UI::Button.new("Save", variant: :primary)
+                .on_click { puts "Saved" })
+          end
+          window.run
+        note: "Use `:linux`, `:windows`, or `:tui` for other interactive backends. See the native backend guide in the repository for platform requirements."
+      - heading: Next steps
+        text:
+          - "Open the Components overview to find the right control. Each component page shows a rendered example, Ruby code, constructor options, and accessibility roles."
+
+  - path: components/index.html
+    kind: index
+    group: Getting started
+    title: Components overview
+    lead: "Browse the components by task. Every page includes a real Zaniah rendering and the Ruby API that produces it."
+
+  - path: components/primitives.html
+    kind: component
+    group: Foundations
+    title: Primitives
+    lead: "Use labels, icons, surfaces, and spacing to compose the structure of a screen."
+    components: [Label, Icon, Divider, Spacer, Card, Kbd, Avatar, Skeleton, EmptyState]
+    sections:
+      - heading: Example
+        text:
+          - "These building blocks are intentionally small. Place them inside `Div` layouts or higher-level components."
+        image: previews/foundation.png
+        alt: "Labels, icon, badge, avatar, shortcut label, skeleton, and empty state rendered in a Zaniah card."
+        code: |
+          Zaniah::UI::Card.new(
+            Zaniah::UI::Label.new("Profile", size: :lg),
+            Zaniah::UI::Avatar.new("Ruby UI"),
+            Zaniah::UI::Divider.new,
+            Zaniah::UI::Kbd.new("ctrl-shift-p")
+          )
+      - heading: Empty and loading states
+        text:
+          - "Use `EmptyState` when there is no content to show; give the user a next action. Use `Skeleton` while content is loading."
+        code: |
+          Zaniah::UI::EmptyState.new(
+            "No results", message: "Try another query"
+          )
+          Zaniah::UI::Skeleton.new(width: 180, height: 20)
+    a11y: "Give an `Icon` a `label:` when it conveys information; decorative icons do not need one."
+
+  - path: components/badges.html
+    kind: component
+    group: Foundations
+    title: Badges
+    lead: "Add a compact label for status, counts, or categories."
+    components: [Badge]
+    sections:
+      - heading: Variants
+        text:
+          - "Use a short, meaningful word alongside the color. Variants are neutral, accent, success, warning, and danger."
+        image: previews/variants.png
+        alt: "Zaniah badge variants beneath a collection of button variants."
+        code: |
+          Zaniah::UI::Badge.new("Ready", variant: :success)
+          Zaniah::UI::Badge.new("Needs review", variant: :warning)
+    a11y: "Color is not the only status signal: the badge text must state what the status means."
+
+  - path: components/alerts.html
+    kind: component
+    group: Foundations
+    title: Alerts
+    lead: "Show a persistent message that needs the user's attention."
+    components: [Alert]
+    sections:
+      - heading: Example
+        text:
+          - "Choose the variant that matches the message. An alert remains visible until dismissed or replaced by the application."
+        image: previews/feedback.png
+        alt: "A success alert above a calendar in the Zaniah component gallery."
+        code: |
+          Zaniah::UI::Alert.new(
+            "Export complete",
+            message: "Your file is ready",
+            variant: :success,
+            dismissible: true
+          )
+      - heading: Live announcements
+        text:
+          - "Set `live: true` only when a new message should be announced by assistive technology."
+    a11y: "A live alert uses the alert role; otherwise the message is exposed as status."
+
+  - path: components/buttons.html
+    kind: component
+    group: Actions
+    title: Buttons
+    lead: "Trigger actions with a visible label, an intentional variant, and a clear enabled or loading state."
+    components: [Button, IconButton, ToggleButton]
+    sections:
+      - heading: Variants
+        text:
+          - "Use primary for the main action, secondary for supporting actions, ghost for low-emphasis actions, and danger for destructive actions."
+        image: previews/variants.png
+        alt: "Primary, secondary, ghost, and danger Zaniah buttons in small, medium, and large sizes."
+        code: |
+          Zaniah::UI::Button.new("Save", variant: :primary)
+            .icon(:check)
+            .on_click { puts "Saved" }
+          Zaniah::UI::Button.new("Cancel", variant: :secondary)
+          Zaniah::UI::Button.new("Delete", variant: :danger)
+      - heading: Sizes and states
+        text:
+          - "Select `size: :sm`, `:md`, or `:lg`. Use `disabled` for unavailable actions and `loading` while work is in progress."
+        code: |
+          Zaniah::UI::Button.new("Save", size: :sm)
+          Zaniah::UI::Button.new("Save", size: :md)
+          Zaniah::UI::Button.new("Save", size: :lg)
+      - heading: Icon and toggle buttons
+        text:
+          - "An icon-only action needs a text label. A toggle button represents a pressed or unpressed action, not a form checkbox."
+        code: |
+          Zaniah::UI::IconButton.new(:menu, label: "Open menu")
+          Zaniah::UI::ToggleButton.new("Pin", value: true)
+    a11y: "Buttons expose the button role. Icon buttons require a label, and toggle buttons expose their pressed state."
+
+  - path: components/button-group.html
+    kind: component
+    group: Actions
+    title: Button group
+    lead: "Keep related actions together without losing each button's own label and behavior."
+    components: [ButtonGroup]
+    sections:
+      - heading: Example
+        image: previews/actions.png
+        alt: "Two adjacent action buttons in the Zaniah gallery."
+        text: "Pass buttons as children. Use a group only when the actions are closely related."
+        code: |
+          Zaniah::UI::ButtonGroup.new(
+            Zaniah::UI::Button.new("Day", size: :sm),
+            Zaniah::UI::Button.new("Week", size: :sm)
+          )
+    a11y: "The group contains independently focusable buttons."
+
+  - path: components/checks-and-radios.html
+    kind: component
+    group: Inputs
+    title: Checks, radios, and switches
+    lead: "Choose one, many, or an on/off state with controls whose semantics match the task."
+    components: [Checkbox, Radio, RadioGroup, SegmentedControl, Switch]
+    sections:
+      - heading: Checkbox and switch
+        image: previews/actions.png
+        alt: "Checkbox, radio group, and switch alongside action controls."
+        text: "A checkbox supports true, false, and mixed values. A switch represents an immediate on/off setting."
+        code: |
+          Zaniah::UI::Checkbox.new("Include tests", value: :mixed)
+            .on_change { |value| puts value }
+          Zaniah::UI::Switch.new("Notifications", value: true)
+      - heading: Exclusive choices
+        image: previews/feedback.png
+        alt: "Segmented day, week, and month choices above a date range picker."
+        text: "Use a radio group or segmented control for one selected option."
+        code: |
+          choices = [["Day", :day], ["Week", :week], ["Month", :month]]
+          Zaniah::UI::RadioGroup.new(choices, value: :week)
+          Zaniah::UI::SegmentedControl.new(choices, value: :week)
+    a11y: "Radio groups and segmented controls expose a radiogroup with one selected radio. Arrow keys, Home, and End move between segments."
+
+  - path: components/sliders-and-progress.html
+    kind: component
+    group: Inputs
+    title: Sliders and progress
+    lead: "Edit numeric values or report the progress of a task."
+    components: [Slider, RangeSlider, ProgressBar, Spinner, Meter]
+    sections:
+      - heading: Values and ranges
+        image: previews/values.png
+        alt: "Slider, range slider, progress bar, spinner, and meter rendered together."
+        text: "A slider edits one value; a range slider edits lower and upper bounds."
+        code: |
+          Zaniah::UI::Slider.new(value: 35, min: 0, max: 100, label: "Volume")
+          Zaniah::UI::RangeSlider.new(value: [20, 80], label: "Range")
+      - heading: Read-only indicators
+        text: "Use ProgressBar for task completion, Spinner when progress is unknown, and Meter for a measured quantity with thresholds."
+        code: |
+          Zaniah::UI::ProgressBar.new(value: 60, label: "Export")
+          Zaniah::UI::Spinner.new(label: "Loading")
+          Zaniah::UI::Meter.new(value: 72, low: 25, high: 80)
+    a11y: "Sliders support arrow, Home, End, and Page keys. Always label a progress indicator so its purpose is clear."
+
+  - path: components/text-fields.html
+    kind: component
+    group: Inputs
+    title: Text inputs
+    lead: "Collect free-form text with single-line, multiline, search, password, numeric, and tag controls."
+    components: [TextField, TextArea, SearchInput, PasswordInput, NumberInput, TagInput]
+    sections:
+      - heading: Basic fields
+        image: previews/text-input.png
+        alt: "Labeled text, multiline, search, password, number, and tag inputs."
+        text: "Use a visible label for form fields. TextField supports a placeholder, error, counter, prefix, suffix, and clear action."
+        code: |
+          Zaniah::UI::TextField.new("Ruby", label: "Name", clearable: true)
+          Zaniah::UI::TextArea.new("Several lines", label: "Notes", rows: 3)
+          Zaniah::UI::SearchInput.new("", placeholder: "Search")
+      - heading: Specialized fields
+        text: "PasswordInput masks its value. NumberInput enforces optional bounds and increments. TagInput reports a list of tags."
+        code: |
+          Zaniah::UI::PasswordInput.new("", label: "Password")
+          Zaniah::UI::NumberInput.new(4, min: 0, max: 10)
+          Zaniah::UI::TagInput.new(%w[ruby ui], placeholder: "Tags")
+    a11y: "Labels and errors are associated with their fields. Multiline input exposes a multiline textbox; search exposes a searchbox."
+
+  - path: components/selects.html
+    kind: component
+    group: Inputs
+    title: Select and combobox
+    lead: "Pick one or several options, with optional text filtering."
+    components: [Select, Combobox, MultiSelect]
+    sections:
+      - heading: Single selection
+        image: previews/choices.png
+        alt: "Select, combobox, and multiselect in the component gallery."
+        text: "Select presents fixed options. Combobox accepts text and filters choices; use matcher: to customize scoring."
+        code: |
+          Zaniah::UI::Select.new([["Ruby", :ruby], ["Zig", :zig]], value: :ruby)
+          Zaniah::UI::Combobox.new(%w[Ruby Zig Rust],
+            value: "Ruby", label: "Language")
+      - heading: Multiple selection
+        text: "MultiSelect shows selected values as removable badges."
+        code: |
+          Zaniah::UI::MultiSelect.new(%w[GPU TUI A11y],
+            value: %w[GPU A11y], label: "Targets")
+    a11y: "Comboboxes announce expanded state and options. MultiSelect exposes its option list as a listbox."
+
+  - path: components/date-and-time.html
+    kind: component
+    group: Inputs
+    title: Date, time, and color
+    lead: "Choose dates, ranges, times, and colors using keyboard-friendly controls."
+    components: [DatePicker, Calendar, DateRangePicker, TimePicker, ColorPicker]
+    sections:
+      - heading: Date and time pickers
+        image: previews/choices.png
+        alt: "Date, time, and color picker controls under selection fields."
+        text: "Dates use ISO 8601 strings or Ruby Date values; times use 24-hour notation."
+        code: |
+          Zaniah::UI::DatePicker.new("2026-09-25", label: "Due date")
+          Zaniah::UI::TimePicker.new("14:30", label: "Start")
+          Zaniah::UI::ColorPicker.new("#2563eb", label: "Accent")
+      - heading: Calendar and range
+        image: previews/feedback.png
+        alt: "Calendar and date range selection rendered in Zaniah."
+        text: "Calendar supports week_start: 0..6. DateRangePicker returns a two-element value; the end can be nil until selected."
+        code: |
+          Zaniah::UI::Calendar.new(value: "2026-09-25", week_start: 1)
+          Zaniah::UI::DateRangePicker.new(
+            value: ["2026-09-01", "2026-09-30"])
+    a11y: "Calendar is a grid. Arrow keys move by day or week; Page keys move by month; Enter selects a day."
+
+  - path: components/tabs.html
+    kind: component
+    group: Navigation
+    title: Tabs
+    lead: "Switch between related panels without leaving the current view."
+    components: [Tabs]
+    sections:
+      - heading: Basic tabs
+        image: previews/structure.png
+        alt: "Overview and Details tabs with the Overview panel selected."
+        text: "Each item pairs a label with its panel content. Supply selected: when the application owns selection state."
+        code: |
+          Zaniah::UI::Tabs.new([
+            ["Overview", Zaniah::UI::Label.new("Summary")],
+            ["Details", Zaniah::UI::Label.new("More details")]
+          ])
+      - heading: Selection
+        text: "on_change reports the selected item. Arrow keys, Home, and End move focus."
+        code: |
+          tabs = Zaniah::UI::Tabs.new(items, selected: 0)
+          tabs.on_change { |index| puts index }
+    a11y: "Tabs expose tab and tabpanel roles. Use a short, distinct label for every tab."
+
+  - path: components/accordion.html
+    kind: component
+    group: Navigation
+    title: Accordion and collapsible
+    lead: "Reveal secondary content while keeping the page easy to scan."
+    components: [Accordion, Collapsible]
+    sections:
+      - heading: Accordion
+        image: previews/structure.png
+        alt: "Accordion and disclosure controls next to the tab panel."
+        text: "Use multiple: true when more than one section may remain open."
+        code: |
+          Zaniah::UI::Accordion.new([
+            ["Details", Zaniah::UI::Label.new("More information")],
+            ["History", Zaniah::UI::Label.new("Previous changes")]
+          ], multiple: true)
+      - heading: Standalone disclosure
+        text: "Use Collapsible for one labeled piece of optional content."
+        code: |
+          Zaniah::UI::Collapsible.new(
+            "Advanced options", Zaniah::UI::Label.new("Options"), open: false)
+    a11y: "The disclosure button exposes expanded state. Keep its label meaningful in both states."
+
+  - path: components/breadcrumb.html
+    kind: component
+    group: Navigation
+    title: Breadcrumb
+    lead: "Show the user's place in a hierarchy with a compact trail."
+    components: [Breadcrumb]
+    sections:
+      - heading: Example
+        image: previews/navigation.png
+        alt: "Home and Gallery breadcrumb in Zaniah's navigation examples."
+        text: "Pass a label alone for the current page, or a label/callback pair for a navigable ancestor."
+        code: |
+          open_home = ->(*) { puts "Home" }
+          Zaniah::UI::Breadcrumb.new([
+            ["Home", open_home],
+            ["Components", open_home],
+            ["Breadcrumb", nil]
+          ])
+      - heading: Current page
+        text: "End the trail with the current page. Avoid links that point back to the page already open."
+    a11y: "Breadcrumb exposes navigation semantics; links are individually focusable."
+
+  - path: components/pagination.html
+    kind: component
+    group: Navigation
+    title: Pagination
+    lead: "Navigate large result sets one page at a time."
+    components: [Pagination]
+    sections:
+      - heading: Example
+        image: previews/navigation.png
+        alt: "Pagination control showing a window around page four."
+        text: "Pass a one-based current page and total page count. on_change receives the requested page."
+        code: |
+          Zaniah::UI::Pagination.new(page: 4, pages: 12)
+            .on_change { |page| puts page }
+    a11y: "Pagination is a navigation region with previous, numbered, and next controls."
+
+  - path: components/scrolling.html
+    kind: component
+    group: Navigation
+    title: Scrolling
+    lead: "Keep oversized content navigable with a scroll view and optional scrollbar."
+    components: [ScrollView, Scrollbar]
+    sections:
+      - heading: Scroll view
+        image: previews/data.png
+        alt: "Scrollable table, tree, and charts in a data section."
+        text: "Choose vertical, horizontal, or both axes. Scrollbar modes are overlay, always, and hidden."
+        code: |
+          Zaniah::ScrollView.new(axis: :vertical, scrollbar: :overlay)
+            .child(Zaniah::UI::Label.new("Long content"))
+      - heading: Programmatic scrolling
+        text: "Call scroll_to on the view when content should be revealed after selection."
+    a11y: "The scrollbar supports dragging, track paging, arrows, Home, End, and Page keys."
+
+  - path: components/navigation-shell.html
+    kind: component
+    group: Navigation
+    title: Toolbar, sidebar, and status bar
+    lead: "Build application chrome from horizontal tools, vertical navigation, and compact status."
+    components: [Toolbar, StatusBar, Sidebar]
+    sections:
+      - heading: Application chrome
+        image: previews/structure.png
+        alt: "Sidebar, toolbar with actions, and status bar."
+        text: "Each container accepts children. Sidebar also accepts a width."
+        code: |
+          Zaniah::UI::Toolbar.new(
+            Zaniah::UI::Button.new("New"),
+            Zaniah::UI::Button.new("Edit"))
+          Zaniah::UI::Sidebar.new(
+            Zaniah::UI::Label.new("Files"), width: 180)
+          Zaniah::UI::StatusBar.new(Zaniah::UI::Label.new("Ready"))
+    a11y: "Toolbar, sidebar, and status bar expose toolbar, navigation, and status roles respectively."
+
+  - path: components/tooltips-and-popovers.html
+    kind: component
+    group: Overlays
+    title: Tooltips and popovers
+    lead: "Place short help text or contextual content near an anchor."
+    components: [Tooltip, Popover, HoverCard]
+    sections:
+      - heading: Tooltip
+        image: gallery/tooltip-bottom-light.png
+        alt: "Tooltip positioned below its anchor in the light theme."
+        text: "A tooltip is brief, supplemental text. It is not a replacement for a visible label."
+        code: |
+          anchor = Zaniah::Bounds.new(280, 80, 80, 32)
+          Zaniah::UI::Tooltip.new("Helpful text",
+            anchor: anchor, side: :bottom)
+      - heading: Popover and hover card
+        image: gallery/popover-right-light.png
+        alt: "Popover with contextual content beside its anchor."
+        text: "Use Popover for richer content. HoverCard opens from pointer hover or keyboard focus after a delay."
+        code: |
+          Zaniah::UI::Popover.new(
+            Zaniah::UI::Label.new("More information"),
+            anchor: anchor, side: :right)
+          Zaniah::UI::HoverCard.new(
+            Zaniah::UI::Label.new("Keyboard shortcuts"),
+            anchor: anchor)
+    a11y: "HoverCard also opens from keyboard focus. Keep interactive controls out of a simple Tooltip."
+
+  - path: components/menus.html
+    kind: component
+    group: Overlays
+    title: Menus and dropdowns
+    lead: "Offer contextual commands, application menus, or a menu-backed choice."
+    components: [ContextMenu, Menu, MenuBar, Dropdown]
+    sections:
+      - heading: Menu bar and dropdown
+        image: previews/navigation.png
+        alt: "File menu bar and a dropdown button in the navigation gallery."
+        text: "A menu item pairs a label with an action; nil disables it."
+        code: |
+          open_file = ->(*) { puts "Open" }
+          Zaniah::UI::MenuBar.new([
+            ["File", [["Open", open_file], ["Unavailable", nil]]]
+          ])
+          Zaniah::UI::Dropdown.new("Choose",
+            items: [["First", 1], ["Second", 2]])
+      - heading: Anchored menus
+        image: gallery/menu-light.png
+        alt: "Open menu overlay with enabled and disabled commands."
+        text: "Use Menu at a specific point or element. ContextMenu shares the command model."
+        code: |
+          items = [["Open", open_file], ["Unavailable", nil]]
+          point = Zaniah::Point.new(280, 100)
+          Zaniah::UI::Menu.new(items, anchor: point)
+          Zaniah::UI::ContextMenu.new(items, anchor: point)
+    a11y: "Menu items support arrows, Home, End, Enter, and Escape. Disabled commands remain visible."
+
+  - path: components/dialogs.html
+    kind: component
+    group: Overlays
+    title: Modal and dialog
+    lead: "Focus attention on a decision or a temporary task."
+    components: [Modal, Dialog]
+    sections:
+      - heading: Basic dialog
+        image: gallery/dialog-light.png
+        alt: "A light-theme dialog with title and content over a dimmed page."
+        text: "Keep the title concise and include an obvious way to finish or close."
+        code: |
+          Zaniah::UI::Dialog.new(
+            Zaniah::UI::Label.new("Changes will be saved."),
+            title: "Confirm changes")
+      - heading: Modal options
+        text: "open: controls visibility; close_on_scrim: decides whether a click outside closes the overlay."
+        code: |
+          Zaniah::UI::Modal.new(
+            Zaniah::UI::Label.new("Edit settings"),
+            title: "Settings", open: true, close_on_scrim: false)
+    a11y: "Modal dialogs trap focus, close with Escape, and restore focus to the previous control."
+
+  - path: components/drawer.html
+    kind: component
+    group: Overlays
+    title: Drawer
+    lead: "Present secondary content in a panel attached to a window edge."
+    components: [Drawer]
+    sections:
+      - heading: Side panel
+        image: gallery/drawer-right-light.png
+        alt: "A light-theme drawer sliding in from the right."
+        text: "Drawer has the modal behavior of Dialog plus side: :left or :right."
+        code: |
+          Zaniah::UI::Drawer.new(
+            Zaniah::UI::Label.new("Inspector"),
+            title: "Properties", side: :right)
+    a11y: "A drawer is a modal dialog: focus stays inside while it is open and returns on close."
+
+  - path: components/toasts.html
+    kind: component
+    group: Overlays
+    title: Toasts
+    lead: "Confirm brief results without interrupting the user's workflow."
+    components: [Toast]
+    sections:
+      - heading: Variants
+        image: gallery/toast-success-light.png
+        alt: "Success toast with a short saved message."
+        text: "Use success, info, warning, or danger to match the message. A toast can be dismissed."
+        code: |
+          Zaniah::UI::Toast.new("Saved", variant: :success)
+    a11y: "Toasts are live status messages. Put essential instructions somewhere persistent as well."
+
+  - path: components/command-palette.html
+    kind: component
+    group: Overlays
+    title: Command palette
+    lead: "Search actions from the keyboard and execute the selected command."
+    components: [CommandPalette]
+    sections:
+      - heading: Commands
+        image: gallery/command-palette-light.png
+        alt: "Command palette with a search field and matching commands."
+        text: "Provide label/action pairs or build it from registered application actions."
+        code: |
+          commands = [["Open file", ->(*) { puts "Open" }],
+                      ["Close file", ->(*) { puts "Close" }]]
+          Zaniah::UI::CommandPalette.new(commands, open: true)
+      - heading: Application actions
+        text: "from(app.actions) carries action titles, availability, and shortcut labels into the palette."
+        code: |
+          Zaniah::UI::CommandPalette.from(app.actions)
+    a11y: "The palette is a dialog with a list. Up and Down move through matches; Enter runs the selected action."
+
+  - path: components/tables.html
+    kind: component
+    group: Data and visualization
+    title: Tables and data grids
+    lead: "Display many rows with virtualization, sorting, selection, and optional editing."
+    components: [Table, DataGrid]
+    sections:
+      - heading: Basic table
+        image: previews/data.png
+        alt: "A simple table and editable data grid beside a tree view."
+        text: "Columns use stable keys and optional labels, widths, sortability, editability, and rendering hooks."
+        code: |
+          rows = [{id: 1, name: "Ada"}, {id: 2, name: "Lin"}]
+          columns = [{key: :id, width: 54}, {key: :name, width: 140}]
+          Zaniah::UI::Table.new(rows, columns: columns,
+            height: 190, row_key: ->(row) { row[:id] })
+      - heading: Editable grid
+        text: "DataGrid shares the table model and adds editable cells. Use on_edit to own changes."
+        code: |
+          Zaniah::UI::DataGrid.new(rows,
+            columns: [{key: :name, editable: true}],
+            height: 190, row_key: ->(row) { row[:id] })
+    a11y: "Rows and cells expose table semantics. Keyboard selection, sortable headers, and resize handles have distinct focus targets."
+
+  - path: components/grid.html
+    kind: component
+    group: Data and visualization
+    title: Grid
+    lead: "Render a spreadsheet-like surface with two-axis virtualization and frozen panes."
+    components: [Grid]
+    sections:
+      - heading: Example
+        image: previews/grid.png
+        alt: "Virtual grid with column headings, numbered rows, and frozen first row and column."
+        text: "Supply row and column counts, dimensions, optional frozen panes, and a block to render each visible cell."
+        code: |
+          Zaniah::UI::Grid.new(rows: 1000, columns: 20,
+            row_height: 28, column_width: 120,
+            frozen_rows: 1, frozen_columns: 1) do |row, column|
+              row.zero? ? "Column #{column + 1}" : "R#{row} C#{column + 1}"
+            end
+      - heading: Selection and editing
+        text: "Use range selection and on_select, on_edit, on_fill, on_copy, and on_paste hooks for application-owned data."
+    a11y: "Grid exposes a table role with virtualized cells; only visible cells are materialized."
+
+  - path: components/trees.html
+    kind: component
+    group: Data and visualization
+    title: Tree view
+    lead: "Navigate nested data such as files, projects, and settings categories."
+    components: [TreeView]
+    sections:
+      - heading: Nested items
+        image: previews/data.png
+        alt: "A file tree with nested folders beside table controls."
+        text: "Items have stable IDs, labels, and children. A lazy children proc loads once on first expansion."
+        code: |
+          items = [{id: :src, label: "src", children: [
+            {id: :main, label: "main.rb"},
+            {id: :lib, label: "lib", children: []}
+          ]}]
+          Zaniah::UI::TreeView.new(items, height: 240)
+      - heading: Replace lazy children
+        text: "Call replace_children(id, children) on the UI thread when asynchronous loading completes; call invalidate(id) to reload."
+        code: |
+          tree.replace_children(:lib, [{id: :ui, label: "ui.rb"}])
+    a11y: "Tree items support Up, Down, Home, and End. Right expands or enters a child; Left collapses or returns to the parent."
+
+  - path: components/property-grid.html
+    kind: component
+    group: Data and visualization
+    title: Property grid
+    lead: "Edit typed properties in a compact, virtualized inspector."
+    components: [PropertyGrid]
+    sections:
+      - heading: Schema and values
+        image: previews/workspace.png
+        alt: "Property grid with text, number, and boolean fields in a workspace."
+        text: "Schema entries identify a key, label, and type. Supported types include text, textarea, number, boolean, select, color, date, and time."
+        code: |
+          schema = [
+            {key: :title, label: "Title", type: :text},
+            {key: :count, label: "Count", type: :number},
+            {key: :visible, label: "Visible", type: :boolean}
+          ]
+          Zaniah::UI::PropertyGrid.new(schema,
+            {title: "Workspace", count: 3, visible: true}, height: 190)
+      - heading: Validation
+        text: "Invalid input stays in its control while the last valid value is retained."
+    a11y: "The inspector exposes rows and cells, with the embedded editor keeping its native role."
+
+  - path: components/charts.html
+    kind: component
+    group: Data and visualization
+    title: Charts
+    lead: "Show trends, categories, proportions, and relationships from simple Ruby data."
+    components: [Sparkline, LineChart, BarChart, StackedBarChart, AreaChart, PieChart, DonutChart, ScatterChart]
+    sections:
+      - heading: Trends
+        image: previews/data.png
+        alt: "Sparkline, line chart, and bar chart rendered with sample data."
+        text: "Use a sparkline for a compact trend. Line, area, and bar charts share axes, ticks, legends, and tooltips."
+        code: |
+          Zaniah::UI::Sparkline.new([2, 5, 3, 8, 6, 9],
+            width: 190, height: 120, label: "Frames")
+          Zaniah::UI::LineChart.new({Frames: [2, 5, 3, 8]},
+            width: 300, height: 150, label: "Frames")
+          Zaniah::UI::BarChart.new({GPU: [4, 7, 6]},
+            width: 300, height: 150, label: "GPU")
+      - heading: Parts and relationships
+        text: "Use pie or donut charts for parts of a whole and scatter charts for point relationships. Provide a meaningful label for the chart."
+    a11y: "Charts expose an image role. Provide a descriptive label and an adjacent data summary for important values."
+
+  - path: components/workspace.html
+    kind: component
+    group: Workspaces
+    title: Resizable layouts
+    lead: "Arrange application content with split panes, resizable regions, zoom, and lists."
+    components: [SplitPane, PaneGrid, Resizable, ZoomPanView, DockPanel, ListView]
+    sections:
+      - heading: Split and resize
+        image: previews/workspace.png
+        alt: "Split pane, resizable view, and selectable list in a Zaniah workspace."
+        text: "SplitPane separates two elements. PaneGrid supports a resizable grid with stable pane IDs."
+        code: |
+          Zaniah::UI::SplitPane.new(
+            Zaniah::UI::Label.new("Files"),
+            Zaniah::UI::Label.new("Editor"),
+            ratio: 0.35)
+          Zaniah::UI::Resizable.new(
+            Zaniah::UI::Label.new("Resize me"), width: 180, height: 100)
+      - heading: Five-region dock panel
+        text: "DockPanel is a simple top/right/bottom/left/center layout; use DockWorkspace when users need draggable tabs."
+        code: |
+          Zaniah::UI::DockPanel.new(
+            center: Zaniah::UI::Label.new("Editor"),
+            left: Zaniah::UI::Sidebar.new(
+              Zaniah::UI::Label.new("Files"), width: 160))
+      - heading: Pane grid
+        image: previews/pane-grid.png
+        alt: "Two resizable panes labeled Files and Editor."
+        text: "PaneGrid assigns a stable ID and content to each pane; track sizes use Zaniah layout units."
+        code: |
+          Zaniah::UI::PaneGrid.new(
+            [[[:files, Zaniah::UI::Label.new("Files")],
+              [:editor, Zaniah::UI::Label.new("Editor")]]],
+            columns: [Zaniah.fr(1), Zaniah.fr(2)],
+            rows: [Zaniah.fr(1)])
+      - heading: Virtual list and zoom
+        text: "ListView virtualizes long lists. ZoomPanView pans and scales content without changing its local coordinates."
+        code: |
+          Zaniah::UI::ListView.new(%w[Alpha Beta Gamma],
+            height: 100, selected: 1)
+          Zaniah::UI::ZoomPanView.new(
+            Zaniah::UI::Label.new("Canvas"), zoom: 1.3)
+    a11y: "Resizable separators are keyboard operable. Lists expose list and listitem roles; zoom shortcuts work when focused."
+
+  - path: components/docking.html
+    kind: component
+    group: Workspaces
+    title: Dock workspace
+    lead: "Build persistent, draggable tab groups with nested splits."
+    components: [DockWorkspace]
+    sections:
+      - heading: Layout model
+        image: previews/workspace.png
+        alt: "Dock workspace with Files, Search, Editor, and Preview tab groups."
+        text: "A DockLayout is a validated tree of tab groups and splits with stable IDs. The render callback receives the active panel ID."
+        code: |
+          layout = Zaniah::UI::DockLayout.split(
+            id: :work, orientation: :horizontal, ratio: 0.42,
+            first: Zaniah::UI::DockLayout.tabs(
+              id: :left, panels: %i[Files Search]),
+            second: Zaniah::UI::DockLayout.tabs(
+              id: :right, panels: %i[Editor Preview]))
+          Zaniah::UI::DockWorkspace.new(layout,
+            render: ->(id) { Zaniah::UI::Label.new("#{id} panel") })
+      - heading: Persist and restore
+        text: "Save layout.to_h in application state and restore with DockLayout.from_h. on_detach only notifies the application; it does not open a new window."
+        code: |
+          saved = layout.to_h
+          restored = Zaniah::UI::DockLayout.from_h(saved)
+    a11y: "Dock groups expose tabs and panels. Arrows select tabs; Alt+arrows move, and Ctrl+Shift+arrows split."
+
+  - path: components/forms.html
+    kind: component
+    group: Editing
+    title: Forms and validation
+    lead: "Compose fields, validate values, and submit a form when its inputs are valid."
+    components: [Validation, FormField, Form]
+    sections:
+      - heading: Form fields
+        image: previews/forms.png
+        alt: "A labeled release email form field rendered by Zaniah."
+        text: "Form.field creates a named field with a label, value, optional control and validation rules."
+        code: |
+          email_rule = Zaniah::UI::Validation.new
+            .required
+            .format(/@/, message: "Enter an email address")
+          form = Zaniah::UI::Form.new
+            .field(name: :email, label: "Release email",
+              value: "ruby@example.com", validation: email_rule)
+      - heading: Submit
+        text: "Form validates before submitting. The application owns persistence and any server-side errors."
+        code: |
+          form.on_submit { |values| puts values.inspect }
+    a11y: "Field errors are tied to controls with describedby, while invalid submissions retain field values."
+
+  - path: components/code-editor.html
+    kind: component
+    group: Editing
+    title: Code editor
+    lead: "Edit large source buffers with syntax highlighting and viewport-only shaping."
+    components: [CodeEditor]
+    sections:
+      - heading: Basic editor
+        image: previews/editors.png
+        alt: "Ruby code editor next to styled rich text."
+        text: "Pass a string or a line-addressable buffer. Specify language: for bundled syntax scopes."
+        code: |
+          Zaniah::UI::CodeEditor.new(
+            "def hello\n  :world\nend\n",
+            language: :ruby, line_numbers: true)
+      - heading: Buffer and highlighting
+        text: "A custom buffer exposes line_count, line, line_start, line_of, replace, undo, and redo. An optional highlighter returns scoped token ranges."
+    a11y: "CodeEditor exposes a multiline textbox with keyboard selection, IME, Tab indentation, and undo/redo."
+
+  - path: components/rich-text.html
+    kind: component
+    group: Editing
+    title: Rich text
+    lead: "Display and edit styled text, inline embeds, ruby annotations, and vertical writing."
+    components: [RichText]
+    sections:
+      - heading: Styled runs
+        image: previews/editors.png
+        alt: "Blue-highlighted Rich text beside the code editor."
+        text: "Each run carries text and optional styles such as size, color, bold, italic, link, and underline."
+        code: |
+          Zaniah::UI::RichText.new([
+            {text: "Rich ", size: 20},
+            {text: "text", color: "#2563eb", size: 20}
+          ], selectable: true)
+      - heading: Editing and writing mode
+        text: "RichText is read-only by default. Set editable: true for keyboard editing and IME; writing_mode: :vertical_rl enables vertical layout."
+        code: |
+          Zaniah::UI::RichText.new(
+            [{text: "Ruby UI", bold: true}],
+            editable: true, writing_mode: :vertical_rl)
+    a11y: "Selectable text exposes text semantics. Editable rich text exposes a textbox, including annotations for ruby text."

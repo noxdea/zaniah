@@ -1,79 +1,326 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Zaniah ユーザーガイド。インストール、ヘッドレス描画、ネイティブウィンドウ、コンポーネントの使い方。">
-  <meta name="theme-color" content="#101720">
+  <meta name="description" content="Build native windows, terminal interfaces, and deterministic PNGs from the same Ruby element tree.">
+  <meta name="theme-color" content="#ffffff">
   <link rel="canonical" href="https://noxdea.github.io/zaniah/docs/">
   <link rel="stylesheet" href="site.css">
-  <title>はじめる · Zaniah User Guide</title>
+  <title>Introduction · Zaniah Docs</title>
 </head>
 <body>
-  <a class="skip-link" href="#main">本文へ移動</a>
-  <header class="site-header"><div class="header-inner">
-    <a class="wordmark" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>Zaniah <small>/ Docs</small></span></a>
-    <nav class="top-nav" aria-label="サイト内ナビゲーション"><a aria-current="page" href="./">はじめる</a><a href="catalog.html">コンポーネント</a><a href="https://github.com/noxdea/zaniah">GitHub ↗</a></nav>
-  </div></header>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="index.html" aria-label="Zaniah documentation home"><span class="brand-symbol" aria-hidden="true">Z</span><span>Zaniah <small>Docs</small></span></a>
+      <nav class="header-links" aria-label="Global navigation">
+        <a href="index.html">Docs</a>
+        <a href="components/index.html">Components</a>
+        <a href="https://github.com/noxdea/zaniah">GitHub</a>
+      </nav>
+    </div>
+  </header>
 
-  <main id="main">
-    <section class="page-hero container">
-      <div class="hero-copy">
-        <p class="eyebrow">USER GUIDE <span>01 / 02</span></p>
-        <h1>Ruby だけで、<br><em>画面をつくる。</em></h1>
-        <p class="lead">Zaniah は、同じ Ruby の要素ツリーをネイティブウィンドウ、PNG を描くヘッドレス環境、ターミナルに届ける UI ツールキットです。</p>
-        <div class="hero-actions"><a class="button button-primary" href="#install">使い始める <span aria-hidden="true">↘</span></a><a class="button button-secondary" href="catalog.html">部品を見る <span aria-hidden="true">→</span></a></div>
+  <div class="docs-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+
+        <div class="nav-group"><h2>Getting started</h2>
+
+            <a href="index.html" aria-current="page">Introduction</a>
+
+            <a href="components/index.html">Components overview</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Foundations</h2>
+
+            <a href="components/primitives.html">Primitives</a>
+
+            <a href="components/badges.html">Badges</a>
+
+            <a href="components/alerts.html">Alerts</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Actions</h2>
+
+            <a href="components/buttons.html">Buttons</a>
+
+            <a href="components/button-group.html">Button group</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Inputs</h2>
+
+            <a href="components/checks-and-radios.html">Checks, radios, and switches</a>
+
+            <a href="components/sliders-and-progress.html">Sliders and progress</a>
+
+            <a href="components/text-fields.html">Text inputs</a>
+
+            <a href="components/selects.html">Select and combobox</a>
+
+            <a href="components/date-and-time.html">Date, time, and color</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Navigation</h2>
+
+            <a href="components/tabs.html">Tabs</a>
+
+            <a href="components/accordion.html">Accordion and collapsible</a>
+
+            <a href="components/breadcrumb.html">Breadcrumb</a>
+
+            <a href="components/pagination.html">Pagination</a>
+
+            <a href="components/scrolling.html">Scrolling</a>
+
+            <a href="components/navigation-shell.html">Toolbar, sidebar, and status bar</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Overlays</h2>
+
+            <a href="components/tooltips-and-popovers.html">Tooltips and popovers</a>
+
+            <a href="components/menus.html">Menus and dropdowns</a>
+
+            <a href="components/dialogs.html">Modal and dialog</a>
+
+            <a href="components/drawer.html">Drawer</a>
+
+            <a href="components/toasts.html">Toasts</a>
+
+            <a href="components/command-palette.html">Command palette</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Data and visualization</h2>
+
+            <a href="components/tables.html">Tables and data grids</a>
+
+            <a href="components/grid.html">Grid</a>
+
+            <a href="components/trees.html">Tree view</a>
+
+            <a href="components/property-grid.html">Property grid</a>
+
+            <a href="components/charts.html">Charts</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Workspaces</h2>
+
+            <a href="components/workspace.html">Resizable layouts</a>
+
+            <a href="components/docking.html">Dock workspace</a>
+
+        </div>
+
+        <div class="nav-group"><h2>Editing</h2>
+
+            <a href="components/forms.html">Forms and validation</a>
+
+            <a href="components/code-editor.html">Code editor</a>
+
+            <a href="components/rich-text.html">Rich text</a>
+
+        </div>
+
+    </aside>
+
+    <main id="content" class="content">
+      <details class="mobile-nav"><summary>Browse documentation</summary><nav aria-label="Mobile documentation navigation">
+
+          <strong>Getting started</strong>
+
+            <a href="index.html" aria-current="page">Introduction</a>
+
+            <a href="components/index.html">Components overview</a>
+
+
+          <strong>Foundations</strong>
+
+            <a href="components/primitives.html">Primitives</a>
+
+            <a href="components/badges.html">Badges</a>
+
+            <a href="components/alerts.html">Alerts</a>
+
+
+          <strong>Actions</strong>
+
+            <a href="components/buttons.html">Buttons</a>
+
+            <a href="components/button-group.html">Button group</a>
+
+
+          <strong>Inputs</strong>
+
+            <a href="components/checks-and-radios.html">Checks, radios, and switches</a>
+
+            <a href="components/sliders-and-progress.html">Sliders and progress</a>
+
+            <a href="components/text-fields.html">Text inputs</a>
+
+            <a href="components/selects.html">Select and combobox</a>
+
+            <a href="components/date-and-time.html">Date, time, and color</a>
+
+
+          <strong>Navigation</strong>
+
+            <a href="components/tabs.html">Tabs</a>
+
+            <a href="components/accordion.html">Accordion and collapsible</a>
+
+            <a href="components/breadcrumb.html">Breadcrumb</a>
+
+            <a href="components/pagination.html">Pagination</a>
+
+            <a href="components/scrolling.html">Scrolling</a>
+
+            <a href="components/navigation-shell.html">Toolbar, sidebar, and status bar</a>
+
+
+          <strong>Overlays</strong>
+
+            <a href="components/tooltips-and-popovers.html">Tooltips and popovers</a>
+
+            <a href="components/menus.html">Menus and dropdowns</a>
+
+            <a href="components/dialogs.html">Modal and dialog</a>
+
+            <a href="components/drawer.html">Drawer</a>
+
+            <a href="components/toasts.html">Toasts</a>
+
+            <a href="components/command-palette.html">Command palette</a>
+
+
+          <strong>Data and visualization</strong>
+
+            <a href="components/tables.html">Tables and data grids</a>
+
+            <a href="components/grid.html">Grid</a>
+
+            <a href="components/trees.html">Tree view</a>
+
+            <a href="components/property-grid.html">Property grid</a>
+
+            <a href="components/charts.html">Charts</a>
+
+
+          <strong>Workspaces</strong>
+
+            <a href="components/workspace.html">Resizable layouts</a>
+
+            <a href="components/docking.html">Dock workspace</a>
+
+
+          <strong>Editing</strong>
+
+            <a href="components/forms.html">Forms and validation</a>
+
+            <a href="components/code-editor.html">Code editor</a>
+
+            <a href="components/rich-text.html">Rich text</a>
+
+
+      </nav></details>
+      <div class="page-heading">
+        <p class="breadcrumb"><a href="index.html">Docs</a><span aria-hidden="true">/</span>Getting started</p>
+        <h1>Introduction</h1>
+        <p class="lead">Build native windows, terminal interfaces, and deterministic PNGs from the same Ruby element tree.</p>
       </div>
-      <figure class="hero-visual"><div class="image-topline"><span>RENDERED BY ZANIAH</span><span>900 × 3200</span></div><div class="hero-crop"><img src="gallery/components-dark.png" width="900" height="3200" alt="Zaniah が描画したボタン、入力、ナビゲーションを含むダークテーマのコンポーネント画面"></div><figcaption>実際のコンポーネントをヘッドレス描画した画像。<a href="catalog.html">図鑑で詳しく見る →</a></figcaption></figure>
-    </section>
-    <div class="surface-strip" aria-label="対応する描画先"><div class="container surface-inner"><span>ONE TREE</span><span>macOS</span><span>Linux</span><span>Windows</span><span>Headless</span><span>Terminal</span></div></div>
 
-    <div class="doc-layout container">
-      <aside class="side-nav" aria-label="このページの目次"><p>このガイド</p><a href="#install">01 <span>インストール</span></a><a href="#first-image">02 <span>最初の画像</span></a><a href="#window">03 <span>ウィンドウを開く</span></a><a href="#model">04 <span>UI の組み立て方</span></a><a href="#surfaces">05 <span>描画先を選ぶ</span></a><a href="#next">06 <span>次に読む</span></a></aside>
-      <div class="article">
-        <section class="doc-section" id="install"><p class="section-index">01 / INSTALL</p><h2>まずは 1 gem。</h2><p>CRuby 3.1 以降が必要です。Gemfile に追加し、Bundler でインストールします。UI コンポーネントは <code>zaniah/ui</code> を読み込むと利用できます。</p><div class="code-block"><div class="code-label">Gemfile</div><pre><code>gem "zaniah"</code></pre></div><div class="code-block"><div class="code-label">Terminal</div><pre><code>bundle install</code></pre></div><p class="note"><strong>まず試したい場合</strong> Ruby コードだけで PNG を生成できる <code>:headless</code> から始めると、ディスプレイや GPU の設定は不要です。</p></section>
 
-        <section class="doc-section" id="first-image"><p class="section-index">02 / FIRST FRAME</p><h2>最初の 1 枚を描く。</h2><p>ウィンドウを開き、<code>draw</code> に要素ツリーを渡します。<code>tick</code> で 1 フレーム描画して PNG に保存します。</p>
-          <div class="code-block"><div class="code-label">hello.rb</div><pre><code>require "zaniah"
+
+
+          <section class="doc-section" id="requirements">
+            <h2>Requirements</h2>
+            <p>Zaniah runs on CRuby 3.1 or newer. Add the gem to your Gemfile and install it with Bundler. The component library is opt-in: load <code>zaniah/ui</code> when you need controls.</p>
+
+
+              <div class="code-example"><div class="code-label">Gemfile</div><pre><code>gem &quot;zaniah&quot;
+</code></pre></div>
+
+
+          </section>
+
+          <section class="doc-section" id="your-first-image">
+            <h2>Your first image</h2>
+            <p>Use the headless backend to render a frame without opening a desktop window. Save the result as a PNG, which is also useful for visual tests.</p>
+
+
+              <div class="code-example"><div class="code-label">hello.rb</div><pre><code>require &quot;zaniah&quot;
 
 window = Zaniah::Platform.open_window(
   backend: :headless, width: 480, height: 240
 )
 window.text_system = Zaniah::TextSystem::Renderer.new
 window.draw do
-  Zaniah::Div.new.flex_col.p(24).gap(12).bg("#161b22")
-    .child(Zaniah::Text.new("Hello, Ruby", size: 24))
-    .child(Zaniah::Text.new("A native toolkit, written in Ruby."))
+  Zaniah::Div.new.flex_col.p(24).gap(12).bg(&quot;#161b22&quot;)
+    .child(Zaniah::Text.new(&quot;Hello, Ruby&quot;, size: 24))
+    .child(Zaniah::Text.new(&quot;A native toolkit, written in Ruby.&quot;))
 end
 window.tick
-window.write_png("hello.png")
-window.close</code></pre></div>
-          <div class="code-block"><div class="code-label">Terminal</div><pre><code>bundle exec ruby hello.rb</code></pre></div><p>実行すると作業ディレクトリに <code>hello.png</code> ができます。これはテストで画面を比較するときにも使える描画方法です。</p>
-        </section>
+window.write_png(&quot;hello.png&quot;)
+window.close
+</code></pre></div>
 
-        <section class="doc-section" id="window"><p class="section-index">03 / INTERACTIVE</p><h2>同じ考え方で、ウィンドウへ。</h2><p><code>zaniah/ui</code> を読み込めば、ボタンや入力などのコンポーネントを要素と同じツリーに配置できます。ネイティブアプリでは <code>tick</code> の代わりに <code>run</code> でイベントループを開始します。</p>
-          <div class="code-block"><div class="code-label">window.rb · macOS の例</div><pre><code>require "zaniah/ui"
+            <p class="note">Run <code>bundle exec ruby hello.rb</code> to create <code>hello.png</code> in the current directory.</p>
+          </section>
+
+          <section class="doc-section" id="open-a-window">
+            <h2>Open a window</h2>
+            <p>Switch to a native backend and call <code>run</code> instead of rendering a single frame. Load <code>zaniah/ui</code> to use the component library.</p>
+
+
+              <div class="code-example"><div class="code-label">app.rb</div><pre><code>require &quot;zaniah/ui&quot;
 
 window = Zaniah::Platform.open_window(
-  backend: :mac, width: 640, height: 360, title: "Hello Zaniah"
+  backend: :mac, width: 640, height: 360
 )
 window.draw do
-  Zaniah::Div.new.flex_col.p(24).gap(16)
-    .child(Zaniah::UI::Label.new("Hello, Zaniah", size: :xl))
-    .child(Zaniah::UI::Button.new("Save", variant: :primary)
-      .icon(:check).on_click { puts "Saved" })
+  Zaniah::Div.new.flex_col.p(24).gap(12)
+    .child(Zaniah::UI::Label.new(&quot;Hello, Zaniah&quot;, size: :xl))
+    .child(Zaniah::UI::Button.new(&quot;Save&quot;, variant: :primary)
+      .on_click { puts &quot;Saved&quot; })
 end
-window.run</code></pre></div><p>Linux なら <code>:linux</code>、Windows なら <code>:windows</code> に変更します。ネイティブ環境の前提条件は <a href="https://github.com/noxdea/zaniah/blob/main/docs/native.md">Native backends</a> を参照してください。</p>
-        </section>
+window.run
+</code></pre></div>
 
-        <section class="doc-section" id="model"><p class="section-index">04 / COMPOSITION</p><h2>要素を並べ、ふるまいを渡す。</h2><div class="explainer"><div><span class="explainer-number">01</span><h3>レイアウト</h3><p><code>Div</code> に <code>flex_col</code>、<code>gap</code>、<code>p</code> などを指定し、<code>child</code> で子を追加します。</p></div><div><span class="explainer-number">02</span><h3>コンポーネント</h3><p><code>UI::Button</code>、<code>UI::TextField</code>、<code>UI::Table</code> などを同じツリーに置けます。</p></div><div><span class="explainer-number">03</span><h3>イベント</h3><p><code>on_click</code> や <code>on_change</code> にブロックを渡します。状態が変わったら必要に応じて再描画します。</p></div></div><p>テーマ、キーボード操作、アクセシビリティもコンポーネント層に含まれます。使い分けや画像は <a href="catalog.html">コンポーネント図鑑</a> にまとめています。</p></section>
+            <p class="note">Use <code>:linux</code>, <code>:windows</code>, or <code>:tui</code> for other interactive backends. See the native backend guide in the repository for platform requirements.</p>
+          </section>
 
-        <section class="doc-section" id="surfaces"><p class="section-index">05 / BACKENDS</p><h2>描画先を選ぶ。</h2><div class="table-wrap"><table><thead><tr><th>backend</th><th>使いどころ</th><th>出力</th></tr></thead><tbody><tr><td><code>:mac</code></td><td>macOS アプリ</td><td>Metal / OpenGL</td></tr><tr><td><code>:linux</code></td><td>Linux デスクトップ</td><td>Wayland / X11</td></tr><tr><td><code>:windows</code></td><td>Windows アプリ</td><td>Win32 / WGL</td></tr><tr><td><code>:headless</code></td><td>画像生成・自動テスト</td><td>PNG / ピクセル</td></tr><tr><td><code>:tui</code></td><td>ターミナル</td><td>ANSI セル</td></tr></tbody></table></div><p>ターミナルでは一部の見た目をテキストに置き換えます。対応の詳細は <a href="https://github.com/noxdea/zaniah/blob/main/docs/tui.md">Terminal UI</a> を参照してください。</p></section>
+          <section class="doc-section" id="next-steps">
+            <h2>Next steps</h2>
+            <p>Open the Components overview to find the right control. Each component page shows a rendered example, Ruby code, constructor options, and accessibility roles.</p>
 
-        <section class="doc-section" id="next"><p class="section-index">06 / GO DEEPER</p><h2>次に読む。</h2><div class="link-list"><a href="catalog.html"><span><strong>コンポーネント図鑑</strong><small>部品の選び方と実際の描画画像</small></span><b aria-hidden="true">↗</b></a><a href="https://github.com/noxdea/zaniah/blob/main/docs/layout.md"><span><strong>レイアウトとスクロール</strong><small>Grid、仮想リスト、固定領域</small></span><b aria-hidden="true">↗</b></a><a href="https://github.com/noxdea/zaniah/blob/main/docs/theme.md"><span><strong>テーマ</strong><small>色、状態スタイル、見た目の調整</small></span><b aria-hidden="true">↗</b></a><a href="https://github.com/noxdea/zaniah/blob/main/docs/accessibility.md"><span><strong>アクセシビリティ</strong><small>セマンティクス、フォーカス、OS 連携</small></span><b aria-hidden="true">↗</b></a></div></section>
-      </div>
-    </div>
-  </main>
-  <footer class="site-footer"><div class="container footer-inner"><span>Zaniah / Pure Ruby UI toolkit</span><span><a href="../">ホーム</a><a href="catalog.html">コンポーネント</a><a href="https://github.com/noxdea/zaniah">GitHub</a></span></div></footer>
+
+
+          </section>
+
+
+
+
+      <nav class="pagination" aria-label="Adjacent pages">
+
+        <a href="components/index.html"><small>Next</small><strong>Components overview</strong></a>
+      </nav>
+    </main>
+
+    <aside class="toc" aria-label="On this page"><p>On this page</p>
+
+
+        <a href="#requirements">Requirements</a><a href="#your-first-image">Your first image</a><a href="#open-a-window">Open a window</a><a href="#next-steps">Next steps</a>
+
+
+    </aside>
+  </div>
+  <footer class="site-footer"><span>Zaniah is open source under the MIT License.</span><a href="https://github.com/noxdea/zaniah">Source on GitHub</a></footer>
 </body>
 </html>

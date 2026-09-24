@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="<%= h(page.fetch("lead")) %>">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="canonical" href="https://noxdea.github.io/zaniah/docs/<%= path == "index.html" ? "" : path %>">
+  <link rel="stylesheet" href="<%= link_from(path, "site.css") %>">
+  <title><%= h(page.fetch("title")) %> · Zaniah Docs</title>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="<%= link_from(path, "index.html") %>" aria-label="Zaniah documentation home"><span class="brand-symbol" aria-hidden="true">Z</span><span>Zaniah <small>Docs</small></span></a>
+      <nav class="header-links" aria-label="Global navigation">
+        <a href="<%= link_from(path, "index.html") %>">Docs</a>
+        <a href="<%= link_from(path, "components/index.html") %>">Components</a>
+        <a href="https://github.com/noxdea/zaniah">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="docs-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <% groups.each do |group, items| %>
+        <div class="nav-group"><h2><%= h(group) %></h2>
+          <% items.each do |item| %>
+            <a href="<%= link_from(path, item.fetch("path")) %>"<%= ' aria-current="page"' if item["path"] == path %>><%= h(item.fetch("title")) %></a>
+          <% end %>
+        </div>
+      <% end %>
+    </aside>
+
+    <main id="content" class="content">
+      <details class="mobile-nav"><summary>Browse documentation</summary><nav aria-label="Mobile documentation navigation">
+        <% groups.each do |group, items| %>
+          <strong><%= h(group) %></strong>
+          <% items.each do |item| %>
+            <a href="<%= link_from(path, item.fetch("path")) %>"<%= ' aria-current="page"' if item["path"] == path %>><%= h(item.fetch("title")) %></a>
+          <% end %>
+        <% end %>
+      </nav></details>
+      <div class="page-heading">
+        <p class="breadcrumb"><a href="<%= link_from(path, "index.html") %>">Docs</a><span aria-hidden="true">/</span><%= h(page.fetch("group")) %></p>
+        <h1><%= h(page.fetch("title")) %></h1>
+        <p class="lead"><%= inline(page.fetch("lead")) %></p>
+      </div>
+      <% if page["kind"] == "component" %>
+        <section class="doc-section" id="import"><h2>Import</h2>
+          <p>Load the optional component layer before using the examples below.</p>
+          <div class="code-example"><div class="code-label">Ruby</div><pre><code>require "zaniah/ui"</code></pre></div>
+        </section>
+      <% end %>
+
+      <% if page["kind"] == "index" %>
+        <% groups.each do |group, items| %>
+          <% next if group == "Getting started" %>
+          <section class="doc-section" id="<%= h(group.downcase.gsub(/[^a-z0-9]+/, "-")) %>">
+            <h2><%= h(group) %></h2>
+            <div class="directory">
+              <% items.each do |item| %>
+                <a href="<%= link_from(path, item.fetch("path")) %>"><strong><%= h(item.fetch("title")) %></strong><span><%= h(item.fetch("lead")) %></span></a>
+              <% end %>
+            </div>
+          </section>
+        <% end %>
+      <% else %>
+        <% page.fetch("sections", []).each do |section| %>
+          <section class="doc-section" id="<%= section_id(section) %>">
+            <h2><%= h(section.fetch("heading")) %></h2>
+            <% Array(section["text"]).each do |paragraph| %><p><%= inline(paragraph) %></p><% end %>
+            <% if section["image"] %>
+              <figure class="example"><div class="example-label">Rendered example</div><img src="<%= link_from(path, section.fetch("image")) %>" alt="<%= h(section.fetch("alt")) %>" loading="lazy"><figcaption>Rendered by Zaniah's headless backend.</figcaption></figure>
+            <% end %>
+            <% if section["code"] %>
+              <div class="code-example"><div class="code-label"><%= h(section.fetch("code_label", "Ruby")) %></div><pre><code><%= h(section.fetch("code")) %></code></pre></div>
+            <% end %>
+            <% if section["note"] %><p class="note"><%= inline(section.fetch("note")) %></p><% end %>
+          </section>
+        <% end %>
+        <% if page["kind"] == "component" %>
+          <section class="doc-section" id="api"><h2>API summary</h2><p>Constructor options and behaviors are drawn from the <a href="https://github.com/noxdea/zaniah/blob/main/docs/components.md">component reference</a>.</p>
+            <div class="table-scroll"><table><thead><tr><th>Component</th><th>Constructor and methods</th><th>Variants or behavior</th></tr></thead><tbody>
+              <% rows.each do |row| %><tr><td><code><%= h(row[:names].join(", ")) %></code></td><td><%= inline(row[:constructor]) %></td><td><%= inline(row[:variants]) %></td></tr><% end %>
+            </tbody></table></div>
+          </section>
+          <section class="doc-section" id="accessibility"><h2>Accessibility</h2>
+            <% if page["a11y"] %><p><%= inline(page["a11y"]) %></p><% end %>
+            <div class="table-scroll"><table><thead><tr><th>Component</th><th>Semantic role</th></tr></thead><tbody>
+              <% rows.each do |row| %><tr><td><code><%= h(row[:names].join(", ")) %></code></td><td><%= h(row[:role]) %></td></tr><% end %>
+            </tbody></table></div>
+          </section>
+        <% end %>
+      <% end %>
+
+      <nav class="pagination" aria-label="Adjacent pages">
+        <% if previous_page %><a href="<%= link_from(path, previous_page.fetch("path")) %>"><small>Previous</small><strong><%= h(previous_page.fetch("title")) %></strong></a><% end %>
+        <% if next_page %><a href="<%= link_from(path, next_page.fetch("path")) %>"><small>Next</small><strong><%= h(next_page.fetch("title")) %></strong></a><% end %>
+      </nav>
+    </main>
+
+    <aside class="toc" aria-label="On this page"><p>On this page</p>
+      <% if page["kind"] == "index" %>
+        <% groups.each_key do |group| %><% next if group == "Getting started" %><a href="#<%= h(group.downcase.gsub(/[^a-z0-9]+/, "-")) %>"><%= h(group) %></a><% end %>
+      <% else %>
+        <% if page["kind"] == "component" %><a href="#import">Import</a><% end %>
+        <% page.fetch("sections", []).each do |section| %><a href="#<%= section_id(section) %>"><%= h(section.fetch("heading")) %></a><% end %>
+        <% if page["kind"] == "component" %><a href="#api">API summary</a><a href="#accessibility">Accessibility</a><% end %>
+      <% end %>
+    </aside>
+  </div>
+  <footer class="site-footer"><span>Zaniah is open source under the MIT License.</span><a href="https://github.com/noxdea/zaniah">Source on GitHub</a></footer>
+</body>
+</html>
