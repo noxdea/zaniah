@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 — 2026-09-24
+
+- Add native macOS and Windows menus, declarative context menus, and platform-aware shortcut labels.
+- Add MIME-keyed clipboard content on desktop backends, including HTML, PNG, file URLs, and X11 incremental transfers.
+- Add Grid and Table copy/paste hooks with TSV and HTML data.
+- Add window state persistence, frameless windows, and draggable title regions across native backends.
+
 ## 0.7.0 — 2026-09-24
 
 - Add a stable frame inspection API with accessibility queries and DevTools integration.
