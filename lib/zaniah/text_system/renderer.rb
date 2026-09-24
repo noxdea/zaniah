@@ -54,7 +54,7 @@ module Zaniah
         scale = @scale_factor.to_f
         raise ArgumentError, "scale factor must be positive" unless scale.positive? && scale.finite?
         raise ArgumentError, "text origin must be finite" unless x.is_a?(Numeric) && x.finite? && y.is_a?(Numeric) && y.finite?
-        raise ArgumentError, "text orientation must be mixed or upright" unless %i[mixed upright].include?(text_orientation)
+        raise ArgumentError, "text orientation must be mixed or upright" unless text_orientation == :mixed || text_orientation == :upright
         color = paint_color(color)
         spans = paint_spans(spans)
         refresh_paint_cache

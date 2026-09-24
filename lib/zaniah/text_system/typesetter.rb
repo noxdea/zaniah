@@ -25,12 +25,12 @@ module Zaniah
         @layout_lookup, @layout_keys = Array.new(9), {}
       end
 
-      def layout_line(text, font: nil, size: 14, direction: :auto, features: {}, script: nil, language: nil, bidi: nil,
+      def layout_line(text, font: nil, size: 14, direction: :auto, features: EMPTY_FEATURES, script: nil, language: nil, bidi: nil,
         writing_mode: :horizontal_tb)
         raise ArgumentError, "text must be valid UTF-8" unless text.is_a?(String) && text.encoding == Encoding::UTF_8 && text.valid_encoding?
         raise ArgumentError, "font size must be finite and positive" unless size.is_a?(Numeric) && size.finite? && size.positive?
-        raise ArgumentError, "direction must be auto, ltr, or rtl" unless %i[auto ltr rtl].include?(direction)
-        raise ArgumentError, "writing mode must be horizontal_tb or vertical_rl" unless %i[horizontal_tb vertical_rl].include?(writing_mode)
+        raise ArgumentError, "direction must be auto, ltr, or rtl" unless direction == :auto || direction == :ltr || direction == :rtl
+        raise ArgumentError, "writing mode must be horizontal_tb or vertical_rl" unless writing_mode == :horizontal_tb || writing_mode == :vertical_rl
         raise ArgumentError, "features must be a hash" unless features.is_a?(Hash)
         raise ArgumentError, "bidi must be a resolved line for this text" if bidi && (!bidi.is_a?(Unicode::Bidi::Result) || bidi.levels.length != text.length)
         font ||= @font
