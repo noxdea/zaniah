@@ -427,15 +427,15 @@ pages:
     components: [Tooltip, Popover, HoverCard]
     sections:
       - heading: Tooltip
-        image: gallery/tooltip-bottom-light.png
-        alt: "Tooltip positioned below its anchor in the light theme."
+        image: gallery/tooltip-bottom-dark.png
+        alt: "Tooltip positioned below its anchor in the dark theme."
         text: "A tooltip is brief, supplemental text. It is not a replacement for a visible label."
         code: |
           anchor = Zaniah::Bounds.new(280, 80, 80, 32)
           Zaniah::UI::Tooltip.new("Helpful text",
             anchor: anchor, side: :bottom)
       - heading: Popover and hover card
-        image: gallery/popover-right-light.png
+        image: gallery/popover-right-dark.png
         alt: "Popover with contextual content beside its anchor."
         text: "Use Popover for richer content. HoverCard opens from pointer hover or keyboard focus after a delay."
         code: |
@@ -466,7 +466,7 @@ pages:
           Zaniah::UI::Dropdown.new("Choose",
             items: [["First", 1], ["Second", 2]])
       - heading: Anchored menus
-        image: gallery/menu-light.png
+        image: gallery/menu-dark.png
         alt: "Open menu overlay with enabled and disabled commands."
         text: "Use Menu at a specific point or element. ContextMenu shares the command model."
         code: |
@@ -484,8 +484,8 @@ pages:
     components: [Modal, Dialog]
     sections:
       - heading: Basic dialog
-        image: gallery/dialog-light.png
-        alt: "A light-theme dialog with title and content over a dimmed page."
+        image: gallery/dialog-dark.png
+        alt: "A dark-theme dialog with title and content over a dimmed page."
         text: "Keep the title concise and include an obvious way to finish or close."
         code: |
           Zaniah::UI::Dialog.new(
@@ -507,8 +507,8 @@ pages:
     components: [Drawer]
     sections:
       - heading: Side panel
-        image: gallery/drawer-right-light.png
-        alt: "A light-theme drawer sliding in from the right."
+        image: gallery/drawer-right-dark.png
+        alt: "A dark-theme drawer sliding in from the right."
         text: "Drawer has the modal behavior of Dialog plus side: :left or :right."
         code: |
           Zaniah::UI::Drawer.new(
@@ -524,7 +524,7 @@ pages:
     components: [Toast]
     sections:
       - heading: Variants
-        image: gallery/toast-success-light.png
+        image: gallery/toast-success-dark.png
         alt: "Success toast with a short saved message."
         text: "Use success, info, warning, or danger to match the message. A toast can be dismissed."
         code: |
@@ -539,7 +539,7 @@ pages:
     components: [CommandPalette]
     sections:
       - heading: Commands
-        image: gallery/command-palette-light.png
+        image: gallery/command-palette-dark.png
         alt: "Command palette with a search field and matching commands."
         text: "Provide label/action pairs or build it from registered application actions."
         code: |

@@ -75,7 +75,7 @@ module Gallery
       .child(Zaniah::Div.new.flex_row.gap(12).children([
         Zaniah::UI::SplitPane.new(Zaniah::UI::Label.new("Left pane"), Zaniah::UI::Label.new("Right pane")).w(300).h(100),
         Zaniah::UI::Resizable.new(Zaniah::UI::Label.new("Resize me"), width: 180, height: 100),
-        Zaniah::UI::ListView.new(%w[Alpha Beta Gamma Delta], height: 100, selected: 1).w(180)]))
+        Zaniah::UI::ListView.new(%w[Alpha Beta Gamma], height: 100, selected: 1).w(180)]))
       .child(Zaniah::Div.new.flex_row.gap(12).children([
         Zaniah::UI::DockPanel.new(
           center: Zaniah::UI::Label.new("Editor"), top: Zaniah::UI::StatusBar.new(Zaniah::UI::Label.new("Top", size: :sm)),
