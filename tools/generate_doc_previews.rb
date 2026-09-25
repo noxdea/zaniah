@@ -6,19 +6,19 @@ require_relative "../examples/gallery"
 
 OUTPUT = File.expand_path("../docs/previews", __dir__)
 SECTIONS = {
-  "foundation" => [0, 300],
-  "actions" => [1, 190],
-  "values" => [2, 180],
-  "text-input" => [3, 235],
-  "navigation" => [4, 190],
-  "structure" => [5, 340],
-  "variants" => [6, 440],
-  "data" => [7, 520],
-  "choices" => [8, 315],
-  "feedback" => [9, 570],
-  "workspace" => [10, 610],
-  "editors" => [11, 230],
-  "forms" => [12, 250]
+  "foundation" => [0, 300, 700],
+  "actions" => [1, 190, 730],
+  "values" => [2, 180, 830],
+  "text-input" => [3, 235, 600],
+  "navigation" => [4, 190, 700],
+  "structure" => [5, 340, 900],
+  "variants" => [6, 440, 440],
+  "data" => [7, 520, 900],
+  "choices" => [8, 315, 600],
+  "feedback" => [9, 570, 700],
+  "workspace" => [10, 610, 900],
+  "editors" => [11, 280, 750],
+  "forms" => [12, 250, 450]
 }.freeze
 
 FileUtils.mkdir_p(OUTPUT)
@@ -30,8 +30,8 @@ app.global(:theme, theme.with(motion: theme.motion.with(reduced: true)))
 window.text_system = Zaniah::TextSystem::Renderer.new(font: font, font_db: Zaniah::TextSystem::FontDB.new(paths: []))
 
 sections = Gallery.page.children
-SECTIONS.each do |name, (index, height)|
-  window.resize(900, height)
+SECTIONS.each do |name, (index, height, width)|
+  window.resize(width, height)
   section = sections.fetch(index).h(height - 32).p(24).gap(18)
   content = section.children.fetch(1)
   content.gap(20)
