@@ -31,7 +31,7 @@ module Gallery
     end
     variants = Zaniah::Div.new.w_full.gap(8).children(button_variants)
       .child(Zaniah::Div.new.flex_row.gap(8).children(%i[neutral accent success warning danger].map { |variant| Zaniah::UI::Badge.new(variant, variant: variant) }))
-      .child(Zaniah::Div.new.flex_row.gap(14).children(%i[default muted inverse].map { |tone| Zaniah::UI::Label.new(tone, tone: tone) }))
+      .child(Zaniah::Div.new.flex_row.gap(14).children(%i[default muted].map { |tone| Zaniah::UI::Label.new(tone, tone: tone) }))
       .child(Zaniah::Div.new.flex_row.items_center.gap(14).children(%i[xs sm md lg xl].map { |size| Zaniah::UI::Label.new(size, size: size) }))
     structure = Zaniah::Div.new.w_full.gap(10)
       .child(Zaniah::Div.new.flex_row.gap(12).children([tabs,
@@ -82,7 +82,7 @@ module Gallery
           left: Zaniah::UI::Sidebar.new(Zaniah::UI::Label.new("Files", size: :sm), width: 90),
           bottom: Zaniah::UI::StatusBar.new(Zaniah::UI::Label.new("Ready", size: :sm))).w(420).h(120),
         Zaniah::UI::ZoomPanView.new(Zaniah::Div.new.w(110).h(70).p(8).bg("#2563eb")
-          .child(Zaniah::UI::Label.new("Zoom / pan", size: :sm)), zoom: 1.3).w(180).h(120)
+          .child(Zaniah::UI::Label.new("Zoom / pan", size: :sm)), zoom: 1).w(180).h(120)
       ]))
       .child(Zaniah::Div.new.flex_row.gap(12).children([
         Zaniah::UI::DockWorkspace.new(dock_layout,
@@ -157,7 +157,7 @@ if $PROGRAM_NAME == __FILE__
   window = Zaniah::Platform.open_window(backend: backend, width: 900, height: 700, title: "Zaniah component gallery")
   unless backend == :tui
     require "alhena"
-    font_path = File.expand_path("../assets/fonts/Abel-Regular.ttf", __dir__)
+    font_path = File.expand_path("../assets/fonts/NotoSans-Regular.ttf", __dir__)
     window.text_system = Zaniah::TextSystem::Renderer.new(font: Alhena::Font.open(font_path), font_db: Zaniah::TextSystem::FontDB.new(paths: []))
   end
   overlay_name = ARGV.find { |argument| argument.start_with?("--overlay=") }&.split("=", 2)&.last

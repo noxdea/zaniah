@@ -14,7 +14,7 @@ OVERLAYS = %w[
   toast-info toast-success toast-warning toast-danger command-palette
 ].freeze
 DOCS_OVERLAYS = %w[tooltip-bottom popover-right menu dialog drawer-right toast-success command-palette].freeze
-FONT = Alhena::Font.open(File.expand_path("../assets/fonts/Abel-Regular.ttf", __dir__))
+FONT = Alhena::Font.open(File.expand_path("../assets/fonts/NotoSans-Regular.ttf", __dir__))
 docs_only = ARGV.include?("--docs-only")
 sheets = docs_only ? [:dark] : SHEETS
 overlays = docs_only ? DOCS_OVERLAYS : OVERLAYS

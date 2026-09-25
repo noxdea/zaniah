@@ -7,10 +7,10 @@ require_relative "../examples/gallery"
 OUTPUT = File.expand_path("../docs/previews", __dir__)
 SECTIONS = {
   "foundation" => [0, 300, 700],
-  "actions" => [1, 190, 730],
+  "actions" => [1, 210, 730],
   "values" => [2, 180, 830],
-  "text-input" => [3, 235, 600],
-  "navigation" => [4, 190, 700],
+  "text-input" => [3, 280, 600],
+  "navigation" => [4, 205, 700],
   "structure" => [5, 340, 900],
   "variants" => [6, 440, 440],
   "data" => [7, 520, 900],
@@ -22,7 +22,7 @@ SECTIONS = {
 }.freeze
 
 FileUtils.mkdir_p(OUTPUT)
-font = Alhena::Font.open(File.expand_path("../assets/fonts/Abel-Regular.ttf", __dir__))
+font = Alhena::Font.open(File.expand_path("../assets/fonts/NotoSans-Regular.ttf", __dir__))
 app = Zaniah::App.new(clock: -> { 0.0 })
 theme = Zaniah::Theme.dark
 window = app.open_window(width: 900, height: 200, scale_factor: 2)
