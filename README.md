@@ -114,7 +114,7 @@ For an interactive window, choose `backend: :mac`, `:linux`, `:windows`, or
 | `:tui` | ANSI terminal | Text-grid rendering and terminal input |
 
 Native backends use the operating system libraries through Ruby's Fiddle. See
-[Native backends](docs/native.md) for platform requirements and checks.
+[Native backends](https://noxdea.github.io/zaniah/docs/guides/native.html) for platform requirements.
 
 Native macOS, Windows, and X11 windows can be moved to a display returned by
 `Zaniah::Platform.displays` with `window.move_to_display(display)`. Headless and
@@ -124,39 +124,18 @@ compositor to fullscreen on that output, but the compositor may choose otherwise
 
 ## Documentation
 
-- [User guide](https://noxdea.github.io/zaniah/docs/) — installation, first render, and native windows
-- [Component documentation](https://noxdea.github.io/zaniah/docs/components/) — rendered examples, code, API summaries, and accessibility notes
-- [Native backends](docs/native.md) — windows, displays, file watching, and terminals
-- [Text system](docs/text.md) — font discovery, shaping, rasterization, and caching
-- [Images](docs/images.md) — PNG, GIF, baseline JPEG, and orientation support
-- [SVG and lists](docs/vector_and_list.md) — static vector icons and virtual lists
-- [Drag-and-drop reordering](docs/drag_drop.md) — stable IDs, virtual targets, and keyboard access
-- [Layout and scrolling](docs/layout.md) — Grid, resizable pane grids, scrolling, sticky positioning, and RTL foundations
-- [Themes](docs/theme.md) — semantic tokens and state styles
-- [Components](docs/components.md) — controls, overlays, data views, charts, and forms
-- [Animation](docs/animation.md) — easing, springs, transitions, and reduced motion
-- [Accessibility](docs/accessibility.md) — semantic trees, diffs, and native bridges
-- [Terminal UI](docs/tui.md) — deterministic component degradation
-- [CPU process workers](docs/process_pool.md) — portable background CPU work
-- [Declarative elements](docs/describe.md) — validated vocabularies, event routing, diffs, and surfaces
-- [Architecture decisions](docs/adr) — design records and rationale
+- [Getting started](https://noxdea.github.io/zaniah/docs/) — installation and your first render
+- [Guides](https://noxdea.github.io/zaniah/docs/guides/) — platforms, layout, text, themes, accessibility, and advanced APIs
+- [Components](https://noxdea.github.io/zaniah/docs/components/) — rendered examples, code, and API summaries
+- [Component API reference](https://noxdea.github.io/zaniah/docs/guides/component-reference.html) — all constructors and variants in one table
+- [Contributing guidelines](.github/CONTRIBUTING.md) — development and platform checks
+- [Architecture decisions](docs/adr) — implementation rationale
 - [RBS declarations](sig) — public API signatures
-
-## Development
-
-```sh
-bundle install
-bundle exec rake test
-bundle exec rake bench
-gem build --strict zaniah.gemspec
-```
-
-Set `BUDGET=1` to enable benchmark assertions.
 
 ## Contributing
 
-Bug reports and pull requests are welcome at
-[github.com/noxdea/zaniah](https://github.com/noxdea/zaniah).
+Bug reports and pull requests are welcome. See the
+[contributing guidelines](.github/CONTRIBUTING.md) for checks and documentation updates.
 
 ## License
 

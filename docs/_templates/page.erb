@@ -16,6 +16,7 @@
       <a class="brand" href="<%= link_from(path, "index.html") %>" aria-label="Zaniah documentation home"><span class="brand-symbol" aria-hidden="true">Z</span><span>Zaniah <small>Docs</small></span></a>
       <nav class="header-links" aria-label="Global navigation">
         <a href="<%= link_from(path, "index.html") %>">Docs</a>
+        <a href="<%= link_from(path, "guides/index.html") %>">Guides</a>
         <a href="<%= link_from(path, "components/index.html") %>">Components</a>
         <a href="https://github.com/noxdea/zaniah">GitHub</a>
       </nav>
@@ -55,8 +56,9 @@
       <% end %>
 
       <% if page["kind"] == "index" %>
-        <% groups.each do |group, items| %>
-          <% next if group == "Getting started" %>
+        <% index_groups.each do |group| %>
+          <% items = groups.fetch(group) %>
+          <% items = items.reject { |item| item["kind"] == "index" } %>
           <section class="doc-section" id="<%= h(group.downcase.gsub(/[^a-z0-9]+/, "-")) %>">
             <h2><%= h(group) %></h2>
             <div class="directory">
@@ -66,6 +68,8 @@
             </div>
           </section>
         <% end %>
+      <% elsif page["kind"] == "markdown" %>
+        <article class="markdown"><%= guide_html %></article>
       <% else %>
         <% page.fetch("sections", []).each do |section| %>
           <section class="doc-section" id="<%= section_id(section) %>">
@@ -82,7 +86,7 @@
           </section>
         <% end %>
         <% if page["kind"] == "component" %>
-          <section class="doc-section" id="api"><h2>API summary</h2><p>Constructor options and behaviors are drawn from the <a href="https://github.com/noxdea/zaniah/blob/main/docs/components.md">component reference</a>.</p>
+          <section class="doc-section" id="api"><h2>API summary</h2><p>Constructor options and behaviors are drawn from the <a href="<%= link_from(path, "guides/component-reference.html") %>">component reference</a>.</p>
             <div class="table-scroll"><table><thead><tr><th>Component</th><th>Constructor and methods</th><th>Variants or behavior</th></tr></thead><tbody>
               <% rows.each do |row| %><tr><td><code><%= h(row[:names].join(", ")) %></code></td><td><%= inline(row[:constructor]) %></td><td><%= inline(row[:variants]) %></td></tr><% end %>
             </tbody></table></div>
@@ -104,7 +108,9 @@
 
     <aside class="toc" aria-label="On this page"><p>On this page</p>
       <% if page["kind"] == "index" %>
-        <% groups.each_key do |group| %><% next if group == "Getting started" %><a href="#<%= h(group.downcase.gsub(/[^a-z0-9]+/, "-")) %>"><%= h(group) %></a><% end %>
+        <% index_groups.each do |group| %><a href="#<%= h(group.downcase.gsub(/[^a-z0-9]+/, "-")) %>"><%= h(group) %></a><% end %>
+      <% elsif page["kind"] == "markdown" %>
+        <% guide_toc.each do |anchor, heading| %><a href="#<%= h(anchor) %>"><%= heading %></a><% end %>
       <% else %>
         <% if page["kind"] == "component" %><a href="#import">Import</a><% end %>
         <% page.fetch("sections", []).each do |section| %><a href="#<%= section_id(section) %>"><%= h(section.fetch("heading")) %></a><% end %>

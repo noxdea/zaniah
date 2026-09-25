@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
     "allowed_push_host" => "https://rubygems.org",
     "rubygems_mfa_required" => "true"
   }
-  spec.files = Dir.chdir(__dir__) { Dir["{lib,sig,exe,assets,docs,examples,tools}/**/*", "README.md", "CHANGELOG.md", "LICENSE.txt"].select { |path| File.file?(path) } }
+  spec.files = Dir.chdir(__dir__) { Dir["{lib,sig,exe,assets,docs,examples,tools}/**/*", "README.md", "CHANGELOG.md", "LICENSE.txt"].select { |path| File.file?(path) && !(path.start_with?("docs/") && path.end_with?(".html")) } }
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}).map { |path| File.basename(path) }
   spec.require_paths = ["lib"]

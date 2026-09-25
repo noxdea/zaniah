@@ -96,14 +96,6 @@ remains a set of stable row IDs; hook arguments are `Grid::Area` ranges in the
 current sorted display order, covering all columns. Disjoint selected rows
 produce separate areas. The application retains ownership of table data.
 
-`bench/grid.rb` measures a headless 800×600 viewport over a 1,000,000×16,000
-grid at 23 sequential scroll positions, including cell construction, layout,
-prepaint, and paint. `BUDGET=1 ruby bench/grid.rb` asserts a 16.67 ms median
-frame limit. A local run on 2026-09-23 measured 12.964 ms and constructed an
-average of 250 cells per frame. This microbenchmark does not include an
-application's backing store, expensive cell renderers, or a native compositor;
-rerun it on target hardware for deployment decisions.
-
 `ScrollView` accepts one child and clips it to the viewport. Its `axis` is
 `:vertical`, `:horizontal`, or `:both`; use `scroll_to` for programmatic
 scrolling and `scroll_state` for offsets and edge checks.

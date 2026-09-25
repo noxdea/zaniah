@@ -16,4 +16,6 @@ Zaniah::Inspection.perform(window, node, :press)
 
 The snapshot containers and copied collections are frozen. `entry.element` is deliberately a live element reference: use it only in the same frame, because the next render may replace it. Accessibility nodes are copied for inspection; pass one to `Inspection.perform` to invoke an action on its current source node. Actions require a node from the current frame. To wait for a settled UI, call `Zaniah::Inspection.idle?(app)` after draining queued work and rendering dirty windows.
 
-The public API is declared in [`sig/inspection.rbs`](../sig/inspection.rbs), and its independently runnable contract test is [`test/inspection_contract_test.rb`](../test/inspection_contract_test.rb). Breaking changes receive at least one minor version of deprecation during 0.x, as recorded in [ADR 013](adr/013-public-inspection-api.md).
+The public API is declared in [`sig/inspection.rbs`](../sig/inspection.rbs).
+Breaking changes receive at least one minor version of deprecation during 0.x,
+as recorded in [ADR 013](adr/013-public-inspection-api.md).

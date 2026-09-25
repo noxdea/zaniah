@@ -59,9 +59,4 @@ The block form remains available on platforms with `fork`, but named handlers
 are preferred for portability and for applications that own threads or native
 resources. Both forms use the same JSON-only data contract.
 
-See [the RBS declarations](../sig/app.rbs) for the complete API. Run the worker
-tests with:
-
-```sh
-ruby -Itest test/process_pool_test.rb
-```
+See [the RBS declarations](../sig/app.rbs) for the complete API.

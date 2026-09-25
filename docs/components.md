@@ -199,9 +199,3 @@ resize. Grid and Table clipboard hooks receive half-open `Grid::Area` ranges;
 Table areas follow the current display order without changing its stable-ID
 selection. See [Layout](layout.md#two-axis-virtual-grid). Tree views use Up/Down to select, Right to expand or enter the first child,
 and Left to collapse or return to the parent.
-
-Run `bundle exec ruby tools/generate_component_gallery.rb` to rebuild the dark,
-light, and high-contrast component sheets plus overlay variants in all three themes.
-For the 2x documentation previews, run `bundle exec ruby tools/generate_doc_previews.rb`
-and `bundle exec ruby tools/generate_component_gallery.rb ../docs/previews --docs-only --overlays-only`,
-then `bundle exec ruby tools/build_docs.rb`.

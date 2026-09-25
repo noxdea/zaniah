@@ -22,7 +22,7 @@ jobs:
       - run: git diff --exit-code -- docs/media
       - run: bundle exec rake demo
       - run: git diff --exit-code -- docs/media
-      - run: ruby tools/build_docs.rb --check
+      - run: bundle exec ruby tools/build_docs.rb --check
       - name: Check media budget
         shell: bash
         run: |

@@ -53,9 +53,4 @@ rendering, `visible_range` returns the instantiated exclusive-end range, and
 `total_height` includes estimates. A list's item count is fixed; create a new
 list when the count changes.
 
-See [the element declarations](../sig/elements.rbs) for the complete API. Run:
-
-```sh
-ruby -Ilib -Itest test/svg_and_list_test.rb
-ruby --yjit -Ilib bench/list.rb
-```
+See [the element declarations](../sig/elements.rbs) for the complete API.

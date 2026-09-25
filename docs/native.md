@@ -145,20 +145,3 @@ On Windows, require `zaniah/platform/windows/terminal` to use
 `Zaniah::Platform::Windows::Terminal`, which wraps ConPTY. It supports starting
 a child process, nonblocking reads, writes, resizing, liveness checks, and
 explicit cleanup. ConPTY requires Windows 10 version 1809 or later.
-
-## Development checks
-
-Run checks on the matching host and display server:
-
-```sh
-ruby examples/native_smoke.rb --check /tmp/zaniah.png
-ruby examples/native_smoke.rb --gl --check /tmp/zaniah-gl.png
-ruby examples/linux_smoke.rb
-ruby examples/linux_smoke.rb --wayland
-ruby examples/native_watch.rb
-ruby examples/native_menu.rb              # macOS only
-```
-
-Linux XIM composition is exercised in CI with Xvfb and IBus/KKC. Native input,
-IME on macOS and Windows, dialogs, and terminal integration also require manual
-checks on the target operating system.

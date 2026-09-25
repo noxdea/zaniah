@@ -9,6 +9,9 @@
 /pkg/
 /spec/reports/
 /tmp/
+/docs/index.html
+/docs/components/*.html
+/docs/guides/*.html
 /bench/results.json
 /test/golden/diff/
 Gemfile.lock

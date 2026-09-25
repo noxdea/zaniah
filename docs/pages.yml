@@ -48,16 +48,120 @@ pages:
                 .on_click { puts "Saved" })
           end
           window.run
-        note: "Use `:linux`, `:windows`, or `:tui` for other interactive backends. See the native backend guide in the repository for platform requirements."
+        note: "Use `:linux`, `:windows`, or `:tui` for other interactive backends. See the Native backends guide for platform requirements."
       - heading: Next steps
         text:
-          - "Open the Components overview to find the right control. Each component page shows a rendered example, Ruby code, constructor options, and accessibility roles."
+          - "Open Guides for platform and API topics, or Components overview to find the right control. Each component page shows a rendered example, Ruby code, constructor options, and accessibility roles."
 
   - path: components/index.html
     kind: index
     group: Getting started
     title: Components overview
     lead: "Browse the components by task. Every page includes a real Zaniah rendering and the Ruby API that produces it."
+
+  - path: guides/index.html
+    kind: index
+    group: Getting started
+    directory_group: Guides
+    title: Guides
+    lead: "Go deeper into Zaniah's rendering, layout, text, platforms, and application APIs."
+
+  - path: guides/native.html
+    kind: markdown
+    group: Guides
+    title: Native backends
+    lead: "Open windows, exchange clipboard data, handle file drops, and work with displays."
+    source: native.md
+  - path: guides/layout.html
+    kind: markdown
+    group: Guides
+    title: Layout and scrolling
+    lead: "Compose flex and grid layouts, resizable panes, virtual grids, and scroll views."
+    source: layout.md
+  - path: guides/text.html
+    kind: markdown
+    group: Guides
+    title: Text system
+    lead: "Shape, render, select, edit, and lay out text across scripts and writing modes."
+    source: text.md
+  - path: guides/images.html
+    kind: markdown
+    group: Guides
+    title: Images
+    lead: "Decode supported image formats and understand JPEG limitations."
+    source: images.md
+  - path: guides/vector-and-list.html
+    kind: markdown
+    group: Guides
+    title: SVG and virtual lists
+    lead: "Render static SVG icons and keep large variable-height lists responsive."
+    source: vector_and_list.md
+  - path: guides/drag-drop.html
+    kind: markdown
+    group: Guides
+    title: Drag-and-drop reordering
+    lead: "Reorder stable-ID items with pointer, keyboard, and accessibility actions."
+    source: drag_drop.md
+  - path: guides/themes.html
+    kind: markdown
+    group: Guides
+    title: Themes and state styles
+    lead: "Use semantic tokens, state styles, and local theme overrides."
+    source: theme.md
+  - path: guides/animation.html
+    kind: markdown
+    group: Guides
+    title: Animation
+    lead: "Animate keyed values, style changes, and motion-sensitive interactions."
+    source: animation.md
+  - path: guides/accessibility.html
+    kind: markdown
+    group: Guides
+    title: Accessibility
+    lead: "Expose stable semantic trees and native accessibility actions."
+    source: accessibility.md
+  - path: guides/terminal.html
+    kind: markdown
+    group: Guides
+    title: Terminal UI
+    lead: "See how components adapt to terminal cells and input."
+    source: tui.md
+  - path: guides/process-workers.html
+    kind: markdown
+    group: Guides
+    title: CPU process workers
+    lead: "Run trusted CPU work in portable, reusable Ruby child processes."
+    source: process_pool.md
+  - path: guides/declarative-elements.html
+    kind: markdown
+    group: Guides
+    title: Declarative elements
+    lead: "Build validated UI trees from data and apply event-aware diffs."
+    source: describe.md
+  - path: guides/menus.html
+    kind: markdown
+    group: Guides
+    title: Menus and shortcuts
+    lead: "Register actions, build menu models, and display platform-aware shortcuts."
+    source: menus.md
+  - path: guides/inspection.html
+    kind: markdown
+    group: Guides
+    title: Frame inspection
+    lead: "Inspect rendered frames and perform semantic actions in test drivers."
+    source: inspection.md
+  - path: guides/vector-recording.html
+    kind: markdown
+    group: Guides
+    title: Vector recording
+    lead: "Capture rendered drawing commands for external export pipelines."
+    source: vector.md
+  - path: guides/component-reference.html
+    kind: markdown
+    group: Guides
+    title: Component API reference
+    lead: "Scan constructors, variants, behavior, and accessibility roles in one place."
+    source: components.md
 
   - path: components/primitives.html
     kind: component

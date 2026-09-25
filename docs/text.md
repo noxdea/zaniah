@@ -122,16 +122,6 @@ invalidation. A cache has fixed width, height, and scale; invalidate a line when
 its outlines change for any reason, including a font change. Call `close` when
 the cache is no longer needed.
 
-## Development checks
-
-```sh
-BUDGET=1 ruby --yjit bench/text_frame.rb
-ruby --yjit bench/atlas_startup.rb
-ruby --yjit -Ilib script/shaper_oracle assets/fonts/Abel-Regular.ttf /path/to/font.ttf
-```
-
-The shaping oracle is optional and requires `hb-shape`; it is not used at runtime.
-
 ## Paragraphs, selection, and editing
 
 Single-line layout remains the default. Enable wrapping explicitly on a `Text`
