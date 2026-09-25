@@ -25,7 +25,7 @@ FileUtils.mkdir_p(OUTPUT)
 font = Alhena::Font.open(File.expand_path("../assets/fonts/Abel-Regular.ttf", __dir__))
 app = Zaniah::App.new(clock: -> { 0.0 })
 theme = Zaniah::Theme.dark
-window = app.open_window(width: 900, height: 200)
+window = app.open_window(width: 900, height: 200, scale_factor: 2)
 app.global(:theme, theme.with(motion: theme.motion.with(reduced: true)))
 window.text_system = Zaniah::TextSystem::Renderer.new(font: font, font_db: Zaniah::TextSystem::FontDB.new(paths: []))
 

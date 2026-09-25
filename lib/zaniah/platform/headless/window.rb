@@ -25,7 +25,7 @@ module Zaniah
           @content_size, @scale_factor, @title = Size.new(width, height), scale_factor, title
           @decorations, @transparent, @min_size, @resizable, @traffic_lights = decorations, transparent, min_size, resizable, traffic_lights
           @scene = Scene.new
-          @device = GPU::Software.new(width, height)
+          @device = GPU::Software.new(width, height, scale_factor: scale_factor)
           @dispatcher = Input::Dispatcher.new(keymap: keymap || Input::Keymap.default_ui(clock: clock))
           @clock = clock
           @animator = Animator.new(clock: clock)
@@ -271,9 +271,9 @@ module Zaniah
         def tooltip_state = @tooltip&.merge(text: @tooltip[:text].dup.freeze)&.freeze
 
         def resize(width, height)
+          @device.resize(width, height)
           @content_size = Size.new(width, height)
           @window_frame = Bounds.new(@window_frame.x, @window_frame.y, width, height)
-          @device.resize(width, height)
           @on_resize&.call(@content_size)
           request_frame
           notify_state_change unless @suppress_state_change

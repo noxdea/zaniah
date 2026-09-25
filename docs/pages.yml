@@ -427,7 +427,7 @@ pages:
     components: [Tooltip, Popover, HoverCard]
     sections:
       - heading: Tooltip
-        image: gallery/tooltip-bottom-dark.png
+        image: previews/tooltip-bottom-dark.png
         alt: "Tooltip positioned below its anchor in the dark theme."
         text: "A tooltip is brief, supplemental text. It is not a replacement for a visible label."
         code: |
@@ -435,7 +435,7 @@ pages:
           Zaniah::UI::Tooltip.new("Helpful text",
             anchor: anchor, side: :bottom)
       - heading: Popover and hover card
-        image: gallery/popover-right-dark.png
+        image: previews/popover-right-dark.png
         alt: "Popover with contextual content beside its anchor."
         text: "Use Popover for richer content. HoverCard opens from pointer hover or keyboard focus after a delay."
         code: |
@@ -466,7 +466,7 @@ pages:
           Zaniah::UI::Dropdown.new("Choose",
             items: [["First", 1], ["Second", 2]])
       - heading: Anchored menus
-        image: gallery/menu-dark.png
+        image: previews/menu-dark.png
         alt: "Open menu overlay with enabled and disabled commands."
         text: "Use Menu at a specific point or element. ContextMenu shares the command model."
         code: |
@@ -484,7 +484,7 @@ pages:
     components: [Modal, Dialog]
     sections:
       - heading: Basic dialog
-        image: gallery/dialog-dark.png
+        image: previews/dialog-dark.png
         alt: "A dark-theme dialog with title and content over a dimmed page."
         text: "Keep the title concise and include an obvious way to finish or close."
         code: |
@@ -507,7 +507,7 @@ pages:
     components: [Drawer]
     sections:
       - heading: Side panel
-        image: gallery/drawer-right-dark.png
+        image: previews/drawer-right-dark.png
         alt: "A dark-theme drawer sliding in from the right."
         text: "Drawer has the modal behavior of Dialog plus side: :left or :right."
         code: |
@@ -524,7 +524,7 @@ pages:
     components: [Toast]
     sections:
       - heading: Variants
-        image: gallery/toast-success-dark.png
+        image: previews/toast-success-dark.png
         alt: "Success toast with a short saved message."
         text: "Use success, info, warning, or danger to match the message. A toast can be dismissed."
         code: |
@@ -539,7 +539,7 @@ pages:
     components: [CommandPalette]
     sections:
       - heading: Commands
-        image: gallery/command-palette-dark.png
+        image: previews/command-palette-dark.png
         alt: "Command palette with a search field and matching commands."
         text: "Provide label/action pairs or build it from registered application actions."
         code: |

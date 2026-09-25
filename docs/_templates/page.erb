@@ -72,7 +72,8 @@
             <h2><%= h(section.fetch("heading")) %></h2>
             <% Array(section["text"]).each do |paragraph| %><p><%= inline(paragraph) %></p><% end %>
             <% if section["image"] %>
-              <figure class="example"><div class="example-label">Rendered example</div><img src="<%= link_from(path, section.fetch("image")) %>" alt="<%= h(section.fetch("alt")) %>" loading="lazy"><figcaption>Rendered by Zaniah's headless backend.</figcaption></figure>
+              <% image_width, image_height = image_dimensions(section.fetch("image")) %>
+              <figure class="example"><div class="example-label">Rendered example</div><img src="<%= link_from(path, section.fetch("image")) %>" alt="<%= h(section.fetch("alt")) %>" width="<%= image_width %>" height="<%= image_height %>" loading="lazy"><figcaption>Rendered by Zaniah's headless backend.</figcaption></figure>
             <% end %>
             <% if section["code"] %>
               <div class="code-example"><div class="code-label"><%= h(section.fetch("code_label", "Ruby")) %></div><pre><code><%= h(section.fetch("code")) %></code></pre></div>

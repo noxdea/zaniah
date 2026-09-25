@@ -5,13 +5,20 @@ module Zaniah
     class Software
       attr_reader :width, :height, :pixels
 
-      def initialize(width, height)
+      def initialize(width, height, scale_factor: 1)
+        @scale_factor = Float(scale_factor)
+        raise ArgumentError, "invalid scale factor" unless @scale_factor.positive? && @scale_factor.finite?
+        @pixel_transform = Transform.scale(@scale_factor)
         resize(width, height)
       end
 
       def resize(width, height)
-        raise ArgumentError, "invalid viewport" unless width.positive? && height.positive? && width * height <= 32_000_000
-        @width, @height = width.to_i, height.to_i
+        raise ArgumentError, "invalid viewport" unless width.positive? && height.positive?
+        pixel_width, pixel_height = width * @scale_factor, height * @scale_factor
+        raise ArgumentError, "invalid viewport" unless pixel_width.finite? && pixel_height.finite?
+        pixel_width, pixel_height = pixel_width.round, pixel_height.round
+        raise ArgumentError, "invalid viewport" unless pixel_width.positive? && pixel_height.positive? && pixel_width * pixel_height <= 32_000_000
+        @width, @height = pixel_width, pixel_height
         @viewport = Bounds.new(0, 0, @width, @height)
         @pixels = "\0".b * (@width * @height * 4)
         @gradient_cache ||= {}
@@ -25,7 +32,7 @@ module Zaniah
       def render(scene, clear: "#0000")
         @pixels.replace(Color.parse(clear).to_a.map { |value| (value.clamp(0, 1) * 255).round }.pack("C4") * (@width * @height))
         scene.each_command do |kind, offset, clip|
-          bounds = clip ? @viewport.intersect(clip) : @viewport
+          bounds = clip ? @viewport.intersect(pixel_clip(clip)) : @viewport
           case kind
           when :quad then draw_quad(scene, offset, bounds)
           when :sprite then draw_sprite(scene, offset, bounds)
@@ -50,7 +57,7 @@ module Zaniah
         color, secondary = values[4, 4], values[8, 4]
         radii, border_color, borders = values[12, 4], values[16, 4], values[20, 4]
         gradient = values[24, 7]
-        matrix = Transform.new(*values[32, 6])
+        matrix = pixel_transform(values[32, 6])
         bounds = transformed_bounds(x, y, width, height, matrix).intersect(clip)
         if matrix.b.zero? && matrix.c.zero? && borders.all?(&:zero?) && color[3] == 1 &&
             radii.all?(&:zero?) && gradient[0].zero? &&
@@ -107,7 +114,7 @@ module Zaniah
         color, radii = values[4, 4], values[12, 4]
         blur, spread, inset = values[30], values[38], values[39] == 1
         return if inset && blur.zero? && spread.zero?
-        matrix = Transform.new(*values[32, 6])
+        matrix = pixel_transform(values[32, 6])
         inverse = matrix.inverse
         bounds = transformed_bounds(x, y, width, height, matrix).intersect(clip)
         margin = inset ? 0 : spread + blur * 3 + 1
@@ -188,7 +195,7 @@ module Zaniah
         x, y, width, height, red, green, blue, alpha, id, source_x, source_y, source_width, source_height = scene.sprite_data.slice(offset, Scene::SPRITE_STRIDE)
         return if width <= 0 || height <= 0
         texture = scene.textures.fetch(id)
-        matrix = scene.sprite_transform(offset)
+        matrix = pixel_transform(scene.sprite_transform(offset))
         inverse = matrix.inverse
         bounds = transformed_bounds(x, y, width, height, matrix).intersect(clip)
         ([bounds.y.ceil, 0].max...[bounds.bottom.ceil, @height].min).each do |pixel_y|
@@ -213,7 +220,7 @@ module Zaniah
 
       def draw_triangle(data, offset, clip)
         x0, y0, x1, y1, x2, y2, red, green, blue, alpha, *transform = data.slice(offset, 16)
-        matrix = Transform.new(*transform)
+        matrix = pixel_transform(transform)
         x0, y0, x1, y1, x2, y2 = [[x0, y0], [x1, y1], [x2, y2]].flat_map do |x, y|
           point = matrix.apply(Point.new(x, y))
           [point.x, point.y]
@@ -253,6 +260,17 @@ module Zaniah
         left, right = points.map(&:x).minmax
         top, bottom = points.map(&:y).minmax
         Bounds.new(left, top, right - left, bottom - top)
+      end
+
+      def pixel_transform(values)
+        matrix = values.is_a?(Transform) ? values : Transform.new(*values)
+        @scale_factor == 1 ? matrix : @pixel_transform.compose(matrix)
+      end
+
+      def pixel_clip(bounds)
+        return bounds if @scale_factor == 1
+        Bounds.new(bounds.x * @scale_factor, bounds.y * @scale_factor,
+          bounds.width * @scale_factor, bounds.height * @scale_factor)
       end
 
       def gradient_parameters(values)

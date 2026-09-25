@@ -47,7 +47,7 @@ p{text-wrap:pretty}
 .doc-section li{margin:7px 0}
 .example{margin:25px 0 0;border:1px solid var(--line);border-radius:6px;overflow-x:auto;background:var(--surface)}
 .example-label,.code-label{padding:9px 16px;border-bottom:1px solid var(--line);color:var(--muted);font-size:12px;font-weight:600}
-.example img{display:block;margin:auto;max-width:none;width:auto;height:auto;padding:18px}
+.example img{box-sizing:content-box;display:block;margin:auto;max-width:none;height:auto;padding:18px}
 .example figcaption{padding:10px 16px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
 .code-example{margin:0 0 26px;border:1px solid var(--line);border-top:0;border-radius:0 0 6px 6px;background:var(--soft)}
 .doc-section>.code-example:first-of-type{border-top:1px solid var(--line);border-radius:6px}

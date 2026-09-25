@@ -15,6 +15,15 @@ def inline(value) = h(value).gsub(/\`([^\`]+)\`/, '<code>\1</code>')
 def link_from(from, to) = Pathname.new(to).relative_path_from(Pathname.new(from).dirname).to_s
 def section_id(section) = section.fetch("heading").downcase.gsub(/[^a-z0-9]+/, "-").sub(/-\z/, "")
 
+def image_dimensions(image)
+  header = File.binread(File.join(ROOT, image), 24)
+  abort "Invalid preview image: #{image}" unless header.bytesize == 24 && header.start_with?("\x89PNG\r\n\x1a\n".b)
+  width, height = header.byteslice(16, 8).unpack("N2")
+  scale = image.start_with?("previews/") ? 2 : 1
+  abort "Preview must be rendered at 2x: #{image}" unless (width % scale).zero? && (height % scale).zero?
+  [width / scale, height / scale]
+end
+
 reference = File.readlines(File.join(ROOT, "components.md")).filter_map do |line|
   next unless line.start_with?("| L")
   columns = line.split("|").map(&:strip)

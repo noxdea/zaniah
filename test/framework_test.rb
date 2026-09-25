@@ -31,6 +31,27 @@ class FrameworkTest < Minitest::Test
     assert_equal 255, rounded.getbyte((5 * 10 + 5) * 4 + 3)
   end
 
+  def test_headless_scale_factor_preserves_logical_layout_and_scales_pixels
+    scene = T::Scene.new.quad(0, 0, 4, 2, color: "#f00")
+    scene.clip(T::Bounds.new(1, 0, 1, 2)) { scene.quad(0, 0, 4, 2, color: "#0f0") }
+    device = T::GPU::Software.new(4, 2, scale_factor: 2)
+    pixels = device.render(scene)
+    assert_equal [8, 4], [device.width, device.height]
+    assert_equal [255, 0, 0, 255], pixels.byteslice(0, 4).bytes
+    assert_equal [0, 255, 0, 255], pixels.byteslice(2 * 4, 4).bytes
+    assert_equal [255, 0, 0, 255], pixels.byteslice(4 * 4, 4).bytes
+    assert_raises(ArgumentError) { device.resize(100_000, 100_000) }
+    assert_equal [8, 4], [device.width, device.height]
+
+    window = T::Platform::Headless::Window.new(width: 4, height: 2, scale_factor: 2)
+    assert_equal [4, 2], [window.content_size.width, window.content_size.height]
+    assert_equal [8, 4], [window.device.width, window.device.height]
+    assert_raises(ArgumentError) { window.resize(100_000, 100_000) }
+    assert_equal [4, 2], [window.content_size.width, window.content_size.height]
+  ensure
+    window&.close
+  end
+
   def test_sprite_and_gpu_frame_contract
     device = T::GPU::Software.new(2, 1)
     texture = device.create_texture(2, 1, format: :r8, data: [0, 255].pack("C*"))
