@@ -54,7 +54,7 @@ module Zaniah
       attr_reader width: Integer
       attr_reader height: Integer
       attr_reader pixels: String
-      def initialize: (Numeric width, Numeric height) -> void
+      def initialize: (Numeric width, Numeric height, ?scale_factor: Numeric) -> void
       def resize: (Numeric width, Numeric height) -> void
       def create_texture: (Integer width, Integer height, ?format: format, ?data: String?) -> Texture
       def create_buffer: (Integer size, ?usage: Symbol, ?mutable: bool) -> Buffer
