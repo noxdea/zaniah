@@ -11,5 +11,6 @@ group :development, :test do
   gem "rake", "~> 13.0"
   gem "rdoc", "7.2.0", require: false
   gem "minitest", Gem::Version.new(RUBY_VERSION) < Gem::Version.new("3.2") ? "~> 5.0" : "~> 6.0"
+  gem "minitest-mock", "~> 5.27" if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.2")
   gem "rbs", "~> 4.2", require: false if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.3")
 end
