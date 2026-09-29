@@ -2,6 +2,7 @@
 
 ENV["MT_NO_PLUGINS"] = "1"
 require "minitest/autorun"
+require "minitest/mock"
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "zaniah"
 require_relative "support/interaction_helper"
