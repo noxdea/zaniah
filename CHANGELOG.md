@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.0 — 2026-10-02
+
+- Add streaming virtual tables with lazy cells, stable selection, row styling, configurable columns, and tail following.
+- Add virtual hexadecimal and ASCII byte views with linked selection, highlights, keyboard navigation, and copying.
+- Preserve scrolling and height measurements when virtual list counts change, with optional bottom following.
+- Add text-field validation states and token completion with keyboard selection and Unicode-safe replacement.
+- Add programmatic tree selection and suggested filenames, starting directories, and extension filters for native file dialogs.
+
 ## 0.11.0 — 2026-09-25
 
 - Add segmented controls, alerts, hover cards, calendar and date-range inputs.
