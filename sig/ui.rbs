@@ -534,6 +534,8 @@ module Zaniah
       def scroll_to: (Integer index, ?align: :start | :center | :end | :nearest) -> self
       def invalidate: () -> self
       def following_tail?: () -> bool
+      def follow_tail=: (bool value) -> bool
+      def viewport_height=: (Numeric height) -> Numeric
       def accessibility_action: (Accessibility::Node node, Symbol action) -> bool?
     end
     class HexView < Component
@@ -546,6 +548,7 @@ module Zaniah
       def on_copy: () { (Range[Integer], FrameContext) -> Hash[String, String] } -> self
       def select: (Range[Integer] range, ?FrameContext? context) -> self
       def scroll_to_offset: (Integer offset) -> self
+      def viewport_height=: (Numeric height) -> Numeric
     end
 
     class TreeView < Component
@@ -559,6 +562,7 @@ module Zaniah
       def expand: (untyped id) -> self
       def collapse: (untyped id) -> self
       def select_id: (untyped id, ?FrameContext? context) -> bool
+      def viewport_height=: (Numeric height) -> Numeric
       def replace: (Array[untyped] items) -> self
       def replace_children: (untyped id, Array[untyped] children) -> bool
       def invalidate: (?untyped id) -> bool

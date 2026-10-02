@@ -40,6 +40,14 @@ module Zaniah
       def on_select(&block) = (@on_select = block; self)
       def on_copy(&block) = (@on_copy = block; self)
 
+      def viewport_height=(height)
+        raise ArgumentError, "viewport height must be finite and positive" unless height.is_a?(Numeric) && height.finite? && height.positive?
+        @height = height.to_f
+        @body.h(@height)
+        invalidate
+        height
+      end
+
       def select(range, cx = @cx)
         @selection = checked_range(range)
         @anchor, @caret = @selection.begin, [@selection.end - 1, @selection.begin].max

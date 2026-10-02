@@ -4,7 +4,10 @@ module Zaniah
   # A variable-height, viewport-only list. Unknown rows use estimated_height;
   # measuring visible rows refines the prefix sums without moving the anchor.
   class List < Element
-    attr_reader :visible_range, :heights, :scroll_state
+    attr_reader :visible_range, :heights, :scroll_state, :stick_to_bottom
+    def stick_to_bottom=(value)
+      @stick_to_bottom = !!value
+    end
 
     def initialize(count:, estimated_height: 24, overscan: 2, stick_to_bottom: false, &render_item)
       super()

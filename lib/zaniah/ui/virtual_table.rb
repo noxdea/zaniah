@@ -36,6 +36,21 @@ module Zaniah
       def invalidate = (@cx&.window&.request_frame; self)
       def following_tail? = @follow_tail && @body.at_bottom?
 
+      def viewport_height=(height)
+        raise ArgumentError, "viewport height must be finite and positive" unless height.is_a?(Numeric) && height.finite? && height.positive?
+        @height = height.to_f
+        @body.h([@height - @row_height, 1].max)
+        invalidate
+        height
+      end
+
+      def follow_tail=(value)
+        @follow_tail = !!value
+        @body.stick_to_bottom = @follow_tail
+        invalidate
+        value
+      end
+
       def scroll_to(index, align: :start)
         @body.count = @source.count
         @body.scroll_to(index, align: align)

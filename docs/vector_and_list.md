@@ -64,5 +64,6 @@ rows.at_bottom?
 
 `stick_to_bottom: true` follows appended rows while the viewport is at the bottom.
 Scrolling upward suspends following until the user returns to the bottom.
+The `stick_to_bottom` property can also be changed after construction.
 
 See [the element declarations](../sig/elements.rbs) for the complete API.

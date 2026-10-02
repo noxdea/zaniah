@@ -21,6 +21,11 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 }
 ```
 
+`VirtualTable`, `HexView`, and `TreeView` accept `viewport_height=` when a window
+or split pane resizes. This updates their internal list viewport while retaining
+scroll state and selection. `VirtualTable#follow_tail=` toggles bottom following;
+call `scroll_to(source.count - 1, align: :end)` to resume immediately from elsewhere.
+
 ## Component reference
 
 | Layer | Component | Main constructor/options | Variants | Accessibility role |

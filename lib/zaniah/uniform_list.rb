@@ -2,7 +2,10 @@
 
 module Zaniah
   class UniformList < Element
-    attr_reader :visible_range, :scroll_state, :count
+    attr_reader :visible_range, :scroll_state, :count, :stick_to_bottom
+    def stick_to_bottom=(value)
+      @stick_to_bottom = !!value
+    end
 
     def initialize(count:, row_height:, stick_to_bottom: false, &render_item)
       super()

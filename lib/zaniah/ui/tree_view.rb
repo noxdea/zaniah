@@ -27,6 +27,14 @@ module Zaniah
       def expand(id) = (toggle(id, true); self)
       def collapse(id) = (toggle(id, false); self)
 
+      def viewport_height=(height)
+        raise ArgumentError, "viewport height must be finite and positive" unless height.is_a?(Numeric) && height.finite? && height.positive?
+        @height = height.to_f
+        @list&.h(@height)
+        @cx&.window&.request_frame
+        height
+      end
+
       def select_id(id, cx = @cx)
         item = find_known_item(id)
         return false unless item

@@ -109,4 +109,48 @@ class StreamingComponentsTest < Minitest::Test
     assert_equal 1, selected
     assert_equal Set[1], table.selection
   end
+
+  def test_viewport_resize_keeps_virtual_panes_and_scroll_positions
+    source = Source.new(100, [], false)
+    table = render(T::UI::VirtualTable.new(source, columns: [:id], height: 100, row_height: 20))
+    table.scroll_to(20)
+    render(table)
+    body, offset = table.body, table.body.scroll_y
+    table.viewport_height = 180
+    render(table)
+    assert_same body, table.body
+    assert_equal offset, table.body.scroll_y
+    assert_equal 160, table.body.scroll_state.viewport_size.height
+    table.follow_tail = true
+    table.scroll_to(source.count - 1, align: :end)
+    source.count += 10
+    render(table)
+    assert table.following_tail?
+    table.follow_tail = false
+    offset = table.body.scroll_y
+    source.count += 10
+    render(table)
+    assert_equal offset, table.body.scroll_y
+
+    hex = render(T::UI::HexView.new("bytes" * 1000, height: 100))
+    hex.scroll_to_offset(1000)
+    render(hex)
+    body, offset = hex.body, hex.body.scroll_y
+    hex.viewport_height = 180
+    render(hex)
+    assert_same body, hex.body
+    assert_equal offset, hex.body.scroll_y
+    assert_equal 180, hex.body.scroll_state.viewport_size.height
+
+    tree = render(T::UI::TreeView.new(Array.new(100) { |i| {id: i, label: "#{i}"} }, height: 100))
+    tree.select_id(50)
+    render(tree)
+    body, offset = tree.root, tree.root.scroll_y
+    tree.viewport_height = 180
+    render(tree)
+    assert_same body, tree.root
+    assert_equal offset, tree.root.scroll_y
+    assert_equal 180, tree.root.scroll_state.viewport_size.height
+    [table, hex, tree].each { |pane| assert_raises(ArgumentError) { pane.viewport_height = Float::NAN } }
+  end
 end

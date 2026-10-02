@@ -151,6 +151,7 @@ module Zaniah
   end
   class UniformList < Element
     attr_accessor count: Integer
+    attr_accessor stick_to_bottom: bool
     attr_accessor scroll_y: Numeric
     attr_reader visible_range: Range[Integer]?
     attr_reader scroll_state: ScrollState
@@ -219,6 +220,7 @@ module Zaniah
 
   class List < Element
     attr_accessor count: Integer
+    attr_accessor stick_to_bottom: bool
     attr_reader scroll_y: Float
     attr_reader visible_range: Range[Integer]
     attr_reader heights: HeightIndex
