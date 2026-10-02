@@ -20,6 +20,7 @@ module Zaniah
         @keymap, @hits = keymap, []
         @transforms = [Transform.identity]
         @focus_tree = FocusTree.new
+        @automatic_focus_parents = []
       end
 
       def focus(handle, origin: :programmatic)
@@ -100,6 +101,7 @@ module Zaniah
           if owner.respond_to?(:focus_handle) && (parent = owner.focus_handle)
             unless parent.equal?(handle)
               handle.parent = parent
+              @automatic_focus_parents << [handle, parent]
               break
             end
           end
@@ -116,6 +118,10 @@ module Zaniah
 
       def clear_hits
         @hits.clear
+        @automatic_focus_parents.each do |handle, parent|
+          handle.parent = nil if handle.parent.equal?(parent)
+        end
+        @automatic_focus_parents.clear
         @focus_tree.clear
         @transforms.replace([Transform.identity])
       end

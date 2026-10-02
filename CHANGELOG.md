@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.1 — 2026-10-02
+
+- Prevent obsolete focus controls from accumulating across redraws, reducing memory use and keeping keyboard navigation on current controls.
+
 ## 0.12.0 — 2026-10-02
 
 - Add streaming virtual tables with lazy cells, stable selection, row styling, configurable columns, and tail following.
