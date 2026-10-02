@@ -409,7 +409,7 @@ module Zaniah
       def on_change(&block) = (@on_change = block; self)
 
       def build(_cx)
-        Button.new(@value ? @value.to_s : @label, variant: :secondary).icon(:menu, position: :trailing).on_click do |_event, context|
+        Button.new(selected_label, variant: :secondary).icon(:menu, position: :trailing).on_click do |_event, context|
           pairs = @items.map do |label, value = label|
             [label.to_s, ->(event = nil, cx = context) { @value = value; @on_change&.call(value, event, cx); cx.window.request_frame }]
           end
@@ -417,8 +417,18 @@ module Zaniah
         end
       end
 
-      def tui_cells(*) = "#{@label}: #{@value || "▾"}"
-      def accessibility_node(_cx) = node(:button, label: @label, value: @value, states: {expanded: false}, actions: [:press])
+      def tui_cells(*) = "#{@label}: #{@value.nil? ? "▾" : selected_label}"
+      def accessibility_node(_cx) = node(:button, label: @label, value: @value.nil? ? nil : selected_label, states: {expanded: false}, actions: [:press])
+
+      protected
+
+      def selected_label
+        return @label if @value.nil?
+        @items.each do |label, value = label|
+          return label.to_s if value == @value
+        end
+        @value.to_s
+      end
     end
   end
 end

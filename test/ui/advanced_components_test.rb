@@ -63,6 +63,45 @@ class AdvancedComponentsTest < Minitest::Test
     assert_equal 12 * 60 + 45, time.value
   end
 
+  def test_dropdowns_display_option_captions_and_keep_values_when_selected
+    items = [["Dark theme", :dark], ["Light theme", :light]]
+    controls = [T::UI::Dropdown.new("Theme", items: items, value: :dark),
+      T::UI::Select.new(items, label: "Theme", value: :dark)]
+    controls.each do |control|
+      changes = []
+      control.on_change { |value, *_| changes << value }
+      @window.render(control, present: false)
+      assert_equal "Dark theme", control.root.label
+      assert_includes control.tui_cells, "Dark theme"
+      assert_equal "Dark theme", control.accessibility_node(nil).value
+      assert_equal :dark, control.value
+      @window.dispatcher.focus(control.focus_handle, origin: :keyboard)
+      assert @window.input(T::Input::KeyDown.new("enter", false))
+      @window.render(control, present: false)
+      @window.input(T::Input::KeyDown.new("down", false))
+      @window.input(T::Input::KeyDown.new("enter", false))
+      @window.render(control, present: false)
+      assert_equal :light, control.value
+      assert_equal [:light], changes
+      assert_equal "Light theme", control.root.label
+      assert_includes control.tui_cells, "Light theme"
+      assert_equal "Light theme", control.accessibility_node(nil).value
+    end
+    disabled = T::UI::Select.new(items, label: "Theme", value: :light, disabled: true)
+    @window.render(disabled, present: false)
+    assert_equal "Light theme", disabled.root.label
+    assert_equal :light, disabled.value
+    assert disabled.accessibility_node(nil).states[:disabled]
+    refute T::Accessibility.perform(@window, disabled.root.accessibility_node(nil), :press)
+    fallback = T::UI::Select.new(["Ruby"], value: "Other")
+    @window.render(fallback, present: false)
+    assert_equal "Other", fallback.root.label
+    boolean = T::UI::Select.new([["Disabled", false]], value: false)
+    @window.render(boolean, present: false)
+    assert_equal "Disabled", boolean.root.label
+    assert_equal false, boolean.value
+  end
+
   def test_split_resizable_list_and_editor_keyboard_paths
     split = render(T::UI::SplitPane.new(T::UI::Label.new("One"), T::UI::Label.new("Two")))
     @window.dispatcher.focus(split.root.children[1].focus_handle)

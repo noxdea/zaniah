@@ -4,6 +4,7 @@
 
 - Let applications name tables, trees, groups, and other components for screen readers, and announce property editor labels consistently.
 - Support localized dialog close buttons and command palette titles, with accessible close actions. Preserve nested controls in dialog and tab accessibility trees.
+- Show selected option captions in dropdowns and select fields while retaining their underlying values.
 - Restore keyboard focus immediately when a dialog is closed, and retain menu bar and command palette search focus across redraws.
 
 ## 0.12.3 — 2026-10-02

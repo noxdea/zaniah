@@ -11,12 +11,12 @@ module Zaniah
       def disabled(value = true) = (@disabled = !!value; self)
 
       def build(cx)
-        return Button.new(@value ? @value.to_s : @label, variant: :secondary).disabled if @disabled
+        return Button.new(selected_label, variant: :secondary).disabled if @disabled
         super
       end
 
-      def tui_cells(*) = "#{@label}: [#{@value || "choose"} ▾]"
-      def accessibility_node(_cx) = node(:combobox, label: @label, value: @value,
+      def tui_cells(*) = "#{@label}: [#{@value.nil? ? "choose" : selected_label} ▾]"
+      def accessibility_node(_cx) = node(:combobox, label: @label, value: @value.nil? ? nil : selected_label,
         states: {expanded: false, disabled: @disabled}, actions: @disabled ? [] : [:press])
     end
 
