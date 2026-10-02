@@ -107,8 +107,7 @@ module Zaniah
     def entry(object, window, seen)
       return unless object && !seen[object.object_id]
       seen[object.object_id] = true
-      style = object.resolved_style if object.respond_to?(:resolved_style)
-      style ||= object.root&.resolved_style if object.respond_to?(:root)
+      style = rendered_style(object)
       handle = object.focus_handle if object.respond_to?(:focus_handle)
       items = object.context_menu_items if object.respond_to?(:context_menu_items)
       menu = items&.map { |label, callback| [label.dup.freeze, !callback.nil?].freeze }&.freeze if items.is_a?(Array)
@@ -128,6 +127,14 @@ module Zaniah
         children: object.respond_to?(:children) ? object.children.filter_map { |child| entry(child, window, seen) }.freeze : [].freeze)
     end
     private_class_method :entry
+
+    def rendered_style(object)
+      return unless object
+      style = object.resolved_style if object.respond_to?(:resolved_style)
+      style ||= rendered_style(object.root) if object.respond_to?(:root)
+      style
+    end
+    private_class_method :rendered_style
 
     def snapshot_style(style)
       values = style ? style.to_h : {}.freeze

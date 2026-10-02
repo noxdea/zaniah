@@ -94,6 +94,20 @@ class InspectionTest < Minitest::Test
     assert_equal button, snapshot.at(Zaniah::Point.new(5, 5)).element
   end
 
+  def test_snapshot_reads_styles_through_nested_components_in_dialogs
+    select = Zaniah::UI::Select.new(["Loopback", "Ethernet"]).test_id("interface")
+    button = Zaniah::UI::Button.new("Start").test_id("start")
+    content = Zaniah::Div.new.child(select).child(button)
+    @window.render(Zaniah::UI::Dialog.new(content, title: "Capture"), present: false)
+
+    snapshot = Zaniah::Inspection.snapshot(@window)
+    interface = snapshot.find(test_id: "interface")
+    assert_same select, interface.element
+    assert_equal 36, interface.style[:height]
+    assert interface.style.frozen?
+    assert_same button, snapshot.find(test_id: "start").element
+  end
+
   def test_at_uses_the_same_transform_and_clip_as_pointer_dispatch
     element = Zaniah::Div.new.w(40).h(30).style(transform: Zaniah::Transform.translate(50, 0)).on_click { }
     @window.render(element)
