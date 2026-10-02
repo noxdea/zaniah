@@ -103,15 +103,27 @@ module Zaniah
       end
 
       def accessibility_node(_cx)
-        header = Accessibility.node(role: :row, children: visible_columns.map do |c|
-          Accessibility.node(role: :columnheader, label: c[:label], states: {sort: @sort_key == c[:key] ? @sort_direction : nil}, actions: c[:sortable] ? [:sort] : [])
+        header = Accessibility.node(role: :row, children: visible_columns.map.with_index do |c, index|
+          Accessibility.node(role: :columnheader, label: c[:label], bounds: @root&.children&.first&.children&.[](index)&.layout_node&.bounds,
+            states: {column_key: c[:key], sort: @sort_key == c[:key] ? @sort_direction : nil}, actions: c[:sortable] ? [:sort] : [])
         end)
-        rows = visible_indices.map do |i|
-          Accessibility.node(role: :row, id: identity_at(i), states: {selected: @selection.include?(identity_at(i)), row_index: i}, children: visible_columns.map do |c|
-            Accessibility.node(role: :cell, label: c[:label], value: display_value(@source.cell(i, c[:key])))
+        rows = visible_indices.map.with_index do |i, visible_index|
+          element = @body.children[visible_index]
+          Accessibility.node(role: :row, id: identity_at(i), bounds: element&.layout_node&.bounds,
+            states: {selected: @selection.include?(identity_at(i)), row_index: i}, actions: @selection_mode == :none ? [] : [:select], children: visible_columns.map.with_index do |c, column_index|
+            Accessibility.node(role: :cell, label: c[:label], value: display_value(@source.cell(i, c[:key])), bounds: element&.children&.[](column_index)&.layout_node&.bounds)
           end)
         end
         node(:table, states: {row_count: @source.count, sort_key: @sort_key, sort_direction: @sort_direction}, children: [header, *rows])
+      end
+
+      def accessibility_action(node, action)
+        case action
+        when :sort then !!sort_by(node.states[:column_key]) if node.states[:column_key]
+        when :select
+          index = node.states[:row_index]
+          !!select(index) if index && index < @source.count
+        end
       end
 
       private
@@ -186,7 +198,7 @@ module Zaniah
       def visible_columns = @columns.select { |c| c[:visible] }
       def visible_indices = (@body.visible_range || (0...[@source.count, 20].min)).select { |i| i < @source.count }
       def identity_at(index) = @source.respond_to?(:row_id) ? @source.row_id(index) : index
-      def display_value(value) = value.respond_to?(:tui_cells) ? value.tui_cells.to_s : value.to_s
+      def display_value(value) = value.respond_to?(:tui_cells) ? value.tui_cells.to_s : value.respond_to?(:text) ? value.text.to_s : value.to_s
       def find_column(key) = @columns.find { |c| c[:key] == key.to_sym } || raise(KeyError, "unknown column #{key}")
       def validate_width(width)
         raise ArgumentError, "column width must be finite and positive" unless width.is_a?(Numeric) && width.finite? && width.positive?

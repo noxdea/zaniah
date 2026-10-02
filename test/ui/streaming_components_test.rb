@@ -95,4 +95,18 @@ class StreamingComponentsTest < Minitest::Test
     assert_includes tree.root.visible_range, 20
     refute tree.select_id(:missing)
   end
+
+  def test_virtual_table_accessibility_can_sort_headers_and_select_rows
+    sorted, selected = nil, nil
+    table = render(T::UI::VirtualTable.new(Source.new(10, [], false), columns: [:id], height: 100)
+      .on_sort { |key, direction, _| sorted = [key, direction] }
+      .on_select { |index, _, _| selected = index })
+    header = @window.accessibility_tree.query(role: :columnheader).first.first
+    row = @window.accessibility_tree.query(role: :row, states: {row_index: 1}).first.first
+    assert T::Accessibility.perform(@window, header, :sort)
+    assert_equal [:id, :asc], sorted
+    assert T::Accessibility.perform(@window, row, :select)
+    assert_equal 1, selected
+    assert_equal Set[1], table.selection
+  end
 end

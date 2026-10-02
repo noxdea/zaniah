@@ -534,6 +534,7 @@ module Zaniah
       def scroll_to: (Integer index, ?align: :start | :center | :end | :nearest) -> self
       def invalidate: () -> self
       def following_tail?: () -> bool
+      def accessibility_action: (Accessibility::Node node, Symbol action) -> bool?
     end
     class HexView < Component
       attr_accessor bytes: String
