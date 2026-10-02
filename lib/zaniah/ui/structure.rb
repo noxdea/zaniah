@@ -28,7 +28,7 @@ module Zaniah
       def tui_cells(*) = "#{@items.map.with_index { |(label, _), index| index == @selected_index ? "[#{label}]" : label }.join(" ")}\n#{content_text}"
       def accessibility_node(cx)
         tabs = @items.map.with_index { |(label, _), index| Accessibility.node(role: :tab, label: label, states: {selected: index == @selected_index}, actions: [:select]) }
-        node(:group, children: tabs + [Accessibility.node(role: :tabpanel, children: [@items[@selected_index][1].respond_to?(:accessibility_node) ? @items[@selected_index][1].accessibility_node(cx) : nil].compact)])
+        node(:group, children: tabs + [Accessibility.node(role: :tabpanel, children: [child_node(@items[@selected_index][1], cx)].compact)])
       end
 
       private

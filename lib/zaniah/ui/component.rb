@@ -69,6 +69,15 @@ module Zaniah
 
       attr_writer :parent
 
+      def child_node(pane, cx)
+        semantic = pane.accessibility_node(cx) if pane.respond_to?(:accessibility_node)
+        return semantic if semantic.is_a?(Accessibility::Node)
+        children = pane.respond_to?(:children) ? pane.children : []
+        nodes = children.filter_map { |child| child_node(child, cx) }
+        Accessibility.node(role: :group, children: nodes) unless nodes.empty?
+      end
+
+
       private
 
       def node(role, id: @test_id, label: @accessibility_label, value: nil, states: {}, children: [], actions: [])

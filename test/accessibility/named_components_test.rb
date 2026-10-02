@@ -51,6 +51,22 @@ class NamedComponentsTest < Minitest::Test
     end
   end
 
+  def test_dialogs_and_tabs_preserve_controls_inside_layout_wrappers
+    called = []
+    grid = Zaniah::UI::PropertyGrid.new([{key: :name, label: "Name"}], {name: "Trace"}, label: "Settings")
+    nested = Zaniah::Div.new.child(Zaniah::Div.new.child(Zaniah::UI::Button.new("Apply").on_click { called << true }).child(grid))
+    tabs = Zaniah::UI::Tabs.new([["Capture", nested]])
+    dialog = Zaniah::UI::Dialog.new(Zaniah::Div.new.child(tabs), title: "Preferences")
+    @window.render(dialog, present: false)
+    snapshot = Zaniah::Inspection.snapshot(@window)
+    button = snapshot.accessibility.query(role: :button, label: "Apply").first&.first
+    refute_nil button
+    assert snapshot.accessibility.query(role: :table, label: "Settings").any?
+    assert snapshot.accessibility.query(role: :textbox, label: "Name").any?
+    assert Zaniah::Inspection.perform(@window, button, :press)
+    assert_equal [true], called
+  end
+
   def test_dialog_close_and_palette_names_can_be_localized
     dialog = Zaniah::UI::Dialog.new(Zaniah::UI::Button.new("続行"), title: "確認", close_label: "閉じる")
     @window.render(dialog, present: false)
@@ -68,5 +84,27 @@ class NamedComponentsTest < Minitest::Test
     assert_equal :searchbox, palette.accessibility_node(nil).children.first.role
     assert_equal :list, palette.accessibility_node(nil).children.last.role
     assert snapshot.accessibility.query(role: :button, label: "閉じる").any?
+  end
+
+  def test_closing_and_removing_a_dialog_releases_focus_before_another_frame
+    first, second = %w[Open Filter].map { |label| Zaniah::UI::Button.new(label) }
+    base = Zaniah::Div.new.child(first).child(second)
+    dispatcher = @window.dispatcher
+    @window.render(base, present: false)
+    dispatcher.focus(first.focus_handle, origin: :keyboard)
+    dialog = Zaniah::UI::Dialog.new(Zaniah::UI::Button.new("OK"), title: "Open capture")
+    closed = []
+    dialog.on_close { closed << true }
+    @window.render(Zaniah::Div.new.child(base).child(dialog), present: false)
+    refute dispatcher.focus_tree.allows?(first.focus_handle)
+    assert dispatcher.focused.ancestors.include?(dialog.focus_handle)
+
+    dialog.close
+    assert dispatcher.focus_tree.allows?(first.focus_handle), "close must release its trap before removal"
+    assert_same first.focus_handle, dispatcher.focused
+    assert_empty closed, "programmatic close must not invoke the dismissal callback"
+    @window.render(base, present: false)
+    dispatcher.key("tab")
+    assert_same second.focus_handle, dispatcher.focused
   end
 end

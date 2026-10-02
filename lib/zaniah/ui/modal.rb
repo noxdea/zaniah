@@ -29,7 +29,7 @@ module Zaniah
       end
 
       def tui_cells(*) = "┌ #{@title || "Dialog"} ┐\n#{@content.respond_to?(:tui_cells) ? @content.tui_cells : ""}\n└#{"─" * 8}┘"
-      def accessibility_node(cx) = @open && node(:dialog, label: @title, states: {modal: true}, children: [@content.respond_to?(:accessibility_node) ? @content.accessibility_node(cx) : nil, @close_button&.accessibility_node(cx)].compact, actions: [:dismiss])
+      def accessibility_node(cx) = @open && node(:dialog, label: @title, states: {modal: true}, children: [child_node(@content, cx), @close_button&.accessibility_node(cx)].compact, actions: [:dismiss])
     end
 
     class Dialog < Modal; end

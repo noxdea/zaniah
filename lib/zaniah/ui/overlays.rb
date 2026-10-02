@@ -53,6 +53,7 @@ module Zaniah
           @visible, @entered = true, false
           @cx&.window&.request_frame
         else
+          release_focus
           @cx ? animate_close(@cx) : @visible = false
         end
         self
@@ -80,9 +81,7 @@ module Zaniah
           target = tree.next
           cx.dispatcher.focus(target, origin: :keyboard) if target && !focused_inside
         elsif @trapped
-          tree.release_trap(@focus_scope)
-          @dispatcher.focus(@return_focus) if @return_focus&.focusable
-          @trapped = false
+          release_focus
         end
       end
 
@@ -96,14 +95,19 @@ module Zaniah
       def dismiss(event = nil, cx = nil)
         return false unless @open
         @open = false
+        release_focus
         @on_close&.call(event, cx)
-        cx&.dispatcher&.focus_tree&.release_trap(@focus_scope)
-        cx&.dispatcher&.focus(@return_focus) if @return_focus&.focusable
-        @trapped = false
         animate_close(cx) if cx
         @visible = false unless cx
         cx&.window&.request_frame
         true
+      end
+
+      def release_focus
+        return unless @trapped
+        @dispatcher.focus_tree.release_trap(@focus_scope)
+        @dispatcher.focus(@return_focus) if @return_focus&.focusable
+        @trapped = false
       end
 
       def viewport(cx) = Bounds.new(0, 0, cx.window.content_size.width, cx.window.content_size.height)
