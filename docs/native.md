@@ -42,6 +42,18 @@ file drops, fullscreen, cursors, URL opening, file dialogs, appearance changes,
 and PNG capture. Platform availability differs; see [the RBS declarations](../sig/native.rbs)
 and [platform declarations](../sig/platform.rbs) for the exact API.
 
+## File dialogs
+
+Native file dialogs accept a starting directory, suggested filename, and extension filters:
+
+```ruby
+window.prompt_for_paths(save: true, default_name: "capture.pcapng", directory: Dir.home,
+  filters: [{label: "Capture files", patterns: ["*.pcapng", "*.pcap"]}])
+```
+
+Patterns support `*` and `*.extension`. macOS combines the allowed extensions;
+Linux and Windows also show each named filter. Cancel returns an empty array.
+
 ## Clipboard representations
 
 `Clipboard::Item` holds eager MIME-keyed data. `text/*` values are UTF-8 text;

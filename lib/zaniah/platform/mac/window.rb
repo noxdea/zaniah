@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "clipboard_data"
+require_relative "../file_dialog_options"
 
 module Zaniah
   module Platform
@@ -620,8 +621,17 @@ module Zaniah
             O.release(item)
           end
         end
-        def prompt_for_paths(multiple: false, directories: false, save: false)
+        def prompt_for_paths(multiple: false, directories: false, save: false, default_name: nil, directory: nil, filters: [])
+          FileDialogOptions.validate(default_name, directory, filters)
           panel = O.send(O.klass(save ? "NSSavePanel" : "NSOpenPanel"), save ? "savePanel" : "openPanel")
+          O.send(panel, "setNameFieldStringValue:", O.string(default_name), args: [:pointer], result: :void) if default_name
+          if directory
+            url = O.send(O.klass("NSURL"), "fileURLWithPath:", O.string(File.expand_path(directory)), args: [:pointer])
+            O.send(panel, "setDirectoryURL:", url, args: [:pointer], result: :void)
+          end
+          patterns = filters.flat_map { |filter| filter[:patterns] }.uniq
+          types = !patterns.empty? && !patterns.include?("*") ? cocoa_array(patterns.map { |pattern| O.string(pattern.delete_prefix("*.")) }) : 0
+          O.send(panel, "setAllowedFileTypes:", types, args: [:pointer], result: :void)
           unless save
             O.send(panel, "setAllowsMultipleSelection:", multiple ? 1 : 0, args: [:bool], result: :void)
             O.send(panel, "setCanChooseDirectories:", directories ? 1 : 0, args: [:bool], result: :void)

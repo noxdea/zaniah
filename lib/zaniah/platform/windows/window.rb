@@ -6,6 +6,7 @@ require_relative "../../gpu/open_gl"
 require_relative "clipboard_data"
 require_relative "native_menu"
 require_relative "drag_drop"
+require_relative "../file_dialog_options"
 
 module Zaniah
   module Platform
@@ -568,22 +569,39 @@ module Zaniah
           cursor = @user.fn(:LoadCursorW, [P, P], P).call(0, id)
           @user.fn(:SetCursor, [P], P).call(cursor)
         end
-        def prompt_for_paths(multiple: false, directories: false, save: false)
-          return directory_dialog if directories
+        def prompt_for_paths(multiple: false, directories: false, save: false, default_name: nil, directory: nil, filters: [])
+          FileDialogOptions.validate(default_name, directory, filters)
+          return directory_dialog(directory: directory) if directories
           dialog = Types::OpenFileName.malloc(Fiddle::RUBY_FREE)
           dialog.to_ptr[0, Types::OpenFileName.size] = "\0" * Types::OpenFileName.size
           bytes = "\0" * 131_072
+          if default_name
+            name_bytes = wide(default_name)
+            raise ArgumentError, "default filename is too long" if name_bytes.bytesize > bytes.bytesize
+            bytes[0, name_bytes.bytesize] = name_bytes
+          end
           dialog.size, dialog.owner, dialog.file, dialog.max_file = Types::OpenFileName.size, @handle, Fiddle::Pointer[bytes], bytes.bytesize / 2
-          dialog.flags = 0x00080000 | 0x00000800 | (multiple ? 0x200 : 0) | (save ? 2 : 0x1000)
+          filter_bytes = filters.flat_map { |filter| [filter[:label], filter[:patterns].join(";")] }.join("\0").then { |text| wide(text + "\0") } unless filters.empty?
+          directory_bytes = wide(File.expand_path(directory)) if directory
+          dialog["filter"] = Fiddle::Pointer[filter_bytes] if filter_bytes
+          dialog.initial_dir = Fiddle::Pointer[directory_bytes] if directory_bytes
+          dialog.flags = 0x00080000 | 0x00000800 | 0x8 | (multiple ? 0x200 : 0) | (save ? 2 : 0x1000)
           library = FFI::Library.new("comdlg32.dll")
           return [] if library.fn(save ? :GetSaveFileNameW : :GetOpenFileNameW, [P], I).call(dialog).zero?
           entries = bytes.force_encoding("UTF-16LE").encode("UTF-8").split("\0").take_while { |text| !text.empty? }
           entries.length > 1 ? entries.drop(1).map { |file| File.join(entries.first, file) } : entries
         end
-        def directory_dialog
+        def directory_dialog(directory: nil)
           # BROWSEINFOW is pointer-only except flags and the final image index.
           title = wide("Choose a directory")
-          info = [@handle.to_i, 0, 0, Fiddle::Pointer[title].to_i, 0x41, 0, 0, 0].pack("J4Ix4J2Ix4")
+          initial = wide(File.expand_path(directory)) if directory
+          callback = if initial
+            Fiddle::Closure::BlockCaller.new(I, [P, U, P, P]) do |handle, message, _lparam, _data|
+              @user.fn(:SendMessageW, [P, U, P, P], P).call(handle, 0x467, 1, initial) if message == 1
+              0
+            end
+          end
+          info = [@handle.to_i, 0, 0, Fiddle::Pointer[title].to_i, 0x41, callback&.to_i || 0, 0, 0].pack("J4Ix4J2Ix4")
           @shell.fn(:SHBrowseForFolderW, [P], P).call(info).then do |pidl|
             return [] if pidl.null?
             bytes = "\0" * 65_536

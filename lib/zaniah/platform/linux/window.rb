@@ -7,6 +7,7 @@ require_relative "../../ffi/library"
 require_relative "../../gpu/open_gl"
 require_relative "appearance_aware"
 require_relative "displays"
+require_relative "../file_dialog_options"
 
 module Zaniah
   module Platform
@@ -790,11 +791,18 @@ module Zaniah
           x(:XDefineCursor, [P, L, L], I, @display, @handle, cursor)
           x(:XFreeCursor, [P, L], I, @display, cursor)
         end
-        def prompt_for_paths(multiple: false, directories: false, save: false)
+        def prompt_for_paths(multiple: false, directories: false, save: false, default_name: nil, directory: nil, filters: [])
+          FileDialogOptions.validate(default_name, directory, filters)
           command = ["zenity", "--file-selection", "--separator=\n"]
           command << "--multiple" if multiple
           command << "--directory" if directories
           command << "--save" << "--confirm-overwrite" if save
+          if default_name || directory
+            path = File.join(directory ? File.expand_path(directory) : Dir.pwd, default_name || "")
+            path += File::SEPARATOR unless default_name || path.end_with?(File::SEPARATOR)
+            command << "--filename=#{path}"
+          end
+          filters.each { |filter| command << "--file-filter=#{filter[:label]} | #{filter[:patterns].join(' ')}" }
           output, status = Open3.capture2(*command)
           status.success? ? output.lines.map(&:chomp) : []
         rescue Errno::ENOENT

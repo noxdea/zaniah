@@ -15,7 +15,7 @@ module Zaniah
         def appearance: () -> (:light | :dark)
         def on_appearance: () { (:light | :dark) -> void } -> void
         def tooltip=: (String text) -> void
-        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool) -> Array[String]
+        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool, ?default_name: String?, ?directory: String?, ?filters: Array[{ label: String, patterns: Array[String] }]) -> Array[String]
         def cursor_style=: (cursor style) -> void
         def open_url: (String url) -> void
         def toggle_fullscreen: () -> void
@@ -34,7 +34,7 @@ module Zaniah
         def clipboard_paths: () -> Array[String]
         def appearance: () -> (:light | :dark)
         def on_appearance: () { (:light | :dark) -> void } -> void
-        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool) -> Array[String]
+        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool, ?default_name: String?, ?directory: String?, ?filters: Array[{ label: String, patterns: Array[String] }]) -> Array[String]
         def cursor_style=: (cursor style) -> void
         def open_url: (String url) -> bool
         def toggle_fullscreen: () -> void
@@ -51,7 +51,7 @@ module Zaniah
         def on_appearance: () { (:light | :dark) -> void } -> void
         def on_delete_surrounding: () { (Integer before, Integer after) -> void } -> void
         def surrounding_text: (String text, cursor: Integer, ?anchor: Integer) -> void
-        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool) -> Array[String]
+        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool, ?default_name: String?, ?directory: String?, ?filters: Array[{ label: String, patterns: Array[String] }]) -> Array[String]
         def cursor_style=: (cursor style) -> void
         def open_url: (String url) -> bool
         def toggle_fullscreen: () -> void
@@ -74,7 +74,7 @@ module Zaniah
         def appearance: () -> (:light | :dark)
         def on_appearance: () { (:light | :dark) -> void } -> void
         def context_menu: (menu items, ?position: Point?) -> void
-        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool) -> Array[String]
+        def prompt_for_paths: (?multiple: bool, ?directories: bool, ?save: bool, ?default_name: String?, ?directory: String?, ?filters: Array[{ label: String, patterns: Array[String] }]) -> Array[String]
         def cursor_style=: (cursor style) -> void
         def open_url: (String url) -> void
         def toggle_fullscreen: () -> void
