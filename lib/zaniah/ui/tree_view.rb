@@ -24,6 +24,7 @@ module Zaniah
 
       def on_select(&block) = (@on_select = block; self)
       def on_toggle(&block) = (@on_toggle = block; self)
+      def on_context_menu(&block) = (@on_context_menu = block; self)
       def expand(id) = (toggle(id, true); self)
       def collapse(id) = (toggle(id, false); self)
 
@@ -435,12 +436,20 @@ module Zaniah
       end
 
       def row(item, index, cx)
-        Div.new.key(item.id).h(@row_height).flex_row.items_center.gap(4).p([2, 6])
+        element = Div.new.key(item.id).h(@row_height).flex_row.items_center.gap(4).p([2, 6])
           .bg(item.id == @selected_id ? cx.theme.colors.selection : "#0000").cursor(:pointer)
           .on_click { |event, context| select(item, index, event, context) }
           .children(Array.new(item.depth) { Div.new.w(16).h_full.style(border_widths: Edges.new(0, 1, 0, 0), border_color: cx.theme.colors.border) })
           .child(Button.new(branch(item), size: :sm, variant: :ghost).on_click { toggle(item.id) })
           .child(Label.new(item.label, size: :sm))
+        if @on_context_menu
+          element.on_mouse_down do |event, context|
+            next unless event.button == :right
+            select(item, index, event, context)
+            context.window.context_menu(@on_context_menu.call(item.value, context), position: event.position)
+          end
+        end
+        element
       end
 
       def select(item, index, event, cx)

@@ -26,6 +26,10 @@ or split pane resizes. This updates their internal list viewport while retaining
 scroll state and selection. `VirtualTable#follow_tail=` toggles bottom following;
 call `scroll_to(source.count - 1, align: :end)` to resume immediately from elsewhere.
 
+`TreeView#on_context_menu { |item, cx| menu }` selects the item under a right
+click before opening the returned menu at the pointer. The callback receives the
+same item value as `on_select`.
+
 ## Component reference
 
 | Layer | Component | Main constructor/options | Variants | Accessibility role |
@@ -100,7 +104,7 @@ call `scroll_to(source.count - 1, align: :end)` to resume immediately from elsew
 | L3 | `ListView` | `(items, height:, row_height:, selected:)`; `on_select` | virtual rows and keyboard selection | list/listitem |
 | L4 | `Table`, `DataGrid` | `(rows, columns:, height:, selection:, row_key:)`; `on_sort`, `on_select`, `on_edit`, `on_copy`, `on_paste` | virtual rows, sorting, resizing, editing, typed clipboard hooks | table/row/cell |
 | L4 | `Grid` | `(rows:, columns:, row_height:, column_width:, frozen_rows:, frozen_columns:)`; `scroll_to`, range `selection`, `on_select`, `on_edit`, `on_fill`, `on_resize`, `on_copy`, `on_paste` | two-axis virtualization, frozen panes, visible-cell resize/fill and typed clipboard hooks | table |
-| L4 | `TreeView` | `(items, height:, selected:)`; `select_id`, `expand`, `collapse`, `replace`, `replace_children`, `invalidate`, lazy `children` proc | arrows/Home/End | tree/treeitem |
+| L4 | `TreeView` | `(items, height:, selected:)`; `select_id`, `on_context_menu`, `expand`, `collapse`, `replace`, `replace_children`, `invalidate`, lazy `children` proc | arrows/Home/End | tree/treeitem |
 | L4 | `PropertyGrid` | `(schema, values, height:, row_height:)`; `on_change`, `set` | typed existing controls, `Validation`, virtual rows | table/row/cell |
 | L5 | `Sparkline` | `(values, width:, height:, color:, label:)` | line + tooltip | image |
 | L5 | `LineChart`, `BarChart`, `StackedBarChart`, `AreaChart` | `(series, width:, height:, colors:, label:)`; `AreaChart(stacked:)` | shared axes, ticks, grid lines, color-keyed legend, tooltip | image |

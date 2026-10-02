@@ -107,7 +107,7 @@ module Zaniah
           w ||= measured[0] + padding_w
           h ||= measured[1] + padding_h
           node.baseline = measured[2] || measured[1]
-        elsif !node.children.empty?
+        elsif !node.children.empty? && (!w || !h)
           sizes = node.children.reject { |c| c.style[:position] == :absolute || c.style[:display] == :none }.map { |c| natural_size(c, available_w, available_h) }
           row = s[:flex_direction].to_s.start_with?("row")
           gap = resolve_length(s[:gap], available_w, 0) * [sizes.length - 1, 0].max

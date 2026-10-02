@@ -21,6 +21,7 @@ module Zaniah
         @bytes = value.b.dup.freeze
         @selection = 0...0
         @highlights = []
+        @row_cache&.clear
         @body.count = row_count if @body
         invalidate
         value
@@ -33,6 +34,7 @@ module Zaniah
           raise ArgumentError, "highlight tone must be primary or secondary" unless %i[primary secondary].include?(tone)
           {range: range, tone: tone}.freeze
         end.freeze
+        @row_cache&.clear
         invalidate
         values
       end
@@ -50,6 +52,7 @@ module Zaniah
 
       def select(range, cx = @cx)
         @selection = checked_range(range)
+        @row_cache&.clear
         @anchor, @caret = @selection.begin, [@selection.end - 1, @selection.begin].max
         @on_select&.call(@selection, cx)
         invalidate
@@ -63,6 +66,10 @@ module Zaniah
 
       def build(cx)
         @cx = cx
+        @row_cache ||= {}
+        @row_cache.clear unless @row_theme.equal?(cx.theme)
+        @row_theme = cx.theme
+        @row_cache.delete_if { |index, _| !@body.visible_range.cover?(index) } if @body.visible_range
         Div.new.h(@height).overflow_hidden.bg(cx.theme.colors.surface).child(@body)
           .focusable(context: {in_hex_view: true}) { |action| hex_action(action) }
       end
@@ -86,6 +93,10 @@ module Zaniah
       private
 
       def row(index, cx)
+        @row_cache[index] ||= build_row(index, cx)
+      end
+
+      def build_row(index, cx)
         start = index * @bytes_per_row
         values = @bytes.byteslice(start, @bytes_per_row).bytes
         element = Div.new.flex_row.h(@row_height).items_center.gap(8)

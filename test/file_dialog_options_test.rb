@@ -12,7 +12,7 @@ class FileDialogOptionsTest < Minitest::Test
     Open3.stub(:capture2, invoke) do
       assert_equal ["/tmp/capture.pcapng"], window.prompt_for_paths(save: true, default_name: "capture.pcapng", directory: "/tmp", filters: [{label: "Capture files", patterns: ["*.pcapng", "*.pcap"]}])
     end
-    assert_includes captured, "--filename=/tmp/capture.pcapng"
+    assert_includes captured, "--filename=#{File.join(File.expand_path("/tmp"), "capture.pcapng")}"
     assert_includes captured, "--file-filter=Capture files | *.pcapng *.pcap"
     assert_includes captured, "--confirm-overwrite"
     assert_raises(ArgumentError) { window.prompt_for_paths(default_name: "../capture") }
@@ -26,7 +26,8 @@ class FileDialogOptionsTest < Minitest::Test
     function = ->(dialog) do
       checked = true
       assert_equal "capture.pcapng", dialog.file[0, 28].force_encoding("UTF-16LE").encode("UTF-8").delete("\0")
-      assert_equal "/tmp\0".encode("UTF-16LE").b, dialog.initial_dir[0, 10]
+      directory = "#{File.expand_path("/tmp")}\0".encode("UTF-16LE").b
+      assert_equal directory, dialog.initial_dir[0, directory.bytesize]
       filter = "Capture files\0*.pcapng;*.pcap\0\0".encode("UTF-16LE").b
       assert_equal filter, dialog["filter"][0, filter.bytesize]
       assert_operator dialog.flags & 0x8, :>, 0

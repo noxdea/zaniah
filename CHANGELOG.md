@@ -6,8 +6,10 @@
 - Add virtual hexadecimal and ASCII byte views with linked selection, highlights, keyboard navigation, and copying.
 - Preserve scrolling and height measurements when virtual list counts change, with optional bottom following.
 - Avoid stale rows and duplicated drawing when scrolling keyed virtual lists.
+- Reduce layout work for fixed-size containers and reuse unchanged visible byte rows for faster redraws.
 - Add text-field validation states and token completion with keyboard selection and Unicode-safe replacement.
-- Add programmatic tree selection and suggested filenames, starting directories, and extension filters for native file dialogs.
+- Add programmatic tree selection and item context menus.
+- Add suggested filenames, starting directories, and extension filters for native file dialogs.
 - Fix inspection snapshots for nested UI components, including select controls in dialogs.
 
 ## 0.11.0 — 2026-09-25

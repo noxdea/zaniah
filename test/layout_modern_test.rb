@@ -55,6 +55,22 @@ class LayoutModernTest < Minitest::Test
     assert_equal T::Bounds.new(20, 0, 80, 40), child.bounds
   end
 
+  def test_fixed_container_size_does_not_measure_descendants_until_layout
+    measurements = []
+    text = T::Layout::Node.new(measure: ->(width, height) { measurements << [width, height]; [20, 10, 8] })
+    fixed = T::Layout::Node.new(style: {width: 80, height: 40, padding: 5}, children: [text])
+    engine = T::Layout::Engine.new
+
+    assert_equal [80, 40], engine.measure(fixed, width: 200, height: 100)
+    assert_empty measurements
+
+    root = T::Layout::Node.new(children: [fixed])
+    engine.compute(root, width: 200, height: 100)
+    assert_equal [[70, 30]], measurements
+    assert_equal T::Bounds.new(5, 5, 70, 10), text.bounds
+    assert_equal 8, text.baseline
+  end
+
   def test_scroll_view_offsets_clips_hits_and_sticks
     window = T::Platform.open_window(width: 100, height: 50)
     clicked = false

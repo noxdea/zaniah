@@ -96,6 +96,38 @@ class StreamingComponentsTest < Minitest::Test
     refute tree.select_id(:missing)
   end
 
+  def test_hex_view_reuses_unchanged_rows_and_refreshes_byte_visuals
+    hex = T::UI::HexView.new("\x01".b, height: 100)
+    @window.render(hex, present: false)
+    first = hex.body.children.first
+    @window.render(hex, present: false)
+    assert first.equal?(hex.body.children.first), "unchanged byte rows should be reused"
+
+    hex.select(0...1)
+    @window.render(hex, present: false)
+    assert_equal T::Theme.dark.colors.selection, hex.body.children.first.children[1].children.first.resolved_style[:background]
+    @app.global(:theme, T::Theme.high_contrast)
+    @window.render(hex, present: false)
+    assert_equal T::Theme.high_contrast.colors.selection, hex.body.children.first.children[1].children.first.resolved_style[:background]
+
+    hex.select(0...0)
+    hex.highlights = [{range: 0...1, tone: :secondary}]
+    @window.render(hex, present: false)
+    assert_equal T::Theme.high_contrast.colors.accent.with_alpha(0.25), hex.body.children.first.children[1].children.first.resolved_style[:background]
+    hex.bytes = "\x02".b
+    @window.render(hex, present: false)
+    cell = hex.body.children.first.children[1].children.first
+    assert_equal "02", cell.children.first.text
+    assert_equal "#0000", cell.resolved_style[:background]
+
+    hex.bytes = "\x02".b * 4096
+    [0, 160, 1600, 4000].each do |offset|
+      hex.scroll_to_offset(offset)
+      2.times { @window.render(hex, present: false) }
+      assert_equal hex.body.visible_range.to_a, hex.instance_variable_get(:@row_cache).keys.sort
+    end
+  end
+
   def test_virtual_table_accessibility_can_sort_headers_and_select_rows
     sorted, selected = nil, nil
     table = render(T::UI::VirtualTable.new(Source.new(10, [], false), columns: [:id], height: 100)

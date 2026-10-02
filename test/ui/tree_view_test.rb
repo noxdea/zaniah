@@ -24,6 +24,28 @@ class TreeViewTest < Minitest::Test
     component
   end
 
+  def test_right_click_selects_the_item_before_opening_its_context_menu
+    calls = []
+    tree = T::UI::TreeView.new([{id: :first, label: "First"}, {id: :second, label: "Second"}])
+      .on_select { |item, event, _cx| calls << [:select, item[:id], event.button] }
+      .on_context_menu { |item, cx| calls << [:menu, item[:id], tree.selected_id, cx.window.equal?(@window)]; [] }
+    render(tree)
+    row = tree.root.children[1]
+    bounds = row.layout_node.bounds
+    position = T::Point.new(bounds.x + bounds.width - 10, bounds.y + bounds.height / 2)
+    opened = nil
+    @window.stub(:context_menu, ->(items, position:) { opened = [items, position] }) do
+      @window.input(T::Input::MouseDown.new(position, :left, [], 1))
+      assert_nil opened
+      calls.clear
+      @window.input(T::Input::MouseDown.new(position, :right, [], 1))
+    end
+
+    assert_equal :second, tree.selected_id
+    assert_equal [[:select, :second, :right], [:menu, :second, :second, true]], calls
+    assert_equal [[], position], opened
+  end
+
   def test_lazy_loader_retries_after_an_error_and_caches_a_success
     calls = 0
     loader = lambda do |_value|
