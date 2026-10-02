@@ -3,6 +3,32 @@
 require_relative "test_helper"
 
 class StyleAndThemeTest < Minitest::Test
+  def test_style_updates_keep_defaults_and_leave_original_values_immutable
+    original = Zaniah::Layout::Style.new(width: 120, background: "#123", metadata: {source: :original}.freeze)
+    merged = original.merge(width: 240, background: nil, extra: nil)
+    assert_equal 120, original[:width]
+    assert_equal "#123", original[:background]
+    refute original.to_h.key?(:extra)
+    assert_equal 240, merged[:width]
+    assert_nil merged[:background]
+    assert merged.to_h.key?(:extra)
+    assert_equal original[:metadata], merged[:metadata]
+    Zaniah::Layout::Style::DEFAULTS.each_key { |key| assert merged.to_h.key?(key), key.to_s }
+    assert original.to_h.frozen?
+    assert merged.to_h.frozen?
+    assert_raises(FrozenError) { merged.to_h[:width] = 10 }
+    assert_equal original.to_h, original.merge.to_h
+  end
+
+  def test_style_updates_have_a_bounded_allocation_cost
+    style = Zaniah::Layout::Style.new(width: 120)
+    10.times { style.merge(width: 240, height: 32) }
+    before = GC.stat(:total_allocated_objects)
+    1000.times { style.merge(width: 240, height: 32) }
+    allocated = GC.stat(:total_allocated_objects) - before
+    assert_operator allocated, :<, 4000, "style updates should avoid repeatedly reconstructing their defaults"
+  end
+
   def test_style_inheritance_and_state_order
     parent = Zaniah::Layout::Style.new(text_color: "#fff", font_size: 18)
     child = Zaniah::Layout::Style.new(font_size: 12).inherit(parent)

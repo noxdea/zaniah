@@ -22,7 +22,11 @@ module Zaniah
 
       def initialize(**properties) = @values = DEFAULTS.merge(properties).freeze
       def [](name) = @values[name]
-      def merge(**properties) = Style.new(**@values.merge(properties))
+      def merge(**properties)
+        style = Style.allocate
+        style.instance_variable_set(:@values, @values.merge(properties).freeze)
+        style
+      end
       def to_h = @values
 
       def inherit(parent)

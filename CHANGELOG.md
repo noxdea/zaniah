@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.2 — 2026-10-02
+
+- Reduce redraw allocations to improve rendering responsiveness.
+
 ## 0.12.1 — 2026-10-02
 
 - Prevent obsolete focus controls from accumulating across redraws, reducing memory use and keeping keyboard navigation on current controls.
