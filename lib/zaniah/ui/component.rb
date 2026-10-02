@@ -23,6 +23,7 @@ module Zaniah
         @window_control = kind
         self
       end
+      def accessibility_label(value) = (@accessibility_label = value&.to_s; self)
       def accessibility_node(_cx) = nil
       def tui_cells(_bounds = nil, _cx = nil) = nil
       def focus_handle = @root&.focus_handle
@@ -70,8 +71,8 @@ module Zaniah
 
       private
 
-      def node(role, id: @test_id, label: nil, value: nil, states: {}, children: [], actions: [])
-        result = Accessibility.node(role: role, id: id, label: label, value: value,
+      def node(role, id: @test_id, label: @accessibility_label, value: nil, states: {}, children: [], actions: [])
+        result = Accessibility.node(role: role, id: id, label: @accessibility_label || label, value: value,
           bounds: @layout_node&.bounds, states: states, children: children, actions: actions)
         Accessibility::NODE_OWNERS[result] = self
         result

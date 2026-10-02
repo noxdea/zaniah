@@ -3,9 +3,10 @@
 module Zaniah
   module UI
     class Modal < OverlayComponent
-      def initialize(content, title: nil, open: true, close_on_scrim: true, width: 440)
+      def initialize(content, title: nil, open: true, close_on_scrim: true, width: 440, close_label: "Close")
         super(open: open, modal: true)
         @content, @title, @close_on_scrim, @panel_width = content, title&.to_s, !!close_on_scrim, width
+        @close_label = close_label.to_s
         @focus_scope.on_action = ->(action) { action == :dismiss && dismiss(nil, @cx) }
       end
 
@@ -19,7 +20,7 @@ module Zaniah
         if @title
           panel.child(Div.new.flex_row.items_center.gap(cx.theme.spacing[2])
             .child(Label.new(@title, size: :lg).flex_1)
-            .child(IconButton.new(:close, label: "Close", variant: :ghost).on_click { |event, context| dismiss(event, context) }))
+            .child(@close_button = IconButton.new(:close, label: @close_label, variant: :ghost).on_click { |event, context| dismiss(event, context) }))
         end
         panel.child(@content)
         Overlay.new.items_center.justify_center.bg(cx.theme.colors.overlay_scrim)
@@ -28,7 +29,7 @@ module Zaniah
       end
 
       def tui_cells(*) = "┌ #{@title || "Dialog"} ┐\n#{@content.respond_to?(:tui_cells) ? @content.tui_cells : ""}\n└#{"─" * 8}┘"
-      def accessibility_node(cx) = @open && node(:dialog, label: @title, states: {modal: true}, children: [@content.respond_to?(:accessibility_node) ? @content.accessibility_node(cx) : nil].compact, actions: [:dismiss])
+      def accessibility_node(cx) = @open && node(:dialog, label: @title, states: {modal: true}, children: [@content.respond_to?(:accessibility_node) ? @content.accessibility_node(cx) : nil, @close_button&.accessibility_node(cx)].compact, actions: [:dismiss])
     end
 
     class Dialog < Modal; end
@@ -126,13 +127,13 @@ module Zaniah
         new(commands, **options)
       end
 
-      def initialize(commands, open: false, placeholder: "Type a command…", matcher: nil, keymap: nil)
+      def initialize(commands, open: false, placeholder: "Type a command…", matcher: nil, keymap: nil, title: "Command palette", close_label: "Close")
         @commands = commands.to_a.map { |label, callback, enabled, action| [label.to_s, callback, enabled, action] }
         @keymap = keymap
         @matcher = Matcher::Session.new(@commands.map(&:first), matcher || Zaniah.configuration.matcher || Matcher::Substring.new)
         @query, @placeholder, @selected_index = "", placeholder, 0
         @focus_search = !!open
-        super(Div.new, title: "Command palette", open: open, width: 520)
+        super(Div.new, title: title, open: open, width: 520, close_label: close_label)
         @focus_scope.context[:in_palette] = true
         @focus_scope.on_action = ->(action) { palette_action(action) }
       end
@@ -188,10 +189,10 @@ module Zaniah
           Accessibility.node(role: :listitem, id: "palette-option-#{match.index}", label: entry[0],
             states: {selected: index == @selected_index, disabled: !enabled}, actions: enabled ? [:press] : [])
         end
-        node(:dialog, label: "Command palette", states: {modal: true}, children: [
+        node(:dialog, label: @title, states: {modal: true}, children: [
           Accessibility.node(role: :searchbox, label: @placeholder, value: @query),
-          Accessibility.node(role: :list, states: {active_descendant: active && "palette-option-#{active}"}, children: items)
-        ], actions: [:dismiss])
+          Accessibility.node(role: :list, label: @title, states: {active_descendant: active && "palette-option-#{active}"}, children: items), @close_button&.accessibility_node(cx)
+        ].compact, actions: [:dismiss])
       end
 
       def accessibility_action(item, action)

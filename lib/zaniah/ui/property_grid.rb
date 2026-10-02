@@ -8,8 +8,9 @@ module Zaniah
 
       attr_reader :values, :errors
 
-      def initialize(schema, values = {}, height: 320, row_height: 52)
+      def initialize(schema, values = {}, height: 320, row_height: 52, label: nil)
         super()
+        accessibility_label(label)
         @properties = Array(schema).map { |entry| normalize(entry) }.freeze
         raise ArgumentError, "property keys must be unique" unless @properties.map(&:key).uniq.length == @properties.length
         @values = values.to_h.transform_keys(&:to_sym)
@@ -63,7 +64,7 @@ module Zaniah
           Accessibility.node(role: :row, id: [:property, property.key].freeze,
             states: {selected: index == @selected_index, invalid: !!error},
             children: [Accessibility.node(role: :rowheader, label: property.label),
-              Accessibility.node(role: :cell, value: @drafts.fetch(property.key) { @values[property.key] },
+              Accessibility.node(role: :cell, label: property.label, value: @drafts.fetch(property.key) { @values[property.key] },
                 children: [control, (Accessibility.node(role: :alert, label: error.join(", ")) if error)].compact)])
         end
         node(:table, states: {size: @properties.length}, children: children)
@@ -113,6 +114,7 @@ module Zaniah
         when :date then DatePicker.new(value || Date.today, label: "")
         when :time then TimePicker.new(value || "00:00", label: "")
         end
+        control.accessibility_label(label)
         control.on_change do |changed, *_args|
           if property.type == :number
             begin

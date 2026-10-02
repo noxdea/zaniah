@@ -20,6 +20,7 @@ module Zaniah
                  | (String value) -> self
       def style: (**Layout::style_value properties) -> self
       def window_control: (:close | :minimize | :maximize | :restore | :fullscreen kind) -> self
+      def accessibility_label: (String? value) -> self
       def accessibility_node: (FrameContext? context) -> Accessibility::Node?
       def tui_cells: (?Bounds? bounds, ?FrameContext? context) -> String?
       def focus_handle: () -> Input::FocusHandle?
@@ -138,7 +139,7 @@ module Zaniah
     end
     class SegmentedControl < Component
       attr_reader value: untyped
-      def initialize: (Array[untyped] options, ?value: untyped) -> void
+      def initialize: (Array[untyped] options, ?value: untyped, ?label: String?) -> void
       def on_change: () { (untyped, Input::MouseDown?, FrameContext?) -> void } -> self
     end
     class Alert < Component
@@ -447,7 +448,7 @@ module Zaniah
       end
       attr_reader values: Hash[Symbol, untyped]
       attr_reader errors: Hash[Symbol, Array[String]]
-      def initialize: (Array[untyped] schema, ?Hash[Symbol | String, untyped] values, ?height: Numeric, ?row_height: Numeric) -> void
+      def initialize: (Array[untyped] schema, ?Hash[Symbol | String, untyped] values, ?height: Numeric, ?row_height: Numeric, ?label: String?) -> void
       def on_change: () { (Symbol, untyped, Hash[Symbol, untyped], FrameContext?) -> void } -> self
       def set: (Symbol | String key, untyped value) -> bool
     end
@@ -461,7 +462,7 @@ module Zaniah
     end
 
     class Modal < OverlayComponent
-      def initialize: (_Renderable content, ?title: String?, ?open: bool, ?close_on_scrim: bool, ?width: dimension) -> void
+      def initialize: (_Renderable content, ?title: String?, ?open: bool, ?close_on_scrim: bool, ?width: dimension, ?close_label: String) -> void
     end
     class Dialog < Modal
     end
@@ -483,7 +484,7 @@ module Zaniah
     class CommandPalette < Modal
       attr_reader query: String
       def self.from: (Input::ActionRegistry registry, **untyped options) -> CommandPalette
-      def initialize: (Array[untyped] commands, ?open: bool, ?placeholder: String, ?matcher: Matcher::_Matcher?, ?keymap: Input::Keymap?) -> void
+      def initialize: (Array[untyped] commands, ?open: bool, ?placeholder: String, ?matcher: Matcher::_Matcher?, ?keymap: Input::Keymap?, ?title: String, ?close_label: String) -> void
       def accessibility_action: (Accessibility::Node item, Symbol action) -> bool?
     end
 
@@ -520,7 +521,7 @@ module Zaniah
       attr_reader sort_key: Symbol?
       attr_reader sort_direction: :asc | :desc
       attr_reader body: UniformList
-      def initialize: (_VirtualTableSource source, columns: Array[untyped], ?height: Numeric, ?row_height: Numeric, ?selection: :none | :single | :multiple, ?follow_tail: bool) -> void
+      def initialize: (_VirtualTableSource source, columns: Array[untyped], ?height: Numeric, ?row_height: Numeric, ?selection: :none | :single | :multiple, ?follow_tail: bool, ?label: String?) -> void
       def columns: () -> Array[Hash[Symbol, untyped]]
       def on_sort: () { (Symbol, :asc | :desc, FrameContext?) -> void } -> self
       def on_select: () { (Integer, Input::MouseDown?, FrameContext?) -> void } -> self
@@ -556,7 +557,7 @@ module Zaniah
       end
       attr_reader selected_id: untyped
       attr_reader expanded: Set[untyped]
-      def initialize: (Array[untyped] items, ?height: Numeric, ?row_height: Numeric, ?selected: untyped) -> void
+      def initialize: (Array[untyped] items, ?height: Numeric, ?row_height: Numeric, ?selected: untyped, ?label: String?) -> void
       def on_select: () { (untyped, Input::MouseDown?, FrameContext?) -> void } -> self
       def on_toggle: () { (untyped, bool) -> void } -> self
       def on_context_menu: () { (untyped, FrameContext) -> untyped } -> self

@@ -13,8 +13,9 @@ module Zaniah
 
       attr_reader :selected_id, :expanded
 
-      def initialize(items, height: 320, row_height: 28, selected: nil)
+      def initialize(items, height: 320, row_height: 28, selected: nil, label: nil)
         super()
+        accessibility_label(label)
         @source, @height, @row_height = items.to_a, Float(height), Float(row_height)
         raise ArgumentError, "tree dimensions must be positive" unless @height.positive? && @row_height.positive?
 

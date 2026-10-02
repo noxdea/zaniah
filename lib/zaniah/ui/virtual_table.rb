@@ -6,8 +6,9 @@ module Zaniah
     class VirtualTable < Component
       attr_reader :selection, :sort_key, :sort_direction, :body
 
-      def initialize(source, columns:, height: 320, row_height: 24, selection: :single, follow_tail: false)
+      def initialize(source, columns:, height: 320, row_height: 24, selection: :single, follow_tail: false, label: nil)
         super()
+        accessibility_label(label)
         raise ArgumentError, "source must provide count and cell" unless source.respond_to?(:count) && source.respond_to?(:cell)
         raise ArgumentError, "selection must be none, single, or multiple" unless %i[none single multiple].include?(selection)
         @source, @height, @row_height, @selection_mode = source, Float(height), Float(row_height), selection

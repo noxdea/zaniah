@@ -5,8 +5,9 @@ module Zaniah
     class SegmentedControl < Component
       attr_reader :value
 
-      def initialize(options, value: nil)
+      def initialize(options, value: nil, label: nil)
         super()
+        accessibility_label(label)
         @options = Array(options).map do |option|
           label, item = option.is_a?(Array) ? option : [option, option]
           [label.to_s, item]

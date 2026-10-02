@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.4 — 2026-10-02
+
+- Let applications name tables, trees, groups, and other components for screen readers, and announce property editor labels consistently.
+- Support localized dialog close buttons and command palette titles, with accessible close actions.
+
 ## 0.12.3 — 2026-10-02
 
 - Improve redraw responsiveness in views with many styled controls.
