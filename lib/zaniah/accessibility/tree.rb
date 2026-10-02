@@ -61,7 +61,7 @@ module Zaniah
         return unless renderable
         node = renderable.accessibility_node(context) if renderable.respond_to?(:accessibility_node)
         if node.is_a?(Node)
-          register_actions(node, renderable) if renderable.respond_to?(:accessibility_action)
+          register_actions(node, renderable)
           return node
         end
         children = renderable.respond_to?(:children) ? renderable.children : []
@@ -144,7 +144,8 @@ module Zaniah
       end
 
       def register_actions(node, owner)
-        @next_action_owners[node.object_id] = owner unless node.actions.empty?
+        owner = NODE_OWNERS[node] || owner
+        @next_action_owners[node.object_id] = owner if owner.respond_to?(:accessibility_action) && !node.actions.empty?
         node.children.each { |child| register_actions(child, owner) }
       end
 

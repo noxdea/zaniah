@@ -59,6 +59,37 @@ class AccessibilityTreeTest < Minitest::Test
     assert_includes roles, :menu
   end
 
+  def test_split_pane_traverses_wrappers_and_preserves_nested_tree_actions
+    tree = Zaniah::UI::TreeView.new([{id: :layer, label: "IPv4", children: [{id: :field, label: "Time to live"}]}], height: 84)
+    hex = Zaniah::UI::HexView.new("\x01\x02".b, height: 84)
+    first = Zaniah::Div.new.flex_col.child(Zaniah::UI::Label.new("Details")).child(Zaniah::Div.new.child(tree))
+    second = Zaniah::Div.new.flex_col.child(Zaniah::UI::Label.new("Bytes")).child(hex)
+    split = Zaniah::UI::SplitPane.new(first, second)
+    @window.render(split, present: false)
+
+    semantic = @window.accessibility_tree
+    assert_equal :horizontal, semantic.root.states[:orientation]
+    assert_equal ["Details", "Bytes"], semantic.query(role: :text).map { |node, _| node.label }.grep(/Details|Bytes/)
+    assert semantic.find { |node| node.role == :tree }
+    assert semantic.find { |node| node.label == "Hexadecimal bytes" }
+    assert_equal 1, semantic.query(role: :separator).size
+    layer = semantic.find { |node| node.id == :layer }
+    assert Zaniah::Accessibility.perform(@window, layer, :expand)
+    assert tree.expanded.include?(:layer)
+    @window.render(split, present: false)
+
+    field = semantic.find { |node| node.id == :field }
+    assert_equal "Time to live", field.label
+    assert Zaniah::Accessibility.perform(@window, field, :select)
+    assert_equal :field, tree.selected_id
+    @window.render(split, present: false)
+    field = semantic.find { |node| node.id == :field }
+    revision = semantic.revision
+    @window.render(split, present: false)
+    assert_equal revision, semantic.revision
+    assert Zaniah::Accessibility.perform(@window, field, :select), "unchanged semantic nodes must retain their action owner"
+  end
+
   def test_stable_ids_report_moves_and_keep_native_runtime_ids
     renderable = Struct.new(:items) do
       def accessibility_node(_context)

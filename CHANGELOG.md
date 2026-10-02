@@ -12,6 +12,7 @@
 - Add programmatic tree selection and item context menus.
 - Add suggested filenames, starting directories, and extension filters for native file dialogs.
 - Fix inspection snapshots for nested UI components, including select controls in dialogs.
+- Preserve accessible content and actions inside wrapped split panes.
 
 ## 0.11.0 — 2026-09-25
 

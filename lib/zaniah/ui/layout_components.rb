@@ -32,13 +32,21 @@ module Zaniah
 
       def tui_cells(*) = "#{text(@first)} #{@orientation == :horizontal ? "│" : "─"} #{text(@second)}"
       def accessibility_node(cx)
-        panes = [@first, @second].map { |pane| pane.accessibility_node(cx) if pane.respond_to?(:accessibility_node) }
+        panes = [@first, @second].map { |pane| pane_node(pane, cx) }
         divider = Accessibility.node(role: :separator, value: @ratio,
           states: {orientation: @orientation}, actions: %i[increment decrement])
         node(:group, states: {orientation: @orientation}, children: [panes.first, divider, panes.last].compact)
       end
 
       private
+
+      def pane_node(pane, cx)
+        semantic = pane.accessibility_node(cx) if pane.respond_to?(:accessibility_node)
+        return semantic if semantic.is_a?(Accessibility::Node)
+        children = pane.respond_to?(:children) ? pane.children : []
+        nodes = children.filter_map { |child| pane_node(child, cx) }
+        Accessibility.node(role: :group, children: nodes) unless nodes.empty?
+      end
 
       def drag(event, cx)
         return false unless @bounds

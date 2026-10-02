@@ -2,6 +2,8 @@
 
 module Zaniah
   module Accessibility
+    NODE_OWNERS = ObjectSpace::WeakMap.new
+
     Node = Data.define(:role, :label, :value, :bounds, :states, :children, :actions) do
       def id = states[:accessibility_id]
     end

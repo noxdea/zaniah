@@ -71,8 +71,10 @@ module Zaniah
       private
 
       def node(role, id: @test_id, label: nil, value: nil, states: {}, children: [], actions: [])
-        Accessibility.node(role: role, id: id, label: label, value: value,
+        result = Accessibility.node(role: role, id: id, label: label, value: value,
           bounds: @layout_node&.bounds, states: states, children: children, actions: actions)
+        Accessibility::NODE_OWNERS[result] = self
+        result
       end
     end
   end
