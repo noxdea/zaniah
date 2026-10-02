@@ -150,10 +150,13 @@ module Zaniah
     def initialize: (anchor: Point, ?offset: Point) -> void
   end
   class UniformList < Element
+    attr_accessor count: Integer
     attr_accessor scroll_y: Numeric
     attr_reader visible_range: Range[Integer]?
     attr_reader scroll_state: ScrollState
-    def initialize: (count: Integer, row_height: Numeric) { (Integer) -> _Renderable } -> void
+    def initialize: (count: Integer, row_height: Numeric, ?stick_to_bottom: bool) { (Integer) -> _Renderable } -> void
+    def at_bottom?: () -> bool
+    def scroll_to: (Integer index, ?align: :start | :center | :end | :nearest) -> self
   end
 
   class ScrollState
@@ -215,17 +218,19 @@ module Zaniah
   end
 
   class List < Element
+    attr_accessor count: Integer
     attr_reader scroll_y: Float
     attr_reader visible_range: Range[Integer]
     attr_reader heights: HeightIndex
     attr_reader scroll_state: ScrollState
-    def initialize: (count: Integer, ?estimated_height: Numeric, ?overscan: Integer) { (Integer) -> _Renderable } -> void
+    def initialize: (count: Integer, ?estimated_height: Numeric, ?overscan: Integer, ?stick_to_bottom: bool) { (Integer) -> _Renderable } -> void
+    def at_bottom?: () -> bool
     def scroll_y=: (Numeric value) -> Numeric
     def total_height: () -> Float
     def update_height: (Integer index, Numeric height) -> self
     def scroll_to: (Integer index, ?align: :start | :center | :end | :nearest) -> self
     class HeightIndex
-      attr_reader count: Integer
+      attr_accessor count: Integer
       def initialize: (Integer count, Numeric estimate) -> void
       def []: (Integer index) -> Float
       def update: (Integer index, Numeric height) -> Float

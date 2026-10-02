@@ -50,7 +50,19 @@ state belongs in keyed window state or the application model.
 `scroll_y=` changes the pixel offset. `scroll_to(index, align:)` accepts `:start`,
 `:center`, `:end`, and `:nearest`. `update_height` supplies a measurement before
 rendering, `visible_range` returns the instantiated exclusive-end range, and
-`total_height` includes estimates. A list's item count is fixed; create a new
-list when the count changes.
+`total_height` includes estimates. Both `List` and `UniformList` support `count=`:
+change the count in place to preserve scrolling, inertia, and retained height measurements.
+Shrinking clamps the scroll offset and discards measurements for removed rows.
+
+```ruby
+rows = Zaniah::UniformList.new(count: 0, row_height: 24, stick_to_bottom: true) do |index|
+  Zaniah::Text.new(log_lines[index])
+end.h(400)
+rows.count = log_lines.size
+rows.at_bottom?
+```
+
+`stick_to_bottom: true` follows appended rows while the viewport is at the bottom.
+Scrolling upward suspends following until the user returns to the bottom.
 
 See [the element declarations](../sig/elements.rbs) for the complete API.

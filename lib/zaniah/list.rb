@@ -6,11 +6,12 @@ module Zaniah
   class List < Element
     attr_reader :visible_range, :heights, :scroll_state
 
-    def initialize(count:, estimated_height: 24, overscan: 2, &render_item)
+    def initialize(count:, estimated_height: 24, overscan: 2, stick_to_bottom: false, &render_item)
       super()
       raise ArgumentError, "a row renderer is required" unless render_item
       raise ArgumentError, "overscan must be a nonnegative integer" unless overscan.is_a?(Integer) && overscan >= 0
       @heights, @overscan, @render_item = HeightIndex.new(count, estimated_height), overscan, render_item
+      @stick_to_bottom = !!stick_to_bottom
       @scroll_state = ScrollState.new(axis: :vertical)
       @scroll_state.update(content_size: Size.new(0, @heights.total), viewport_size: Size.new(0, 0))
       @viewport, @visible_range = 0.0, 0...0
@@ -23,6 +24,18 @@ module Zaniah
     end
 
     def total_height = @heights.total
+    def count = @heights.count
+    def at_bottom? = @scroll_state.at_bottom?
+
+    def count=(value)
+      raise ArgumentError, "count must be a nonnegative integer" unless value.is_a?(Integer) && value >= 0
+      return value if value == count
+      follow = @stick_to_bottom && at_bottom?
+      @heights.count = value
+      @scroll_state.update(content_size: Size.new(@scroll_state.content_size.width, total_height), viewport_size: @scroll_state.viewport_size)
+      self.scroll_y = @scroll_state.max_offset.y if follow
+      value
+    end
     def scroll_y = @scroll_state.offset.y
 
     def scroll_y=(value)
@@ -61,7 +74,9 @@ module Zaniah
       @scroll_state.sample_glide
       @viewport = dimension(:height, cx.window.content_size.height)
       width = dimension(:width, cx.window.content_size.width)
+      follow = @stick_to_bottom && at_bottom?
       @scroll_state.update(content_size: Size.new(width, total_height), viewport_size: Size.new(width, @viewport))
+      self.scroll_y = @scroll_state.max_offset.y if follow
       anchor = @heights.index_at(scroll_y)
       within = scroll_y - @heights.prefix(anchor)
       measured, engine = {}, Layout::Engine.new
@@ -78,7 +93,7 @@ module Zaniah
           measured[index] = [element, node]
         end
         @scroll_state.update(content_size: Size.new(width, total_height), viewport_size: Size.new(width, @viewport))
-        self.scroll_y = @heights.prefix(anchor) + [within, anchor < @heights.count ? @heights[anchor] : 0].min
+        self.scroll_y = follow ? @scroll_state.max_offset.y : @heights.prefix(anchor) + [within, anchor < @heights.count ? @heights[anchor] : 0].min
       end
       @children = @visible_range.map { |index| measured.fetch(index).first }
       @children.each { |child| child.send(:parent=, self) }

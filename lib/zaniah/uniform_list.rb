@@ -2,12 +2,14 @@
 
 module Zaniah
   class UniformList < Element
-    attr_reader :visible_range, :scroll_state
+    attr_reader :visible_range, :scroll_state, :count
 
-    def initialize(count:, row_height:, &render_item)
+    def initialize(count:, row_height:, stick_to_bottom: false, &render_item)
       super()
-      raise ArgumentError, "invalid list dimensions" unless count >= 0 && row_height.positive?
+      raise ArgumentError, "invalid list dimensions" unless count.is_a?(Integer) && count >= 0 && row_height.is_a?(Numeric) && row_height.finite? && row_height.positive?
+      raise ArgumentError, "a row renderer is required" unless render_item
       @count, @row_height, @render_item = count, row_height, render_item
+      @stick_to_bottom = !!stick_to_bottom
       @scroll_state = ScrollState.new(axis: :vertical)
       @scroll_state.update(content_size: Size.new(0, count * row_height), viewport_size: Size.new(0, 0))
       style(overflow: :hidden)
@@ -19,6 +21,23 @@ module Zaniah
     end
 
     def scroll_y = @scroll_state.offset.y
+    def at_bottom? = @scroll_state.at_bottom?
+
+    def count=(value)
+      raise ArgumentError, "count must be a nonnegative integer" unless value.is_a?(Integer) && value >= 0
+      return value if value == @count
+      follow = @stick_to_bottom && at_bottom?
+      @count = value
+      @scroll_state.update(content_size: Size.new(@scroll_state.content_size.width, @count * @row_height), viewport_size: @scroll_state.viewport_size)
+      self.scroll_y = @scroll_state.max_offset.y if follow
+      value
+    end
+
+    def scroll_to(index, align: :start)
+      raise IndexError, "row outside list" unless index.is_a?(Integer) && index.between?(0, @count - 1)
+      @scroll_state.scroll_rect(Bounds.new(0, index * @row_height, 0, @row_height), align: align)
+      self
+    end
 
     def scroll_y=(value)
       @scroll_state.scroll_to(value)
@@ -36,7 +55,9 @@ module Zaniah
       width = @style[:width]
       width = width.resolve(cx.window.content_size.width) if width.is_a?(Length)
       width = cx.window.content_size.width unless width.is_a?(Numeric)
+      follow = @stick_to_bottom && at_bottom?
       @scroll_state.update(content_size: Size.new(width, @count * @row_height), viewport_size: Size.new(width, viewport))
+      self.scroll_y = @scroll_state.max_offset.y if follow
       first = (scroll_y / @row_height).floor
       last = [first + (viewport / @row_height).ceil + 1, @count].min
       @visible_range = first...last

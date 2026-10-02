@@ -17,6 +17,20 @@ module Zaniah
         @values.fetch(index, @estimate)
       end
 
+      def count=(value)
+        raise ArgumentError, "count must be a nonnegative integer" unless value.is_a?(Integer) && value >= 0
+        previous, @count = @count, value
+        if value < previous
+          @tree = @tree.take(value + 1)
+          @values.delete_if { |index, _| index >= value }
+        else
+          (previous + 1).upto(value) do |cursor|
+            @tree[cursor] = prefix(cursor - 1) - prefix(cursor - (cursor & -cursor)) + @estimate
+          end
+        end
+        value
+      end
+
       def update(index, height)
         validate_index(index)
         raise ArgumentError, "height must be finite and nonnegative" unless height.is_a?(Numeric) && height.finite? && height >= 0
