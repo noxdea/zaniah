@@ -191,7 +191,8 @@ module Zaniah
         end
         node(:dialog, label: @title, states: {modal: true}, children: [
           Accessibility.node(role: :searchbox, label: @placeholder, value: @query),
-          Accessibility.node(role: :list, label: @title, states: {active_descendant: active && "palette-option-#{active}"}, children: items), @close_button&.accessibility_node(cx)
+          @close_button&.accessibility_node(cx),
+          Accessibility.node(role: :list, label: @title, states: {active_descendant: active && "palette-option-#{active}"}, children: items)
         ].compact, actions: [:dismiss])
       end
 

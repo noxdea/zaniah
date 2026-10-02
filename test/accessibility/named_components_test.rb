@@ -65,5 +65,8 @@ class NamedComponentsTest < Minitest::Test
     assert snapshot.accessibility.query(role: :dialog, label: "コマンド").any?
     assert snapshot.accessibility.query(role: :list, label: "コマンド").any?
     assert snapshot.accessibility.query(role: :searchbox, label: "検索").any?
+    assert_equal :searchbox, palette.accessibility_node(nil).children.first.role
+    assert_equal :list, palette.accessibility_node(nil).children.last.role
+    assert snapshot.accessibility.query(role: :button, label: "閉じる").any?
   end
 end
