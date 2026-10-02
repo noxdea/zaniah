@@ -317,14 +317,16 @@ module Zaniah
         super()
         @model = menus if menus.is_a?(Zaniah::Menu)
         @menus = @model ? [] : menus.to_a
+        @buttons = []
       end
 
       def build(cx)
         return build_model(cx) if @model
 
-        Div.new.flex_row.items_center.gap(2).children(@menus.map do |label, items|
-          Button.new(label.to_s, size: :sm, variant: :ghost).on_click { |_event, context| context.window.context_menu(items, position: @bounds ? Point.new(@bounds.x, @bounds.bottom) : Point.new(0, 0)) }
-        end)
+        @buttons = @menus.map.with_index do |(label, items), index|
+          section_button(index, label.to_s).on_click { |_event, context| context.window.context_menu(items, position: @bounds ? Point.new(@bounds.x, @bounds.bottom) : Point.new(0, 0)) }
+        end
+        Div.new.flex_row.items_center.gap(2).children(@buttons)
       end
 
       def tui_cells(_bounds = nil, cx = nil)
@@ -339,6 +341,11 @@ module Zaniah
       end
 
       private
+
+      def section_button(index, label)
+        button = @buttons[index]
+        button&.label == label ? button : Button.new(label, size: :sm, variant: :ghost)
+      end
 
       def resolved_sections(cx)
         @model.resolve(registry: cx&.window&.app&.actions, keymap: cx&.dispatcher&.keymap)
@@ -361,9 +368,9 @@ module Zaniah
         @cx = cx
         sections = resolved_sections(cx)
         bar = Div.new.flex_row.items_center.gap(2).h(28)
-        sections.each_with_index do |section, index|
+        @buttons = sections.map.with_index do |section, index|
           next unless section.title
-          button = Button.new(section.title, size: :sm, variant: :ghost)
+          button = section_button(index, section.title).disabled(false)
           if section.submenu?
             button.on_click do |_event, context|
               target_focus = focus_target(context.dispatcher.previous_focused)
@@ -383,8 +390,9 @@ module Zaniah
                 context.dispatcher.perform(section.action, source: :menu)
               end
           end
-          bar.child(button)
+          button
         end
+        bar.children(@buttons.compact)
         bar.child(@active_menu) if @active_menu&.open?
         bar
       end

@@ -89,6 +89,21 @@ class MatcherTest < Minitest::Test
     refute palette.open?
   end
 
+  def test_palette_search_keeps_focus_and_accepts_text_after_redraws
+    called = []
+    palette = render(UI::CommandPalette.new([["Ruby Open", ->(*) { called << :open }]], open: true))
+    3.times { @window.render(palette, present: false) }
+    assert @window.dispatcher.focused.owner.is_a?(Zaniah::Text), "palette redraw must retain search focus"
+    @window.input(Input::TextInput.new("Ruby"))
+    @window.render(palette, present: false)
+    @window.input(Input::TextInput.new(" Open"))
+    assert_equal "Ruby Open", palette.query
+    @window.render(palette, present: false)
+    @window.input(Input::KeyDown.new("enter", false))
+    assert_equal [:open], called
+    refute palette.open?
+  end
+
   def test_palette_from_registry_disables_unavailable_commands
     @app.actions.register(:save, title: "Save", enabled: ->(_cx) { false }) { |_cx| flunk "disabled action ran" }
     @app.actions.register(:open, title: "Open") { |_cx| @opened = true }

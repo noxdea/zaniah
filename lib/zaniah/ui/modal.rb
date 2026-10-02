@@ -20,7 +20,7 @@ module Zaniah
         if @title
           panel.child(Div.new.flex_row.items_center.gap(cx.theme.spacing[2])
             .child(Label.new(@title, size: :lg).flex_1)
-            .child(@close_button = IconButton.new(:close, label: @close_label, variant: :ghost).on_click { |event, context| dismiss(event, context) }))
+            .child(@close_button ||= IconButton.new(:close, label: @close_label, variant: :ghost).on_click { |event, context| dismiss(event, context) }))
         end
         panel.child(@content)
         Overlay.new.items_center.justify_center.bg(cx.theme.colors.overlay_scrim)
@@ -139,7 +139,7 @@ module Zaniah
       end
 
       def build(cx)
-        field = @search = SearchInput.new(@query, placeholder: @placeholder).on_change do |value, context|
+        field = @search ||= SearchInput.new(@query, placeholder: @placeholder).on_change do |value, context|
           @query = value
           @selected_index = 0
           context.window.request_frame

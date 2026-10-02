@@ -106,6 +106,61 @@ class MenuTest < Minitest::Test
     assert_equal "File", Zaniah::UI::MenuBar.new([["File", items]]).tui_cells
   end
 
+  def test_tab_can_leave_a_menu_bar_across_redraws
+    @keymap.bind("tab", :focus_next)
+    menus = [
+      [["File", []], ["Edit", []]],
+      Zaniah::Menu.build { submenu("File") {}; submenu("Edit") {} }
+    ]
+    menus.each do |model|
+      bar = Zaniah::UI::MenuBar.new(model)
+      following = Zaniah::UI::Button.new("Filter")
+      root = Zaniah::Div.new.child(bar).child(following)
+      @window.dispatcher.focus(nil)
+      @window.render(root, present: false)
+      @window.dispatcher.key("tab")
+      @window.render(root, present: false)
+      assert bar.root.children.first.focus_handle.equal?(@window.dispatcher.focused), "File must retain focus across redraws"
+      @window.dispatcher.key("tab")
+      @window.render(root, present: false)
+      assert bar.root.children.last.focus_handle.equal?(@window.dispatcher.focused), "Tab must advance to Edit across redraws"
+      @window.dispatcher.key("tab")
+      @window.render(root, present: false)
+      assert following.focus_handle.equal?(@window.dispatcher.focused), "Tab must leave the menu bar"
+    end
+  end
+
+  def test_cached_menu_buttons_follow_current_titles_callbacks_and_enabled_state
+    calls = []
+    enabled = false
+    @app.actions.register(:save, title: "Save", enabled: ->(*) { enabled }) { calls << :first }
+    bar = Zaniah::UI::MenuBar.from(Zaniah::Menu.build { item :save })
+    @window.render(bar, present: false)
+    original = bar.root.children.first
+    assert original.accessibility_node(nil).states[:disabled]
+    enabled = true
+    @app.actions.register(:save, title: "Save", enabled: ->(*) { enabled }) { calls << :current }
+    @window.render(bar, present: false)
+    assert original.equal?(bar.root.children.first), "unchanged menu captions must reuse buttons"
+    refute original.accessibility_node(nil).states[:disabled]
+    assert Zaniah::Accessibility.perform(@window, original.accessibility_node(nil), :press)
+    assert_equal [:current], calls
+    @app.actions.register(:save, title: "Save capture") {}
+    @window.render(bar, present: false)
+    refute original.equal?(bar.root.children.first), "a renamed section must show its current caption"
+    assert_equal "Save capture", bar.root.children.first.label
+
+    sections = [["File", []], ["Edit", []]]
+    legacy = Zaniah::UI::MenuBar.new(sections)
+    @window.render(legacy, present: false)
+    removed = legacy.root.children.last
+    sections.pop
+    @window.render(legacy, present: false)
+    sections << ["Edit", []]
+    @window.render(legacy, present: false)
+    refute removed.equal?(legacy.root.children.last), "removed sections must release cached buttons"
+  end
+
   def test_context_menu_accepts_model_and_runs_nested_enabled_action
     called = []
     @keymap.bind("down", :next_option, context: "in_menu")
