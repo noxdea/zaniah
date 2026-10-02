@@ -27,8 +27,7 @@ module Zaniah
     end
 
     def style(**properties)
-      @style = @style.merge(**properties)
-      @style_set.merge(**properties)
+      @style = @style_set.merge(**properties).base
       self
     end
 

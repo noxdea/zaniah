@@ -29,6 +29,16 @@ class StyleAndThemeTest < Minitest::Test
     assert_operator allocated, :<, 4000, "style updates should avoid repeatedly reconstructing their defaults"
   end
 
+  def test_element_style_updates_do_not_duplicate_their_base_style
+    element = Zaniah::Div.new
+    assert element.style(width: 240, height: 32).equal?(element)
+    10.times { element.style(width: 240, height: 32) }
+    before = GC.stat(:total_allocated_objects)
+    1000.times { element.style(width: 240, height: 32) }
+    allocated = GC.stat(:total_allocated_objects) - before
+    assert_operator allocated, :<, 6000, "layout and interactive styling should share one immutable base update"
+  end
+
   def test_style_inheritance_and_state_order
     parent = Zaniah::Layout::Style.new(text_color: "#fff", font_size: 18)
     child = Zaniah::Layout::Style.new(font_size: 12).inherit(parent)

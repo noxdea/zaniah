@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.3 — 2026-10-02
+
+- Improve redraw responsiveness in views with many styled controls.
+
 ## 0.12.2 — 2026-10-02
 
 - Reduce redraw allocations to improve rendering responsiveness.
