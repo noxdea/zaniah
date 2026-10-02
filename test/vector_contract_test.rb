@@ -136,6 +136,26 @@ class VectorContractTest < Minitest::Test
     window&.close
   end
 
+  def test_recorded_solid_paints_preserve_alpha_and_mutable_color_inputs
+    [["#17c8", "#ae49"], [[0.25, 0.5, 0.75, 0.8], [0.5, 0.25, 0.0, 0.6]]].each do |fill, border|
+      scene = Zaniah::Scene.new
+      recorder = V::Recorder.new(width: 10, height: 10)
+      scene.vector_sink = recorder
+      scene.push_opacity(0.5) do
+        scene.quad(1, 1, 8, 8, color: fill, border_width: 1, border_color: border, opacity: 0.75)
+      end
+      command = recorder.document.commands.first
+      assert_equal Zaniah::Color.parse(fill), command.fill
+      assert_equal Zaniah::Color.parse(border), command.border.last
+      assert_equal 0.375, command.opacity
+      fill[0] = 1.0 if fill.is_a?(Array)
+      border[0] = 1.0 if border.is_a?(Array)
+      replayed = Zaniah::Scene.new
+      replay(replayed, command)
+      assert_equal Zaniah::GPU::Software.new(10, 10).render(scene), Zaniah::GPU::Software.new(10, 10).render(replayed)
+    end
+  end
+
   def test_packed_sprite_fallback_matches_software_pixels
     texture = Zaniah::GPU::Texture.new(2, 2, data: "\xff\x00\x00\xff".b * 4)
     values = Array.new(40, 0.0)

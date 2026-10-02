@@ -67,8 +67,8 @@ module Zaniah
       @quads.concat(values)
       @quad_ramps[offset] = ramp if ramp
       command(:quad, offset)
-      record_vector(Vector::Quad, bounds: Bounds.new(x, y, width, height), fill: color.is_a?(Gradient) ? color : Color.parse(color),
-        radii: corners.dup.freeze, border: [borders.dup.freeze, Color.parse(border_color)].freeze,
+      record_vector(Vector::Quad, bounds: Bounds.new(x, y, width, height), fill: color.is_a?(Gradient) ? color : Color.new(*color_values(color)),
+        radii: corners.dup.freeze, border: [borders.dup.freeze, Color.new(*color_values(border_color))].freeze,
         border_style: border_style, opacity: opacity) if @vector_sink
       self
     end
