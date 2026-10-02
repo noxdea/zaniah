@@ -43,7 +43,7 @@ class NativeAccessibilityBridgesTest < Minitest::Test
     assert_equal 0, bridge.root_provider.property(30_013, Fiddle::Pointer.malloc(16))
     assert_equal "Unknown field", captured
 
-    require "zaniah/accessibility/linux/service"
+    require "zaniah/accessibility/linux"
     service = Zaniah::Accessibility::Linux::Service.allocate
     service.instance_variable_set(:@entries, {"/field" => bridge.tree.root})
     service.define_singleton_method(:string) { |value| value }
