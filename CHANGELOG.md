@@ -5,6 +5,7 @@
 - Add streaming virtual tables with lazy cells, stable selection, row styling, configurable columns, and tail following.
 - Add virtual hexadecimal and ASCII byte views with linked selection, highlights, keyboard navigation, and copying.
 - Preserve scrolling and height measurements when virtual list counts change, with optional bottom following.
+- Avoid stale rows and duplicated drawing when scrolling keyed virtual lists.
 - Add text-field validation states and token completion with keyboard selection and Unicode-safe replacement.
 - Add programmatic tree selection and suggested filenames, starting directories, and extension filters for native file dialogs.
 - Fix inspection snapshots for nested UI components, including select controls in dialogs.

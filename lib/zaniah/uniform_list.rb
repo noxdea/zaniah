@@ -71,5 +71,11 @@ module Zaniah
       @children.each { |child| child.send(:parent=, self) }
       super
     end
+
+    private
+
+    # Recycling a viewport does not remove rows from the source. Painting their
+    # exit animations would retain offscreen rows and cover the next viewport.
+    def prepare_child_animations(_cx) = nil
   end
 end

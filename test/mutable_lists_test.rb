@@ -51,4 +51,23 @@ class MutableListsTest < Minitest::Test
     heights.count = 5
     assert_equal 50, heights.total
   end
+
+  def test_scrolling_keyed_virtual_rows_does_not_paint_departed_viewports
+    app = Zaniah::App.new(clock: Zaniah::TestClock.new)
+    window = app.open_window(width: 100, height: 60)
+    row = ->(index) { Zaniah::Div.new.key(index).h(20).child(Zaniah::Text.new("Row #{index}")) }
+    lists = [Zaniah::UniformList.new(count: 1000, row_height: 20, &row),
+             Zaniah::List.new(count: 1000, estimated_height: 20, &row)]
+    lists.each do |list|
+      window.render(list, present: false)
+      list.scroll_to(900)
+      window.render(list, present: false)
+
+      assert_equal list.visible_range.map { |index| "Row #{index}" }, window.text_runs.map { |run| run[2] }
+      refute window.animation_active?, "viewport recycling must not start row enter/exit animations"
+    end
+  ensure
+    window&.close
+    app&.executor&.shutdown
+  end
 end

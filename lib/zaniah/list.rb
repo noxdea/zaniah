@@ -112,6 +112,9 @@ module Zaniah
 
     private
 
+    # Viewport recycling must not retain and animate departed source rows.
+    def prepare_child_animations(_cx) = nil
+
     def dimension(property, available)
       value = @style[property]
       value = value.resolve(available) if value.is_a?(Length)
