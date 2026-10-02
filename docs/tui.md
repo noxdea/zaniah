@@ -16,7 +16,7 @@ tests and non-window integrations.
 | Checkbox, Radio, Switch | `[x]`, `(o)`, `[on ]` |
 | SegmentedControl | `[A\|(B)\|C]`, with the selected segment in parentheses; arrows move selection |
 | Slider, RangeSlider | ten-cell track and numeric value/range |
-| Text inputs | `[value]`; password values are masked and validation errors have `!` |
+| Text inputs | `[value]`; password values are masked; success has `✓`, warnings/errors have `!`; completion candidates use `>` and Up/Down/Tab/Enter/Esc |
 | Select, Combobox, MultiSelect | labeled brackets, filtered menu marker, or comma-separated selected values |
 | DatePicker, TimePicker, ColorPicker | labeled ISO date, 24-hour time, or hex color in brackets |
 | Calendar, DateRangePicker | month grid with selected day in `[dd]`; picker shows `[start – end]`, with `…` for an unfinished range |
@@ -31,7 +31,8 @@ tests and non-window integrations.
 | DockWorkspace | active tab in parentheses inside `[tabs]`, split groups separated by `│` or `───`; arrows select, Alt+arrows move and Ctrl+Shift+arrows split without dragging |
 | ListView | visible rows with `>` on the selected item |
 | Toast | live status text |
-| Table, DataGrid | header and visible rows separated with `|` |
+| Table, DataGrid, VirtualTable | header and visible rows separated with `|`; arrows/Page/Home/End select; column resizing has focused arrow/Page controls |
+| HexView | visible offset, hexadecimal, and printable ASCII columns; nonprintable bytes use `.`; arrows/Page/Home/End select bytes, Shift extends selection, Copy writes hexadecimal text |
 | TreeView | indentation with `▸`/`▾` expansion markers |
 | PropertyGrid | up to 20 `label: value` rows, with `!` and the validation message on errors; Up/Down/Page keys move the virtual row selection |
 | Sparkline and all chart types | eight-level Unicode sparkline summary |

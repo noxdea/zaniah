@@ -278,7 +278,7 @@ module Zaniah
           return 0 unless entry
           case [interface, name]
           when [ACCESSIBLE, "Name"] then string(entry.node.label || entry.node.value&.to_s || entry.node.role.to_s)
-          when [ACCESSIBLE, "Description"], [ACCESSIBLE, "HelpText"] then string("")
+          when [ACCESSIBLE, "Description"], [ACCESSIBLE, "HelpText"] then string(entry.node.states[:description].to_s)
           when [ACCESSIBLE, "Parent"] then reference(entry.parent)
           when [ACCESSIBLE, "ChildCount"] then int32(entry.children.length)
           when [ACCESSIBLE, "Locale"] then string(ENV["LANG"] || "C")

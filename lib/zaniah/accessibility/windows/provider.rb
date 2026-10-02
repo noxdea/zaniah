@@ -220,6 +220,7 @@ module Zaniah
               id = @entry.node.id
               variant_bstr(variant, id.nil? ? @entry.runtime_id : id)
             when 30_012 then variant_bstr(variant, "Zaniah")
+            when 30_013 then variant_bstr(variant, @entry.node.states[:description].to_s)
             when 30_016, 30_017 then variant_bool(variant, true)
             when 30_022 then variant_bool(variant, @bridge.tree.bounds(@entry).empty?)
             when 30_024 then variant_bstr(variant, "Zaniah")

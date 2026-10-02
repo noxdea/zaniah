@@ -43,6 +43,10 @@ SECTIONS.each do |name, (index, height, width)|
 end
 
 extras = {
+  "hex-view" => Zaniah::UI::HexView.new("HTTP/1.1 200 OK\r\n" + (0..47).to_a.pack("C*"), height: 180).tap do |hex|
+    hex.highlights = [{range: 8...22, tone: :secondary}]
+    hex.select(9...12)
+  end.w(840),
   "grid" => Zaniah::UI::Grid.new(rows: 30, columns: 10,
     row_height: 30, column_width: 110, frozen_rows: 1, frozen_columns: 1) do |row, column|
       row.zero? ? "Column #{column + 1}" : "R#{row} C#{column + 1}"
@@ -53,7 +57,7 @@ extras = {
 }
 extras.each do |name, component|
   window.resize(900, 345)
-  card = Gallery.section(name == "grid" ? "Virtual grid" : "Pane grid",
+  card = Gallery.section({"grid" => "Virtual grid", "pane-grid" => "Pane grid", "hex-view" => "Hexadecimal bytes"}.fetch(name),
     component, height: 313).p(24).gap(18)
   window.draw { Zaniah::Div.new.w_full.h_full.p(16).bg(theme.colors.background).child(card) }
   window.tick

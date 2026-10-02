@@ -34,6 +34,22 @@ class NativeAccessibilityBridgesTest < Minitest::Test
     assert_same provider, bridge.provider(entry)
   end
 
+  def test_validation_descriptions_reach_native_help_properties
+    node = Zaniah::UI::TextField.new("bad").status(:warning, message: "Unknown field").accessibility_node(nil)
+    bridge = Zaniah::Accessibility::Windows::Provider::Bridge.new(FakeWindow.new(1, 1, FakeDispatcher.new))
+    bridge.update(node)
+    captured = nil
+    bridge.define_singleton_method(:bstr) { |value| captured = value; 0 }
+    assert_equal 0, bridge.root_provider.property(30_013, Fiddle::Pointer.malloc(16))
+    assert_equal "Unknown field", captured
+
+    require "zaniah/accessibility/linux/service"
+    service = Zaniah::Accessibility::Linux::Service.allocate
+    service.instance_variable_set(:@entries, {"/field" => bridge.tree.root})
+    service.define_singleton_method(:string) { |value| value }
+    assert_equal "Unknown field", service.send(:property, "/field", Zaniah::Accessibility::Linux::Service::ACCESSIBLE, "Description")
+  end
+
   def test_native_identity_survives_temporary_removal_without_reusing_ids
     kept = Zaniah::Accessibility.node(role: :button, id: :kept)
     hidden = Zaniah::Accessibility.node(role: :button, id: :hidden)

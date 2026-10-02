@@ -25,6 +25,8 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 
 | Layer | Component | Main constructor/options | Variants | Accessibility role |
 | --- | --- | --- | --- | --- |
+| L4 | `VirtualTable` | `(source, columns:, height:, row_height:, selection:, follow_tail:)`; lazy `count`/`cell` source | stable row IDs, sortable/resizable headers, column visibility/order, row colors | table |
+| L4 | `HexView` | `(bytes, bytes_per_row:, group:, offset_digits:, height:)`; `highlights=`, `select`, `scroll_to_offset` | viewport rows; synchronized hex/ASCII selection and copying | group |
 | L0 | `Label` | `(text, tone:, size:, wrap:)` | tone: default/muted/inverse; size: xs–xl | text |
 | L0 | `Icon` | `(source, size:, color:, label:)` | bundled: check/close/search/menu/info/warning | image when labeled |
 | L0 | `Divider` | `(axis:)` | horizontal/vertical | separator |
@@ -56,7 +58,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L2 | `ContextMenu`, `Menu` | `(items, anchor:, open:)` | pointer + arrows/Home/End/Enter/Esc | menu/menuitem |
 | L2 | `MenuBar` | `(menus)` or `.from(app.menu_bar)` | declarative menu model or legacy pairs | menubar |
 | L2 | `Dropdown` | `(label, items:, value:)`; `on_change` | menu-backed | button |
-| L2 | `TextField` | `(value, placeholder:, label:, prefix:, suffix:, error:, max_length:, clearable:)` | IME, selection, counter | textbox |
+| L2 | `TextField` | `(value, placeholder:, label:, prefix:, suffix:, error:, max_length:, clearable:)`; `status(kind, message:)`, `completion(provider)` | IME, selection, counter, validation, token completion | textbox |
 | L2 | `TextArea` | TextField plus `rows:` | multiline/wrapped | textbox/multiline |
 | L2 | `SearchInput` | TextField options | search + clear icons | searchbox |
 | L2 | `PasswordInput` | TextField options | masked display | textbox |
@@ -93,7 +95,7 @@ Zaniah::UI::Button.variants[:variant][:brand] = ->(theme) {
 | L3 | `ListView` | `(items, height:, row_height:, selected:)`; `on_select` | virtual rows and keyboard selection | list/listitem |
 | L4 | `Table`, `DataGrid` | `(rows, columns:, height:, selection:, row_key:)`; `on_sort`, `on_select`, `on_edit`, `on_copy`, `on_paste` | virtual rows, sorting, resizing, editing, typed clipboard hooks | table/row/cell |
 | L4 | `Grid` | `(rows:, columns:, row_height:, column_width:, frozen_rows:, frozen_columns:)`; `scroll_to`, range `selection`, `on_select`, `on_edit`, `on_fill`, `on_resize`, `on_copy`, `on_paste` | two-axis virtualization, frozen panes, visible-cell resize/fill and typed clipboard hooks | table |
-| L4 | `TreeView` | `(items, height:, selected:)`; `expand`, `collapse`, `replace`, `replace_children`, `invalidate`, lazy `children` proc | arrows/Home/End | tree/treeitem |
+| L4 | `TreeView` | `(items, height:, selected:)`; `select_id`, `expand`, `collapse`, `replace`, `replace_children`, `invalidate`, lazy `children` proc | arrows/Home/End | tree/treeitem |
 | L4 | `PropertyGrid` | `(schema, values, height:, row_height:)`; `on_change`, `set` | typed existing controls, `Validation`, virtual rows | table/row/cell |
 | L5 | `Sparkline` | `(values, width:, height:, color:, label:)` | line + tooltip | image |
 | L5 | `LineChart`, `BarChart`, `StackedBarChart`, `AreaChart` | `(series, width:, height:, colors:, label:)`; `AreaChart(stacked:)` | shared axes, ticks, grid lines, color-keyed legend, tooltip | image |

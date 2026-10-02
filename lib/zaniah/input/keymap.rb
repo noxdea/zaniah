@@ -127,6 +127,22 @@ module Zaniah
             .bind("end", :last, context: "in_chart")
             .bind("up", :line_up, context: "in_text_field && multiline")
             .bind("down", :line_down, context: "in_text_field && multiline")
+            .bind("left", :move_left, context: "in_hex_view")
+            .bind("right", :move_right, context: "in_hex_view")
+            .bind("shift-left", :select_left, context: "in_hex_view")
+            .bind("shift-right", :select_right, context: "in_hex_view")
+            .bind("up", :previous_option, context: "in_hex_view")
+            .bind("down", :next_option, context: "in_hex_view")
+            .bind("shift-up", :extend_previous, context: "in_hex_view")
+            .bind("shift-down", :extend_next, context: "in_hex_view")
+            .bind("home", :first, context: "in_hex_view")
+            .bind("end", :last, context: "in_hex_view")
+            .bind("pageup", :page_up, context: "in_hex_view")
+            .bind("pagedown", :page_down, context: "in_hex_view")
+            .bind("up", :previous_completion, context: "in_completion")
+            .bind("down", :next_completion, context: "in_completion")
+            .bind("tab", :accept_completion, context: "in_completion")
+            .bind("enter", :accept_completion, context: "in_completion")
           return map if tui
 
           word = mac ? "alt" : "ctrl"

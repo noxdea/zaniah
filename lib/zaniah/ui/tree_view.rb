@@ -27,6 +27,21 @@ module Zaniah
       def expand(id) = (toggle(id, true); self)
       def collapse(id) = (toggle(id, false); self)
 
+      def select_id(id, cx = @cx)
+        item = find_known_item(id)
+        return false unless item
+        ancestors, parent = [], item.parent
+        while parent
+          ancestor = find_known_item(parent)
+          return false unless ancestor
+          ancestors.unshift(parent)
+          parent = ancestor.parent
+        end
+        ancestors.each { |ancestor| expand(ancestor) }
+        index = visible_index(id)
+        index ? select(item, index, nil, cx) : false
+      end
+
       def replace(items)
         wanted = @expanded.dup
         @source = items.to_a
@@ -79,13 +94,10 @@ module Zaniah
       def build(cx)
         @cx = cx
         rebuild_segments if @indexed_expanded != @expanded
-        unless @list&.heights&.count == @visible_count
-          scroll = @list&.scroll_y || 0
-          @list = List.new(count: @visible_count, estimated_height: @row_height) do |index|
-            row(visible_item(index), index, @cx)
-          end
-          @list.scroll_y = scroll
+        @list ||= List.new(count: @visible_count, estimated_height: @row_height) do |index|
+          row(visible_item(index), index, @cx)
         end
+        @list.count = @visible_count
         @list.h(@height)
         @list.focusable(context: {in_tree: true}) { |action| tree_action(action) }
       end
@@ -425,6 +437,7 @@ module Zaniah
 
       def select(item, index, event, cx)
         @selected_id, @selected_index = item.id, index
+        @list.count = @visible_count if @list
         @list&.scroll_to(index, align: :nearest)
         @on_select&.call(item.value, event, cx)
         cx&.window&.request_frame

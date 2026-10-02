@@ -352,6 +352,13 @@ pages:
           Zaniah::UI::PasswordInput.new("", label: "Password")
           Zaniah::UI::NumberInput.new(4, min: 0, max: 10)
           Zaniah::UI::TagInput.new(%w[ruby ui], placeholder: "Tags")
+      - heading: Validation and token completion
+        text: "status accepts none, success, warning, and error with an optional message for the tooltip and accessibility description. completion(provider) calls provider.complete(text, caret), which returns nil or Completion.new(range:, items:). Caret and exclusive ranges are UTF-8 byte offsets at grapheme boundaries. Item hashes contain label and optional detail, insert_text, or Matcher ranges."
+        code: |
+          field = Zaniah::UI::TextField.new("", label: "Filter")
+            .status(:warning, message: "Unknown field")
+            .completion(provider)
+        text: "Typing refreshes a caret-anchored popover. Up/Down choose a candidate; Tab/Enter replace only the supplied token range; Esc closes the popover. request_completion(caret:) opens it explicitly."
     a11y: "Labels and errors are associated with their fields. Multiline input exposes a multiline textbox; search exposes a searchbox."
 
   - path: components/selects.html
@@ -661,7 +668,7 @@ pages:
     group: Data and visualization
     title: Tables and data grids
     lead: "Display many rows with virtualization, sorting, selection, and optional editing."
-    components: [Table, DataGrid]
+    components: [Table, DataGrid, VirtualTable]
     sections:
       - heading: Basic table
         image: previews/data.png
@@ -678,7 +685,36 @@ pages:
           Zaniah::UI::DataGrid.new(rows,
             columns: [{key: :name, editable: true}],
             height: 190, row_key: ->(row) { row[:id] })
+      - heading: Streaming and large data
+        text: "VirtualTable queries source.count each frame and fetches only visible cells with source.cell(index, key). Optional row_id(index) preserves selection across reorder, row_style(index) supplies foreground/background/strikethrough, and index_of(id) speeds navigation after reorder. The application owns sorting through on_sort(key, direction, cx)."
+        code: |
+          Zaniah::UI::VirtualTable.new(source, columns: columns,
+            row_height: 24, follow_tail: true)
+            .on_select { |index, event, cx| inspect_record(index) }
+            .on_sort { |key, direction, cx| source.sort(key, direction) }
+      - heading: Column changes and tail following
+        text: "scroll_to(index, align:), resize_column(key, width), column_visible(key, bool), and move_column(key, index) update the view; on_columns_change receives the resulting columns. invalidate requests a fresh frame after asynchronous cell generation. Tail following pauses when the viewport leaves the bottom."
     a11y: "Rows and cells expose table semantics. Keyboard selection, sortable headers, and resize handles have distinct focus targets."
+
+  - path: components/hex-view.html
+    kind: component
+    group: Data and visualization
+    title: Hexadecimal bytes
+    lead: "Inspect binary data with synchronized hexadecimal and ASCII selection."
+    components: [HexView]
+    sections:
+      - heading: Byte selection and highlights
+        image: previews/hex-view.png
+        alt: "Offset, hexadecimal bytes, and ASCII with selected bytes highlighted."
+        text: "HexView instantiates only visible rows. Select by clicking or dragging either byte column, or use arrows, Shift+arrows, Page, Home, and End. Control bytes display as dots."
+        code: |
+          hex = Zaniah::UI::HexView.new(bytes, bytes_per_row: 16,
+            group: 8, offset_digits: 4)
+          hex.highlights = [{range: 14...34, tone: :secondary}]
+          hex.on_select { |range, cx| inspect_bytes(range) }
+          hex.on_copy { |range, cx| {"text/plain" => bytes.byteslice(range)} }
+          hex.scroll_to_offset(22)
+    a11y: "Visible byte rows expose offset labels; the group reports total bytes and the selected byte range. Copy defaults to space-separated hexadecimal text."
 
   - path: components/grid.html
     kind: component
@@ -722,6 +758,11 @@ pages:
         text: "Call replace_children(id, children) on the UI thread when asynchronous loading completes; call invalidate(id) to reload."
         code: |
           tree.replace_children(:lib, [{id: :ui, label: "ui.rb"}])
+      - heading: Programmatic selection
+        text: "select_id(id) selects a visible or already known item, reopens its known ancestor chain, scrolls it into view, and emits on_select. It returns false for unknown items; expand a lazy parent first to discover its children."
+        code: |
+          tree.expand(:src)
+          tree.select_id(:main)
     a11y: "Tree items support Up, Down, Home, and End. Right expands or enters a child; Left collapses or returns to the parent."
 
   - path: components/property-grid.html

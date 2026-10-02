@@ -77,6 +77,7 @@ module Zaniah
         o.send(element, "setAccessibilityFrameInParentSpace:", parent_bounds(tree, entry), args: [:rect], result: :void)
         o.send(element, "setAccessibilityIdentifier:", o.string(node.id.to_s), args: [:pointer], result: :void) unless node.id.nil?
         o.send(element, "setAccessibilityEnabled:", node.states[:disabled] ? 0 : 1, args: [:bool], result: :void)
+        o.send(element, "setAccessibilityHelp:", o.string(node.states[:description]), args: [:pointer], result: :void) if node.states[:description]
         o.send(element, "setAccessibilityValue:", native_value(node.value), args: [:pointer], result: :void) unless node.value.nil?
         set_boolean(element, "setAccessibilitySelected:", node.states[:selected]) if node.states.key?(:selected)
         set_boolean(element, "setAccessibilityExpanded:", node.states[:expanded]) unless node.states[:expanded].nil?
