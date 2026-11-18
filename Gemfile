@@ -7,7 +7,7 @@ gem "wezen", "~> 0.1.0", require: false
 group :development, :test do
   gem "benchmark", "~> 0.5"
   gem "fiddle", "~> 1.1"
-  gem "prism", "~> 1.0", require: false
+  gem "prism", "~> 2.1", require: false
   gem "rake", "~> 13.0"
   gem "rdoc", Gem::Version.new(RUBY_VERSION) < Gem::Version.new("3.2") ? "7.2.0" : "8.0.0", require: false
   gem "minitest", Gem::Version.new(RUBY_VERSION) < Gem::Version.new("3.2") ? "~> 5.0" : "~> 6.0"
